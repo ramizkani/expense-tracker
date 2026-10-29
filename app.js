@@ -256,7 +256,7 @@ const hs=s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|
 const TB={
  Transactions:{all:()=>S.tx,
   out:x=>({id:x.id,date:x.date,currency:x.cur,type:x.type,amount_minor:Math.round(x.amt*100),category:x.cat,notes:x.note||'',created_at:new Date(x.ts||Date.now()).toISOString(),updated_at:x.upd,deleted_at:x.del?x.upd:'',device_id:DEV}),
-  inn:r=>({id:r.id,cur:r.currency,date:String(r.date),type:r.type,amt:Number(r.amount_minor)/100,cat:r.category,note:r.notes,ts:Date.parse(r.created_at)||Date.now(),upd:String(r.updated_at),del:!!r.deleted_at}),
+  inn:r=>({id:r.id,cur:r.currency,date:fixDate(r.date),type:r.type,amt:Number(r.amount_minor)/100,cat:(r.category!==undefined&&r.category!=='')?r.category:(r.category_id||'📦 Other'),note:r.notes,ts:Date.parse(r.created_at)||Date.now(),upd:String(r.updated_at),del:!!r.deleted_at}),
   add:o=>S.tx.push(o)},
  Categories:{all:()=>CT,
   out:c=>({id:c.id,name:c.n,permitted_type:c.t,updated_at:c.upd,deleted_at:c.del?c.upd:''}),
@@ -264,13 +264,15 @@ const TB={
   add:o=>CT.push(o)},
  Debts:{all:()=>DB,
   out:d=>({id:d.id,date:d.date,currency:d.cur,person:d.who,direction:d.dir,amount_minor:Math.round(d.amt*100),notes:d.note||'',updated_at:d.upd,deleted_at:d.del?d.upd:''}),
-  inn:r=>({id:r.id,date:String(r.date),cur:r.currency,who:r.person,dir:r.direction,amt:Number(r.amount_minor)/100,note:r.notes,upd:String(r.updated_at),del:!!r.deleted_at}),
+  inn:r=>({id:r.id,date:fixDate(r.date),cur:r.currency,who:r.person,dir:r.direction,amt:Number(r.amount_minor)/100,note:r.notes,upd:String(r.updated_at),del:!!r.deleted_at}),
   add:o=>DB.push(Object.assign(o,{pays:[],ts:Date.now()}))},
  DebtPayments:{all:()=>DB.flatMap(d=>d.pays.map(p=>{p.did=d.id;return p})),
   out:p=>({id:p.id,debt_id:p.did,date:p.date,amount_minor:Math.round(p.amt*100),notes:p.note||'',updated_at:p.upd,deleted_at:p.del?p.upd:''}),
-  inn:r=>({id:r.id,did:r.debt_id,date:String(r.date),amt:Number(r.amount_minor)/100,note:r.notes,upd:String(r.updated_at),del:!!r.deleted_at}),
+  inn:r=>({id:r.id,did:r.debt_id,date:fixDate(r.date),amt:Number(r.amount_minor)/100,note:r.notes,upd:String(r.updated_at),del:!!r.deleted_at}),
   add:o=>{const d=DB.find(x=>x.id===o.did);if(d){d.pays.push(o);return true}return false}}
 };
+const ymd=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const fixDate=v=>{const t=String(v);if(/^\d{4}-\d\d-\d\d$/.test(t))return t;const d=new Date(t);return isNaN(d)?t:ymd(d)};
 const SKIP=['updated_at','deleted_at','created_at','device_id'];
 const cf=(t,r)=>hs(Object.entries(TB[t].out(r)).filter(([k])=>!SKIP.includes(k)).map(e=>e[1]).join('|')+'|'+(r.del?1:0));
 let SNAP={};try{SNAP=JSON.parse(STORE.getItem('ledger.snap'))||{}}catch(e){}
@@ -281,6 +283,8 @@ const EPOCH='1970-01-01T00:00:00.000Z';
 // Records changed since the last confirmed sync get a fresh updated_at.
 function stamp(init){
  CT.forEach(c=>{if(!c.id)c.id='c_'+hs(c.n.toLowerCase())});
+ S.tx.forEach(x=>{x.date=fixDate(x.date);if(!x.cat)x.cat='📦 Other'});
+ DB.forEach(d=>{d.date=fixDate(d.date);d.pays.forEach(p=>{p.date=fixDate(p.date)})});
  Object.keys(TB).forEach(t=>TB[t].all().forEach(r=>{const k=t+r.id,h=cf(t,r);
   if(!r.upd)r.upd=r.ts?new Date(r.ts).toISOString():now();
   else if(!init&&LAST[k]!==undefined&&LAST[k]!==h)r.upd=now();
