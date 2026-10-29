@@ -1,5 +1,5 @@
 // Bump VERSION whenever you upload new app files, so devices pick up the update.
-const VERSION = 'ledger-v2';
+const VERSION = 'ledger-v3';
 const SHELL = ['./', 'index.html', 'app.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 const FONTS = 'fonts-v1';
 

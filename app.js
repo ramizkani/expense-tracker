@@ -15,8 +15,8 @@ const CATS={out:['🍔 Food','🚌 Transport','🧾 Bills','🛍️ Shopping','�
 const LC='ledger.cats.v1';
 let CT=null;try{CT=JSON.parse(STORE.getItem(LC))}catch(e){}
 if(!CT){CT=CATS.out.map(n=>({n,t:'out',a:1}));CATS.in.forEach(n=>{const c=CT.find(x=>x.n===n);c?c.t='both':CT.push({n,t:'in',a:1})})}
-const saveC=()=>{try{STORE.setItem(LC,JSON.stringify(CT))}catch(e){}};
-const catsFor=ty=>CT.filter(c=>c.t===ty||c.t==='both').map(c=>c.n);
+const saveC=()=>{try{STORE.setItem(LC,JSON.stringify(CT))}catch(e){}stamp();schedSync()};
+const catsFor=ty=>CT.filter(c=>!c.del&&(c.t===ty||c.t==='both')).map(c=>c.n);
 const iso=n=>{const d=new Date();d.setDate(d.getDate()-n);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmt=(c,n)=>(c==='INR'?'₹':'AED ')+Number(n).toLocaleString(c==='INR'?'en-IN':'en-US',{minimumFractionDigits:n%1?2:0,maximumFractionDigits:2});
@@ -43,7 +43,7 @@ function chart(t,c){
 let S={tx:null,off:false,tab:'AED',cur:'AED',mo:mk(0),q:'',f:'all',pp:10,pg:1,eid:null,dcur:'INR',ds:'open',dq:'',did:null,xp:{},type:'out',cat:'',busy:false};
 try{const r=STORE.getItem(LS);if(r)S.tx=JSON.parse(r)}catch(e){}
 if(!S.tx)S.tx=[];
-const save=()=>{try{STORE.setItem(LS,JSON.stringify(S.tx))}catch(e){}};
+const save=()=>{try{STORE.setItem(LS,JSON.stringify(S.tx))}catch(e){}stamp();schedSync()};
 const online=()=>!S.off&&navigator.onLine;
 const sum=(t,ty)=>t.filter(x=>x.type===ty).reduce((a,x)=>a+x.amt,0);
 
@@ -59,10 +59,10 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDd()});
 const LO='ledger.ob.v1';let OB={INR:0};try{const o=JSON.parse(STORE.getItem(LO));if(o)OB=o}catch(e){}
 const r2=n=>Math.round(n*100)/100;
 IC.dn=SV+'<path d="M6 9l6 6 6-6"/></svg>';IC.up=SV+'<path d="M6 15l6-6 6 6"/></svg>';
-const paid=d=>r2(d.pays.reduce((a,p)=>a+p.amt,0)),rem=d=>r2(d.amt-paid(d));
+const paid=d=>r2(d.pays.filter(p=>!p.del).reduce((a,p)=>a+p.amt,0)),rem=d=>r2(d.amt-paid(d));
 const LD='ledger.debts.v2';let DB=null;try{DB=JSON.parse(STORE.getItem(LD))}catch(e){}
 if(!DB)DB=[];
-const dsave=()=>{try{STORE.setItem(LD,JSON.stringify(DB))}catch(e){}};
+const dsave=()=>{try{STORE.setItem(LD,JSON.stringify(DB))}catch(e){}stamp();schedSync()};
 function dnet(c){const m={};DB.filter(d=>d.cur===c&&!d.del&&rem(d)>0).forEach(d=>{const k=d.who.trim().toLowerCase();m[k]=m[k]||{who:d.who.trim(),n:0};m[k].n=r2(m[k].n+(d.dir==='lent'?rem(d):-rem(d)))});return Object.values(m).filter(p=>p.n!==0).sort((a,b)=>Math.abs(b.n)-Math.abs(a.n))}
 function debts(c){const L=dnet(c),got=r2(L.filter(p=>p.n>0).reduce((a,p)=>a+p.n,0)),ow=r2(-L.filter(p=>p.n<0).reduce((a,p)=>a+p.n,0));
  return `<aside class="dw"><div class="dh"><b>Debts</b><button class="ghost" data-dk="manage:">Manage</button></div><div class="ds"><span class="in">Owed to you<b>${fmt(c,got)}</b></span><span class="out">You owe<b>${fmt(c,ow)}</b></span></div><div class="dl">${L.map(p=>`<div class="dr"><span class="av2">${esc(p.who.slice(0,1).toUpperCase())}</span><span class="t"><b>${esc(p.who)}</b><small class="${p.n>0?'in':'out'}">${p.n>0?'owes you':'you owe'}</small></span><em class="${p.n>0?'in':'out'}">${fmt(c,Math.abs(p.n))}</em></div>`).join('')||'<div class="empty">No debts. All settled.</div>'}</div></aside>`}
@@ -95,7 +95,7 @@ function dlist(){
  const c=S.dcur,q=S.dq.toLowerCase(),dt=s=>new Date(s+'T00:00').toLocaleDateString('en',{day:'2-digit',month:'short',year:'numeric'});
  const rows=DB.filter(d=>d.cur===c&&!d.del&&(S.ds==='all'||(S.ds==='open'?rem(d)>0:rem(d)<=0))&&(!q||(d.who+' '+d.note).toLowerCase().includes(q))).sort((a,b)=>b.date.localeCompare(a.date)||b.ts-a.ts);
  const body=rows.map((d,i)=>{const r=rem(d),p=paid(d),pc=d.amt?Math.min(100,Math.round(p/d.amt*100)):0,[sl,sc]=dlab(d),op=S.xp[d.id];
-  const sub=op?`<tr class="sub"><td></td><td colspan="8"><div class="ph"><div class="pht"><b>Payment history</b><span class="n">${d.pays.length} ${d.pays.length===1?'payment':'payments'}</span></div>${d.pays.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(y=>`<div class="pr"><span>${dt(y.date)}</span><span class="n">${esc(y.note||'Payment')}</span><b>${fmt(c,y.amt)}</b><button class="ib d" data-dk="dp:${d.id}:${y.id}" aria-label="Delete payment" title="Delete payment">${IC.d}</button></div>`).join('')||'<div class="n">No payments yet.</div>'}</div></td></tr>`:'';
+  const sub=op?`<tr class="sub"><td></td><td colspan="8"><div class="ph"><div class="pht"><b>Payment history</b><span class="n">${d.pays.filter(p=>!p.del).length} ${d.pays.filter(p=>!p.del).length===1?'payment':'payments'}</span></div>${d.pays.filter(p=>!p.del).sort((a,b)=>b.date.localeCompare(a.date)).map(y=>`<div class="pr"><span>${dt(y.date)}</span><span class="n">${esc(y.note||'Payment')}</span><b>${fmt(c,y.amt)}</b><button class="ib d" data-dk="dp:${d.id}:${y.id}" aria-label="Delete payment" title="Delete payment">${IC.d}</button></div>`).join('')||'<div class="n">No payments yet.</div>'}</div></td></tr>`:'';
   return `<tr class="f"><td>${i+1}</td><td>${dt(d.date)}</td><td><b>${esc(d.who)}</b><span class="n">${esc(d.note||'No notes')}</span></td><td><span class="tp ${d.dir==='lent'?'':'out'}">${d.dir==='lent'?'They owe me':'I owe them'}</span></td><td class="r">${fmt(c,d.amt)}</td><td class="r">${fmt(c,p)}</td><td class="r av">${fmt(c,r)}<span class="pb"><i style="width:${pc}%"></i></span></td><td><span class="st ${sc}">${sl}</span></td><td class="ac">${r>0?`<button class="ghost pay" data-dk="pay:${d.id}">Pay</button>`:''}<button class="ib" data-dk="xp:${d.id}" aria-label="Payment history" title="Payment history">${op?IC.up:IC.dn}</button><button class="ib" data-dk="edit:${d.id}" aria-label="Edit debt" title="Edit">${IC.e}</button><button class="ib d" data-dk="del:${d.id}" aria-label="Delete debt" title="Delete">${IC.d}</button></td></tr>${sub}`}).join('');
  return `<div class="tw"><table class="lt dtb"><colgroup><col style="width:46px"><col style="width:108px"><col><col style="width:112px"><col style="width:92px"><col style="width:92px"><col style="width:120px"><col style="width:84px"><col style="width:176px"></colgroup><thead><tr><th>S.no</th><th>Date</th><th>Person / notes</th><th>Type</th><th class="r">Amount</th><th class="r">Paid</th><th class="r">Remaining</th><th>Status</th><th class="r">Actions</th></tr></thead><tbody>${body||`<tr><td colspan="9" class="empty">No debts here.</td></tr>`}</tbody></table></div>`;
 }
@@ -130,27 +130,14 @@ function plan(){return `<div class="card doc">
  <h2>Code.gs</h2><button class="ghost" id="cp" style="width:max-content">Copy code</button><pre id="code"></pre></div>`;}
 
 function render(){
- const p=S.tx.filter(x=>!x.synced).length,on=online();
- $('#st').className='pill '+(S.busy?'sy':on?'':'off');
- $('#stx').textContent=SYNC_ENABLED?(S.busy?'Syncing…':on?(p?p+' pending':'Online · all synced'):'Offline'+(p?' · '+p+' pending':'')):(on?'Saved on this device':'Offline · saved on this device');
+ const p=pendingCount(),on=online();
+ $('#st').className='pill '+(S.busy?'sy':(on&&!S.err&&syncOn())||(!syncOn()&&on)?'':'off');
+ $('#stx').textContent=statusText(p,on);
  $('#tg').textContent=S.off?'Go online':'Simulate offline';
  $('#app').innerHTML=S.tab==='p'?plan():S.tab==='D'?debtsTab():widget(S.tab);
  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===S.tab));
  if(S.tab==='p'){$('#code').textContent=$('#gs').textContent;$('#cp').onclick=async()=>{try{await navigator.clipboard.writeText($('#gs').textContent);toast('Code copied')}catch(e){const r=document.createRange();r.selectNodeContents($('#code'));getSelection().removeAllRanges();getSelection().addRange(r);toast('Selected. Press copy.')}}}
  $('#add').style.display=S.tab==='p'||S.tab==='D'?'none':'';
-}
-// Demo: simulated push. In the deployed app replace with:
-// new Promise((ok,no)=>google.script.run.withSuccessHandler(ok).withFailureHandler(no).saveBatch(rows))
-const pushToSheet=rows=>new Promise(r=>setTimeout(r,900));
-const SYNC_ENABLED=false;
-async function sync(){
- if(!SYNC_ENABLED)return;
- const p=S.tx.filter(x=>!x.synced);
- if(S.busy||!online()||!p.length)return;
- S.busy=true;render();
- try{await pushToSheet(p);p.forEach(x=>x.synced=true);save();toast(p.length+(p.length>1?' entries':' entry')+' synced to Google Sheet')}
- catch(e){toast('Sync failed. Will retry.')}
- S.busy=false;render();
 }
 let tt;function toast(m,u){const t=$('#toast');t.textContent=m;t.style.pointerEvents=u?'auto':'none';t.style.cursor=u?'pointer':'';t.onclick=u?()=>{u();t.classList.remove('show')}:null;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),u?5000:2400)}
 
@@ -180,23 +167,23 @@ $('#sv').onclick=()=>{
  if(ex)Object.assign(ex,f,{ver:(ex.ver||1)+1});else S.tx.push({id:uid(),ts:Date.now(),ver:1,...f});
  S.tab=S.cur=f.cur;S.pg=1;
  S.mo=date.slice(0,7);save();$('#dlg').close();render();
- toast('Saved on this device');sync();
+ toast(syncOn()?(online()?'Saved. Syncing…':'Saved offline. Will sync when online.'):'Saved on this device');sync();
 };
 $('#tg').onclick=()=>{S.off=!S.off;render();toast(S.off?'Offline mode on. New entries will queue.':'Back online');sync()};
 document.querySelector('.tabs').onclick=e=>{const t=e.target.dataset.t;if(!t)return;S.tab=t;if(t!=='D')S.cur=t;render()};
 $('#pl').onclick=()=>{S.tab='p';render()};
-function renderCm(){$('#cl').innerHTML=CT.map((c,i)=>`<div class="crow"><input type="text" data-n="${i}" value="${esc(c.n)}" aria-label="Category name"><button class="ib d" data-x="${i}" aria-label="Delete category" title="Delete">${IC.d}</button><div class="seg">${[['out','Spent'],['in','Received'],['both','Both']].map(([v,l])=>`<button data-t="${i}" data-v="${v}" class="${c.t===v?'on':''}">${l}</button>`).join('')}</div></div>`).join('')}
+function renderCm(){$('#cl').innerHTML=CT.map((c,i)=>c.del?'':`<div class="crow"><input type="text" data-n="${i}" value="${esc(c.n)}" aria-label="Category name"><button class="ib d" data-x="${i}" aria-label="Delete category" title="Delete">${IC.d}</button><div class="seg">${[['out','Spent'],['in','Received'],['both','Both']].map(([v,l])=>`<button data-t="${i}" data-v="${v}" class="${c.t===v?'on':''}">${l}</button>`).join('')}</div></div>`).join('')}
 let NT='out';
 $('#ct').onclick=e=>{const v=e.target.dataset.v;if(!v)return;NT=v;document.querySelectorAll('#ct button').forEach(b=>b.classList.toggle('on',b.dataset.v===v))};
 $('#cl').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const d=b.dataset;
  if(d.t!==undefined)CT[+d.t].t=d.v;
- else if(d.x!==undefined){if(CT.length<2)return;CT.splice(+d.x,1)}
+ else if(d.x!==undefined){if(CT.filter(x=>!x.del).length<2)return;CT[+d.x].del=1}
  else return;
  saveC();renderCm()});
 $('#cmb').onclick=()=>{renderCm();$('#ce').textContent='';$('#cm').showModal()};
 $('#cc').onclick=()=>$('#cm').close();
 function openOb(){$('#obv').value=OB.INR||'';$('#obe').textContent='';$('#obd').showModal();$('#obv').focus()}
-$('#obs').onclick=()=>{const v=parseFloat($('#obv').value);if(isNaN(v)){$('#obe').textContent='Enter an amount (0 is fine).';return}OB.INR=r2(v);try{STORE.setItem(LO,JSON.stringify(OB))}catch(e){}$('#obd').close();render();toast('Opening balance saved')};
+$('#obs').onclick=()=>{const v=parseFloat($('#obv').value);if(isNaN(v)){$('#obe').textContent='Enter an amount (0 is fine).';return}OB.INR=r2(v);try{STORE.setItem(LO,JSON.stringify(OB))}catch(e){}stamp();schedSync();$('#obd').close();render();toast('Opening balance saved')};
 $('#obc').onclick=()=>$('#obd').close();
 let DD='lent';
 
@@ -225,16 +212,16 @@ $('#app').addEventListener('click',e=>{const b=e.target.closest('[data-dk]');if(
  else if(a==='add')openDb();else if(a==='edit')openDb(i);else if(a==='pay')openPay(i);
  else if(a==='xp'){S.xp[i]=!S.xp[i];render()}
  else if(a==='del'){const d=DB.find(x=>x.id===i);if(!d)return;d.del=1;dsave();render();toast('Debt deleted. Tap to undo.',()=>{d.del=0;dsave();render()})}
- else if(a==='dp'){const d=DB.find(x=>x.id===i),k=d?d.pays.findIndex(y=>y.id===j):-1;if(k<0)return;const[y]=d.pays.splice(k,1);dsave();render();toast('Payment removed. Tap to undo.',()=>{d.pays.push(y);dsave();render()})}});
+ else if(a==='dp'){const d=DB.find(x=>x.id===i),k=d?d.pays.findIndex(y=>y.id===j):-1;if(k<0)return;const y=d.pays[k];y.del=1;dsave();render();toast('Payment removed. Tap to undo.',()=>{y.del=0;dsave();render()})}});
 $('#cl').addEventListener('change',e=>{const el=e.target,d=el.dataset;
  if(d.n!==undefined){const c=CT[+d.n],nn=el.value.trim();
-  if(!nn||CT.some((x,j)=>j!==+d.n&&x.n.toLowerCase()===nn.toLowerCase())){el.value=c.n;$('#ce').textContent='Name is empty or already used.';return}
+  if(!nn||CT.some((x,j)=>j!==+d.n&&!x.del&&x.n.toLowerCase()===nn.toLowerCase())){el.value=c.n;$('#ce').textContent='Name is empty or already used.';return}
   S.tx.forEach(x=>{if(x.cat===c.n){x.cat=nn;x.synced=false;x.ver=(x.ver||1)+1}});c.n=nn;save();render();sync()}
  saveC();$('#ce').textContent=''});
 $('#ca').onclick=()=>{const n=$('#cn').value.trim();
  if(!n){$('#ce').textContent='Enter a category name.';return}
- if(CT.some(x=>x.n.toLowerCase()===n.toLowerCase())){$('#ce').textContent='That category already exists.';return}
- CT.push({n,t:NT,a:1});saveC();$('#cn').value='';$('#ce').textContent='';renderCm();toast('Category added')};
+ if(CT.some(x=>!x.del&&x.n.toLowerCase()===n.toLowerCase())){$('#ce').textContent='That category already exists.';return}
+ const rv=CT.find(x=>x.del&&x.n.toLowerCase()===n.toLowerCase());if(rv){rv.del=0;rv.t=NT}else CT.push({n,t:NT,a:1});saveC();$('#cn').value='';$('#ce').textContent='';renderCm();toast('Category added')};
 $('#app').addEventListener('change',e=>{const i=e.target.id;if(i==='mo')S.mo=e.target.value;else if(i==='ft')S.f=e.target.value;else if(i==='pp')S.pp=+e.target.value;else return;S.pg=1;render()});
 $('#app').addEventListener('input',e=>{if(e.target.id==='q'){S.q=e.target.value;S.pg=1;$('#tbl').innerHTML=tbl(S.tab)}});
 $('#app').addEventListener('click',e=>{const o=e.target.closest('.ddo'),h=e.target.closest('.ddb');
@@ -260,6 +247,135 @@ document.addEventListener('click',e=>{const dp=e.target.closest('[data-dp]');if(
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!cal.hidden){e.preventDefault();cal.hidden=true}
  if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('[data-dp]')){e.preventDefault();calOpen(e.target)}});
 addEventListener('online',()=>{render();sync()});addEventListener('offline',render);
+// ---- Sync with the Google Sheet (M2 and M3) ----
+const DEV=(()=>{let d=STORE.getItem('ledger.device');if(!d){d='d_'+uid();STORE.setItem('ledger.device',d)}return d})();
+const API=()=>({url:STORE.getItem('ledger.api.url')||'',token:STORE.getItem('ledger.api.token')||''});
+const syncOn=()=>{const a=API();return !!(a.url&&a.token)};
+const now=()=>new Date().toISOString();
+const hs=s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return (h>>>0).toString(36)};
+const TB={
+ Transactions:{all:()=>S.tx,
+  out:x=>({id:x.id,date:x.date,currency:x.cur,type:x.type,amount_minor:Math.round(x.amt*100),category:x.cat,notes:x.note||'',created_at:new Date(x.ts||Date.now()).toISOString(),updated_at:x.upd,deleted_at:x.del?x.upd:'',device_id:DEV}),
+  inn:r=>({id:r.id,cur:r.currency,date:String(r.date),type:r.type,amt:Number(r.amount_minor)/100,cat:r.category,note:r.notes,ts:Date.parse(r.created_at)||Date.now(),upd:String(r.updated_at),del:!!r.deleted_at}),
+  add:o=>S.tx.push(o)},
+ Categories:{all:()=>CT,
+  out:c=>({id:c.id,name:c.n,permitted_type:c.t,updated_at:c.upd,deleted_at:c.del?c.upd:''}),
+  inn:r=>({id:r.id,n:r.name,t:r.permitted_type,a:1,upd:String(r.updated_at),del:!!r.deleted_at}),
+  add:o=>CT.push(o)},
+ Debts:{all:()=>DB,
+  out:d=>({id:d.id,date:d.date,currency:d.cur,person:d.who,direction:d.dir,amount_minor:Math.round(d.amt*100),notes:d.note||'',updated_at:d.upd,deleted_at:d.del?d.upd:''}),
+  inn:r=>({id:r.id,date:String(r.date),cur:r.currency,who:r.person,dir:r.direction,amt:Number(r.amount_minor)/100,note:r.notes,upd:String(r.updated_at),del:!!r.deleted_at}),
+  add:o=>DB.push(Object.assign(o,{pays:[],ts:Date.now()}))},
+ DebtPayments:{all:()=>DB.flatMap(d=>d.pays.map(p=>{p.did=d.id;return p})),
+  out:p=>({id:p.id,debt_id:p.did,date:p.date,amount_minor:Math.round(p.amt*100),notes:p.note||'',updated_at:p.upd,deleted_at:p.del?p.upd:''}),
+  inn:r=>({id:r.id,did:r.debt_id,date:String(r.date),amt:Number(r.amount_minor)/100,note:r.notes,upd:String(r.updated_at),del:!!r.deleted_at}),
+  add:o=>{const d=DB.find(x=>x.id===o.did);if(d){d.pays.push(o);return true}return false}}
+};
+const SKIP=['updated_at','deleted_at','created_at','device_id'];
+const cf=(t,r)=>hs(Object.entries(TB[t].out(r)).filter(([k])=>!SKIP.includes(k)).map(e=>e[1]).join('|')+'|'+(r.del?1:0));
+let SNAP={};try{SNAP=JSON.parse(STORE.getItem('ledger.snap'))||{}}catch(e){}
+const LAST={};
+const snapSet=(t,id,h)=>{(SNAP[t]=SNAP[t]||{})[id]=h};
+const obHash=()=>String(r2(OB.INR||0));
+const EPOCH='1970-01-01T00:00:00.000Z';
+// Records changed since the last confirmed sync get a fresh updated_at.
+function stamp(init){
+ CT.forEach(c=>{if(!c.id)c.id='c_'+hs(c.n.toLowerCase())});
+ Object.keys(TB).forEach(t=>TB[t].all().forEach(r=>{const k=t+r.id,h=cf(t,r);
+  if(!r.upd)r.upd=r.ts?new Date(r.ts).toISOString():now();
+  else if(!init&&LAST[k]!==undefined&&LAST[k]!==h)r.upd=now();
+  LAST[k]=h}));
+ if(!OB.upd)OB.upd=EPOCH;
+ else if(!init&&LAST.OB!==undefined&&LAST.OB!==obHash())OB.upd=now();
+ LAST.OB=obHash();
+}
+function dirty(){
+ const o=[];
+ Object.keys(TB).forEach(t=>TB[t].all().forEach(r=>{const h=cf(t,r);if((SNAP[t]||{})[r.id]!==h)o.push({t,r,h})}));
+ if((SNAP.Settings||{}).opening_INR!==obHash()&&OB.upd>EPOCH)o.push({t:'Settings',h:obHash()});
+ return o;
+}
+const pendingCount=()=>dirty().length;
+const opOf=d=>({table:d.t,rec:d.t==='Settings'?{id:'opening_INR',value:String(Math.round((OB.INR||0)*100)),updated_at:OB.upd}:TB[d.t].out(d.r)});
+const saveSnap=()=>STORE.setItem('ledger.snap',JSON.stringify(SNAP));
+const persist=()=>{STORE.setItem(LS,JSON.stringify(S.tx));STORE.setItem(LC,JSON.stringify(CT));STORE.setItem(LD,JSON.stringify(DB));STORE.setItem(LO,JSON.stringify(OB));saveSnap()};
+function applyRemote(data){
+ ['Categories','Transactions','Debts','DebtPayments'].forEach(t=>{
+  const K=TB[t];
+  (data[t]||[]).forEach(r=>{
+   const inc=K.inn(r),loc=K.all().find(x=>x.id===inc.id);
+   if(loc){
+    const localEdited=(SNAP[t]||{})[loc.id]!==cf(t,loc);
+    if(localEdited&&String(loc.upd)>inc.upd)return;
+    Object.assign(loc,inc);
+   }else if(K.add(inc)===false)return;
+   const cur=K.all().find(x=>x.id===inc.id),h=cf(t,cur);
+   snapSet(t,inc.id,h);LAST[t+inc.id]=h;
+  });
+ });
+ (data.Settings||[]).forEach(r=>{
+  if(r.id!=='opening_INR')return;
+  const edited=(SNAP.Settings||{}).opening_INR!==obHash()&&OB.upd>EPOCH;
+  if(edited&&OB.upd>String(r.updated_at))return;
+  OB.INR=Number(r.value)/100;OB.upd=String(r.updated_at);snapSet('Settings','opening_INR',obHash());LAST.OB=obHash();
+ });
+}
+async function call(body){
+ const a=API();
+ const r=await fetch(a.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(Object.assign({token:a.token},body))});
+ if(!r.ok)throw new Error('HTTP '+r.status);
+ const j=await r.json();
+ if(!j.ok)throw new Error(j.error||'error');
+ return j;
+}
+const friendly=e=>e.message==='unauthorized'?'wrong token':e instanceof TypeError?'cannot reach the server':e.message;
+let st=null,again=false;
+const schedSync=()=>{clearTimeout(st);st=setTimeout(()=>sync(),1200)};
+async function sync(){
+ if(!syncOn()||!online())return;
+ if(S.busy){again=true;return}
+ S.busy=true;S.err='';render();
+ try{
+  stamp();
+  const ds=dirty(),ops=ds.map(opOf);
+  for(let i=0;i<ops.length;i+=100){
+   const res=await call({action:'push',ops:ops.slice(i,i+100)});
+   (res.results||[]).forEach((x,j)=>{const d=ds[i+j];if(x&&(x.status==='ok'||x.status==='stale'))snapSet(d.t,d.t==='Settings'?'opening_INR':d.r.id,d.h);else S.err='the server rejected a change'});
+  }
+  const j=await call({action:'pull',since:Number(STORE.getItem('ledger.rev'))||0});
+  applyRemote(j.data||{});
+  STORE.setItem('ledger.rev',String(j.rev));STORE.setItem('ledger.last',now());
+  persist();
+ }catch(e){S.err=friendly(e);try{saveSnap()}catch(x){}}
+ S.busy=false;render();
+ if(again){again=false;setTimeout(()=>sync(),300)}
+}
+function statusText(p,on){
+ if(!syncOn())return on?'Saved on this device · sync off':'Offline · saved on this device';
+ if(S.busy)return 'Syncing…';
+ if(S.err)return 'Sync issue: '+S.err;
+ if(!on)return 'Offline'+(p?' · '+p+' pending':'');
+ const l=STORE.getItem('ledger.last');
+ return p?p+' pending':'All synced'+(l?' · '+new Date(l).toLocaleTimeString('en',{hour:'numeric',minute:'2-digit'}):'');
+}
+function openSy(){
+ const a=API(),l=STORE.getItem('ledger.last');
+ $('#syu').value=a.url;$('#syt').value=a.token;$('#sye').textContent='';
+ $('#syi').textContent='This device: '+DEV+(l?'. Last sync: '+new Date(l).toLocaleString():'');
+ $('#syd').showModal();
+}
+$('#pl').onclick=openSy;
+$('#st').onclick=()=>{if(!syncOn())openSy();else sync()};
+$('#syc').onclick=()=>$('#syd').close();
+const syIn=()=>({u:$('#syu').value.trim(),t:$('#syt').value.trim()});
+const syOk=(u,t)=>{if(!/^https?:\/\/.+\/exec$/.test(u)){$('#sye').textContent='Paste the full web app link, ending in /exec.';return false}if(!t){$('#sye').textContent='Enter your token.';return false}return true};
+$('#sys').onclick=()=>{const {u,t}=syIn();if(!syOk(u,t))return;STORE.setItem('ledger.api.url',u);STORE.setItem('ledger.api.token',t);$('#syd').close();toast('Sync connected. Syncing…');sync()};
+$('#syx').onclick=async()=>{const {u,t}=syIn();$('#sye').style.color='';if(!syOk(u,t))return;$('#sye').textContent='Testing…';
+ try{const r=await fetch(u+(u.includes('?')?'&':'?')+'token='+encodeURIComponent(t));const j=await r.json();$('#sye').style.color=j.ok?'var(--in)':'';$('#sye').textContent=j.ok?'Connection works.':'The server answered: '+j.error+'. Check the token.'}
+ catch(e){$('#sye').textContent='Cannot reach the server. Check the link and your internet.'}};
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)sync()});
+setInterval(()=>{if(!document.hidden)sync()},60000);
+stamp(true);
 render();sync();
 if(!idb)toast('Storage is unavailable in this browser mode. Entries will not be kept.');
 if('serviceWorker' in navigator){

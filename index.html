@@ -148,14 +148,14 @@ input.big{font:700 28px 'Bricolage Grotesque',sans-serif}
 .note{background:color-mix(in srgb,var(--inr) 12%,var(--card));border-radius:14px;padding:12px 14px;font-size:14px}
 pre{margin:0;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:14px;overflow-x:auto;font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;max-height:320px}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
-#tg,#pl{display:none}.sd{display:none}
+#tg{display:none}#st{cursor:pointer}.sd{display:none}
 </style>
 </head>
 <body>
 <div class="wrap">
  <div class="top">
   <h1>Daily ledger</h1>
-  <div class="stat"><span class="pill" id="st"><i class="dot"></i><span id="stx"></span></span><button class="ghost" id="tg"></button><button class="ghost" id="cmb">Categories</button><button class="ghost" id="pl">Plan &amp; setup</button></div>
+  <div class="stat"><span class="pill" id="st"><i class="dot"></i><span id="stx"></span></span><button class="ghost" id="tg"></button><button class="ghost" id="cmb">Categories</button><button class="ghost" id="pl">Sync</button></div>
  </div>
  <div class="tabs" role="tablist"><button class="on" data-t="AED">AED</button><button data-t="INR">INR</button><button data-t="D">Debts</button></div>
  <main id="app"></main>
@@ -180,6 +180,7 @@ pre{margin:0;background:var(--bg);border:1px solid var(--line);border-radius:14p
 <dialog id="dbd"><div class="sh"><h2 id="dbh">Add debt</h2><p class="hint">Record the full amount here. Add part-payments later with Pay, and the remaining balance updates automatically.</p><div class="seg" id="dbs"><button data-v="lent" class="on">They owe me</button><button data-v="owe">I owe them</button></div><label>Person<input id="dbw" maxlength="30" placeholder="Name"></label><label>Amount<input class="big" id="dba" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00"></label><div class="two"><label>Date<input id="dbt" type="text" readonly data-dp placeholder="Pick a date"></label><label>Note (optional)<input id="dbn" maxlength="60"></label></div><div class="err" id="dbe"></div><button class="prim" id="dbv">Save</button><button class="ghost" id="dbc">Cancel</button></div></dialog>
 <dialog id="pyd"><div class="sh"><h2>Record payment</h2><p class="hint" id="pyh"></p><label>Amount<input class="big" id="pya" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00"></label><button class="ghost" id="pyf" style="width:max-content">Pay full remaining</button><div class="two"><label>Date<input id="pyt" type="text" readonly data-dp placeholder="Pick a date"></label><label>Note (optional)<input id="pyn" maxlength="60"></label></div><div class="err" id="pye"></div><button class="prim" id="pys">Save payment</button><button class="ghost" id="pyc">Cancel</button></div></dialog>
 
+<dialog id="syd"><div class="sh"><h2>Sync with Google Sheet</h2><p class="hint">Enter the web app link and the token from your Apps Script. They stay on this device only.</p><label>Web app link<input id="syu" type="url" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off"></label><label>Token<input id="syt" type="password" autocomplete="off"></label><div class="err" id="sye"></div><p class="hint" id="syi"></p><button class="prim" id="sys">Save and sync now</button><button class="ghost" id="syx">Test connection</button><button class="ghost" id="syc">Close</button></div></dialog>
 <script src="app.js"></script>
 </body>
 </html>
