@@ -256,7 +256,7 @@ const hs=s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|
 const TB={
  Transactions:{all:()=>S.tx,
   out:x=>({id:x.id,date:x.date,currency:x.cur,type:x.type,amount_minor:Math.round(x.amt*100),category:x.cat,notes:x.note||'',created_at:new Date(x.ts||Date.now()).toISOString(),updated_at:x.upd,deleted_at:x.del?x.upd:'',device_id:DEV}),
-  inn:r=>({id:r.id,cur:r.currency,date:fixDate(r.date),type:r.type,amt:Number(r.amount_minor)/100,cat:(r.category!==undefined&&r.category!=='')?r.category:(r.category_id||'📦 Other'),note:r.notes,ts:Date.parse(r.created_at)||Date.now(),upd:String(r.updated_at),del:!!r.deleted_at}),
+  inn:r=>({id:r.id,cur:r.currency,date:fixDate(r.date),type:r.type,amt:Number(r.amount_minor)/100,cat:(r.category!==undefined&&r.category!=='')?r.category:(r.category_id||undefined),note:r.notes,ts:Date.parse(r.created_at)||Date.now(),upd:String(r.updated_at),del:!!r.deleted_at}),
   add:o=>S.tx.push(o)},
  Categories:{all:()=>CT,
   out:c=>({id:c.id,name:c.n,permitted_type:c.t,updated_at:c.upd,deleted_at:c.del?c.upd:''}),
@@ -307,7 +307,7 @@ function applyRemote(data){
  ['Categories','Transactions','Debts','DebtPayments'].forEach(t=>{
   const K=TB[t];
   (data[t]||[]).forEach(r=>{
-   const inc=K.inn(r),loc=K.all().find(x=>x.id===inc.id);
+   const inc=K.inn(r);Object.keys(inc).forEach(k=>{if(inc[k]===undefined)delete inc[k]});const loc=K.all().find(x=>x.id===inc.id);
    if(loc){
     const localEdited=(SNAP[t]||{})[loc.id]!==cf(t,loc);
     if(localEdited&&String(loc.upd)>inc.upd)return;
@@ -330,9 +330,10 @@ async function call(body){
  if(!r.ok)throw new Error('HTTP '+r.status);
  const j=await r.json();
  if(!j.ok)throw new Error(j.error||'error');
+ if((j.api||0)<3)throw new Error('outdated');
  return j;
 }
-const friendly=e=>e.message==='unauthorized'?'wrong token':e instanceof TypeError?'cannot reach the server':e.message;
+const friendly=e=>e.message==='outdated'?'your Apps Script is an old version. In Apps Script use Deploy, Manage deployments, pencil, New version':e.message==='unauthorized'?'wrong token':e instanceof TypeError?'cannot reach the server':e.message;
 let st=null,again=false;
 const schedSync=()=>{clearTimeout(st);st=setTimeout(()=>sync(),1200)};
 async function sync(){
@@ -344,7 +345,7 @@ async function sync(){
   const ds=dirty(),ops=ds.map(opOf);
   for(let i=0;i<ops.length;i+=100){
    const res=await call({action:'push',ops:ops.slice(i,i+100)});
-   (res.results||[]).forEach((x,j)=>{const d=ds[i+j];if(x&&(x.status==='ok'||x.status==='stale'))snapSet(d.t,d.t==='Settings'?'opening_INR':d.r.id,d.h);else S.err='the server rejected a change'});
+   (res.results||[]).forEach((x,j)=>{const d=ds[i+j];if(x&&(x.status==='ok'||x.status==='stale'))snapSet(d.t,d.t==='Settings'?'opening_INR':d.r.id,d.h);else S.err='the server rejected '+d.t+' changes. Update the Apps Script to the newest version'});
   }
   const j=await call({action:'pull',since:Number(STORE.getItem('ledger.rev'))||0});
   applyRemote(j.data||{});
@@ -375,7 +376,7 @@ const syIn=()=>({u:$('#syu').value.trim(),t:$('#syt').value.trim()});
 const syOk=(u,t)=>{if(!/^https?:\/\/.+\/exec$/.test(u)){$('#sye').textContent='Paste the full web app link, ending in /exec.';return false}if(!t){$('#sye').textContent='Enter your token.';return false}return true};
 $('#sys').onclick=()=>{const {u,t}=syIn();if(!syOk(u,t))return;STORE.setItem('ledger.api.url',u);STORE.setItem('ledger.api.token',t);$('#syd').close();toast('Sync connected. Syncing…');sync()};
 $('#syx').onclick=async()=>{const {u,t}=syIn();$('#sye').style.color='';if(!syOk(u,t))return;$('#sye').textContent='Testing…';
- try{const r=await fetch(u+(u.includes('?')?'&':'?')+'token='+encodeURIComponent(t));const j=await r.json();$('#sye').style.color=j.ok?'var(--in)':'';$('#sye').textContent=j.ok?'Connection works.':'The server answered: '+j.error+'. Check the token.'}
+ try{const r=await fetch(u+(u.includes('?')?'&':'?')+'token='+encodeURIComponent(t));const j=await r.json();$('#sye').style.color=(j.ok&&(j.api||0)>=3)?'var(--in)':'';$('#sye').textContent=!j.ok?'The server answered: '+j.error+'. Check the token.':(j.api||0)<3?'Connected, but your Apps Script is an old version. In Apps Script use Deploy, Manage deployments, pencil, New version.':'Connection works.'}
  catch(e){$('#sye').textContent='Cannot reach the server. Check the link and your internet.'}};
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)sync()});
 setInterval(()=>{if(!document.hidden)sync()},60000);
