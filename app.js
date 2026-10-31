@@ -25,9 +25,14 @@ const mk=k=>{const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-k);return d
 const mname=m=>new Date(m+'-01T00:00').toLocaleDateString('en',{month:'short'});
 const mlabel=m=>new Date(m+'-01T00:00').toLocaleDateString('en',{month:'long',year:'numeric'});
 const mtot=(t,m,ty)=>t.filter(x=>x.type===ty&&x.date.slice(0,7)===m).reduce((a,x)=>a+x.amt,0);
+const inP=x=>S.pm==='all'||(S.pm==='range'?(x.date>=S.rf&&x.date<=S.rt):x.date.slice(0,7)===S.mo);
+const psD=()=>S.pm==='all'?'0000-00-00':S.pm==='range'?S.rf:S.mo+'-01';
+const pLab=()=>S.pm==='all'?'all time':S.pm==='range'?S.rf+' to '+S.rt:mlabel(S.mo);
+const pShort=()=>S.pm==='all'?'All time':S.pm==='range'?'Range':mname(S.mo);
+const ptot=(t,ty)=>Math.round(t.filter(x=>inP(x)&&x.type===ty).reduce((a,x)=>a+x.amt,0)*100)/100;
 function chart(t,c){
  const ms=[5,4,3,2,1,0].map(mk),I=ms.map(m=>mtot(t,m,'in')),O=ms.map(m=>mtot(t,m,'out')),mx=Math.max(...I,...O,1);
- const X=i=>20+i*52,Y=v=>12+(1-v/mx)*66,P=a=>a.map((v,i)=>X(i)+','+Y(v).toFixed(1)).join(' '),si=ms.indexOf(S.mo);
+ const X=i=>20+i*52,Y=v=>12+(1-v/mx)*66,P=a=>a.map((v,i)=>X(i)+','+Y(v).toFixed(1)).join(' '),si=S.pm==='month'?ms.indexOf(S.mo):-1;
  const dots=(a,col)=>ms.map((m,i)=>`<circle data-m="${m}" cx="${X(i)}" cy="${Y(a[i]).toFixed(1)}" r="${i===si?5:3.5}" fill="${col}"><title>${mname(m)}: ${fmt(c,a[i])}</title></circle>`).join('');
  return `<div class="lg"><span><i style="background:var(--in)"></i>Received</span><span><i style="background:var(--out)"></i>Spent</span><span>Last 6 months. Tap a month to open it.</span></div>
  <svg viewBox="0 0 300 108" class="ch" role="img" aria-label="Monthly received and spent, last 6 months">
@@ -40,7 +45,7 @@ function chart(t,c){
  ${ms.map((m,i)=>`<text x="${X(i)}" y="100" text-anchor="middle" font-size="11" fill="var(--mut)" font-weight="${i===si?700:400}">${mname(m)}</text>`).join('')}
  </svg>`;
 }
-let S={tx:null,off:false,tab:'AED',cur:'AED',mo:mk(0),q:'',f:'all',pp:10,pg:1,eid:null,dcur:'INR',ds:'open',dq:'',did:null,xp:{},type:'out',cat:'',busy:false};
+let S={tx:null,off:false,tab:'AED',cur:'AED',mo:mk(0),q:'',f:'all',pp:10,pg:1,eid:null,dcur:'INR',ds:'open',dq:'',did:null,xp:{},pm:'month',rf:mk(0)+'-01',rt:iso(0),mini:true,type:'out',cat:'',busy:false};
 try{const r=STORE.getItem(LS);if(r)S.tx=JSON.parse(r)}catch(e){}
 if(!S.tx)S.tx=[];
 const save=()=>{try{STORE.setItem(LS,JSON.stringify(S.tx))}catch(e){}stamp();schedSync()};
@@ -64,30 +69,30 @@ const LD='ledger.debts.v2';let DB=null;try{DB=JSON.parse(STORE.getItem(LD))}catc
 if(!DB)DB=[];
 const dsave=()=>{try{STORE.setItem(LD,JSON.stringify(DB))}catch(e){}stamp();schedSync()};
 function dnet(c){const m={};DB.filter(d=>d.cur===c&&!d.del&&rem(d)>0).forEach(d=>{const k=d.who.trim().toLowerCase();m[k]=m[k]||{who:d.who.trim(),n:0};m[k].n=r2(m[k].n+(d.dir==='lent'?rem(d):-rem(d)))});return Object.values(m).filter(p=>p.n!==0).sort((a,b)=>Math.abs(b.n)-Math.abs(a.n))}
-function debts(c){const L=dnet(c),got=r2(L.filter(p=>p.n>0).reduce((a,p)=>a+p.n,0)),ow=r2(-L.filter(p=>p.n<0).reduce((a,p)=>a+p.n,0));
+function debts(c){const L=dnet(c),got=r2(L.filter(p=>p.n>0).reduce((a,p)=>a+p.n,0)),ow=Math.abs(r2(L.filter(p=>p.n<0).reduce((a,p)=>a+p.n,0)));
  return `<aside class="dw"><div class="dh"><b>Debts</b><button class="ghost" data-dk="manage:">Manage</button></div><div class="ds"><span class="in">Owed to you<b>${fmt(c,got)}</b></span><span class="out">You owe<b>${fmt(c,ow)}</b></span></div><div class="dl">${L.map(p=>`<div class="dr"><span class="av2">${esc(p.who.slice(0,1).toUpperCase())}</span><span class="t"><b>${esc(p.who)}</b><small class="${p.n>0?'in':'out'}">${p.n>0?'owes you':'you owe'}</small></span><em class="${p.n>0?'in':'out'}">${fmt(c,Math.abs(p.n))}</em></div>`).join('')||'<div class="empty">No debts. All settled.</div>'}</div></aside>`}
 const ledger=c=>S.tx.filter(x=>x.cur===c&&!x.del).sort((a,b)=>b.date.localeCompare(a.date)||b.ts-a.ts);
 function tbl(c){if(c==='INR')return ltbl(c);
- const q=S.q.toLowerCase(),all=ledger(c).filter(x=>x.date.slice(0,7)===S.mo&&(S.f==='all'||x.type===S.f)&&(!q||(x.cat+' '+x.note).toLowerCase().includes(q)));
+ const q=S.q.toLowerCase(),all=ledger(c).filter(x=>inP(x)&&(S.f==='all'||x.type===S.f)&&(!q||(x.cat+' '+x.note).toLowerCase().includes(q)));
  const pages=Math.max(1,Math.ceil(all.length/S.pp));S.pg=Math.max(1,Math.min(S.pg,pages));
  const st=(S.pg-1)*S.pp,rows=all.slice(st,st+S.pp);
  return `<div class="tw"><table class="lt"><colgroup><col style="width:46px"><col style="width:140px"><col><col style="width:92px"><col style="width:112px"><col style="width:96px"></colgroup><thead><tr><th>S.no</th><th>Date</th><th>Category / notes</th><th>Type</th><th class="r">Amount</th><th></th></tr></thead><tbody>${rows.map((x,i)=>{const f=i===0||rows[i-1].date!==x.date,l=i===rows.length-1||rows[i+1].date!==x.date,sp=rows.filter(r=>r.date===x.date).length,day=all.filter(r=>r.date===x.date),net=day.reduce((a,r)=>a+(r.type==='in'?r.amt:-r.amt),0);
- return `<tr class="${f?'f':''} ${l?'':'k'}"><td>${st+i+1}</td>${f?`<td rowspan="${sp}" class="dt"><b>${new Date(x.date+'T00:00').toLocaleDateString('en',{day:'2-digit',month:'short',year:'numeric'})}</b><span class="n">${day.length} ${day.length===1?'entry':'entries'} · ${net<0?'−':'+'}${fmt(c,Math.abs(net))}</span></td>`:''}<td><b>${esc(x.cat)}</b><span class="n">${esc(x.note||'No notes')}</span></td><td><span class="tp ${x.type}">${x.type==='in'?'Received':'Spent'}</span></td><td class="r amt ${x.type}">${x.type==='in'?'+':'\u2212'}${fmt(c,x.amt)}<i class="sd ${x.synced?'':'p'}" title="${x.synced?'Synced':'Waiting to sync'}"></i></td><td class="ac"><button class="ib" data-e="${x.id}" aria-label="Edit entry" title="Edit">${IC.e}</button><button class="ib d" data-d="${x.id}" aria-label="Delete entry" title="Delete">${IC.d}</button></td></tr>`}).join('')||`<tr><td colspan="6" class="empty">No matching entries in ${mlabel(S.mo)}.</td></tr>`}</tbody></table></div>
+ return `<tr class="${f?'f':''} ${l?'':'k'}"><td>${st+i+1}</td>${f?`<td rowspan="${sp}" class="dt"><b>${new Date(x.date+'T00:00').toLocaleDateString('en',{day:'2-digit',month:'short',year:'numeric'})}</b><span class="n">${day.length} ${day.length===1?'entry':'entries'} · ${net<0?'−':'+'}${fmt(c,Math.abs(net))}</span></td>`:''}<td><b>${esc(x.cat)}</b><span class="n">${esc(x.note||'No notes')}</span></td><td><span class="tp ${x.type}">${x.type==='in'?'Received':'Spent'}</span></td><td class="r amt ${x.type}">${x.type==='in'?'+':'\u2212'}${fmt(c,x.amt)}<i class="sd ${x.synced?'':'p'}" title="${x.synced?'Synced':'Waiting to sync'}"></i></td><td class="ac"><button class="ib" data-e="${x.id}" aria-label="Edit entry" title="Edit">${IC.e}</button><button class="ib d" data-d="${x.id}" aria-label="Delete entry" title="Delete">${IC.d}</button></td></tr>`}).join('')||`<tr><td colspan="6" class="empty">No matching entries in ${pLab()}.</td></tr>`}</tbody></table></div>
  <div class="pg"><span>${all.length?st+1:0}\u2013${st+rows.length} of ${all.length}</span><span><button class="ghost" data-p="-1"${S.pg<=1?' disabled':''}>Prev</button> <button class="ghost" data-p="1"${S.pg>=pages?' disabled':''}>Next</button></span></div>`;
 }
 function ltbl(c){
  const A=S.tx.filter(x=>x.cur===c&&!x.del).sort((a,b)=>a.date.localeCompare(b.date)||a.ts-b.ts);
  let bal=OB[c]||0,bf=null;const av={};
- A.forEach(x=>{if(bf===null&&x.date.slice(0,7)>=S.mo)bf=bal;bal=r2(bal+(x.type==='in'?x.amt:-x.amt));av[x.id]=bal});
+ A.forEach(x=>{if(bf===null&&x.date>=psD())bf=bal;bal=r2(bal+(x.type==='in'?x.amt:-x.amt));av[x.id]=bal});
  if(bf===null)bf=bal;
- const first=!A.some(x=>x.date.slice(0,7)<S.mo),M=A.filter(x=>x.date.slice(0,7)===S.mo),q=S.q.toLowerCase();
+ const first=!A.some(x=>x.date<psD()),M=A.filter(inP),q=S.q.toLowerCase();
  const all=M.filter(x=>(S.f==='all'||x.type===S.f)&&(!q||(x.cat+' '+x.note).toLowerCase().includes(q))).reverse();
  const pages=Math.max(1,Math.ceil(all.length/S.pp));S.pg=Math.max(1,Math.min(S.pg,pages));
  const st=(S.pg-1)*S.pp,rows=all.slice(st,st+S.pp),tI=r2(M.filter(x=>x.type==='in').reduce((a,x)=>a+x.amt,0)),tO=r2(M.filter(x=>x.type==='out').reduce((a,x)=>a+x.amt,0)),close=M.length?av[M[M.length-1].id]:bf,neg=n=>n<0?' out':'';
  const body=rows.map((x,i)=>{const f=i===0||rows[i-1].date!==x.date,l=i===rows.length-1||rows[i+1].date!==x.date,sp=rows.filter(r=>r.date===x.date).length,day=all.filter(r=>r.date===x.date),net=r2(day.reduce((a,r)=>a+(r.type==='in'?r.amt:-r.amt),0));
   return `<tr class="${f?'f':''} ${l?'':'k'}"><td>${st+i+1}</td>${f?`<td rowspan="${sp}" class="dt"><b>${new Date(x.date+'T00:00').toLocaleDateString('en',{day:'2-digit',month:'short',year:'numeric'})}</b><span class="n">${day.length} ${day.length===1?'entry':'entries'} · ${net<0?'−':'+'}${fmt(c,Math.abs(net))}</span></td>`:''}<td><b>${esc(x.cat)}</b><span class="n">${esc(x.note||'No notes')}</span></td><td class="r amt in">${x.type==='in'?fmt(c,x.amt):'<i class="z">–</i>'}</td><td class="r amt out">${x.type==='out'?fmt(c,x.amt):'<i class="z">–</i>'}</td><td class="r av${neg(av[x.id])}">${fmt(c,av[x.id])}<i class="sd ${x.synced?'':'p'}" title="${x.synced?'Synced':'Waiting to sync'}"></i></td><td class="ac"><button class="ib" data-e="${x.id}" aria-label="Edit entry" title="Edit">${IC.e}</button><button class="ib d" data-d="${x.id}" aria-label="Delete entry" title="Delete">${IC.d}</button></td></tr>`}).join('');
- const bfr=S.pg===pages?`<tr class="bf"><td></td><td colspan="2"><b>${first?'Opening balance':'Brought forward'}</b><span class="n">${first?'Set once. Every entry updates Available.':'Balance before '+mname(S.mo)}</span></td><td></td><td></td><td class="r av${neg(bf)}">${fmt(c,bf)}</td><td class="ac"><button class="ib" data-ob="1" aria-label="Edit opening balance" title="Edit opening balance">${IC.e}</button></td></tr>`:'';
- return `<div class="tw"><table class="lt l"><colgroup><col style="width:46px"><col style="width:136px"><col><col style="width:108px"><col style="width:108px"><col style="width:122px"><col style="width:100px"></colgroup><thead><tr><th>S.no</th><th>Date</th><th>Category</th><th class="r">Received</th><th class="r">Spent</th><th class="r">Available</th><th class="r">Edit options</th></tr></thead><tbody>${body||`<tr><td colspan="7" class="empty">No matching entries in ${mlabel(S.mo)}.</td></tr>`}${bfr}</tbody><tfoot><tr><td></td><td colspan="2">Month total and closing</td><td class="r in">${fmt(c,tI)}</td><td class="r out">${fmt(c,tO)}</td><td class="r av${neg(close)}">${fmt(c,close)}</td><td></td></tr></tfoot></table></div>
+ const bfr=S.pg===pages?`<tr class="bf"><td></td><td colspan="2"><b>${first?'Opening balance':'Brought forward'}</b><span class="n">${first?'Set once. Every entry updates Available.':'Balance before '+(S.pm==='range'?S.rf:mname(S.mo))}</span></td><td></td><td></td><td class="r av${neg(bf)}">${fmt(c,bf)}</td><td class="ac"><button class="ib" data-ob="1" aria-label="Edit opening balance" title="Edit opening balance">${IC.e}</button></td></tr>`:'';
+ return `<div class="tw"><table class="lt l"><colgroup><col style="width:46px"><col style="width:136px"><col><col style="width:108px"><col style="width:108px"><col style="width:122px"><col style="width:100px"></colgroup><thead><tr><th>S.no</th><th>Date</th><th>Category</th><th class="r">Received</th><th class="r">Spent</th><th class="r">Available</th><th class="r">Edit options</th></tr></thead><tbody>${body||`<tr><td colspan="7" class="empty">No matching entries in ${pLab()}.</td></tr>`}${bfr}</tbody><tfoot><tr><td></td><td colspan="2">${S.pm==='month'?'Month total and closing':'Total and closing'}</td><td class="r in">${fmt(c,tI)}</td><td class="r out">${fmt(c,tO)}</td><td class="r av${neg(close)}">${fmt(c,close)}</td><td></td></tr></tfoot></table></div>
  <div class="pg"><span>${all.length?st+1:0}–${st+rows.length} of ${all.length}</span><span><button class="ghost" data-p="-1"${S.pg<=1?' disabled':''}>Prev</button> <button class="ghost" data-p="1"${S.pg>=pages?' disabled':''}>Next</button></span></div>`;
 }
 const dlab=d=>rem(d)<=0?['Settled','in']:paid(d)>0?['Partial','mid']:['Open','op'];
@@ -107,13 +112,13 @@ function debtsTab(){const c=S.dcur,L=DB.filter(d=>d.cur===c&&!d.del),got=r2(L.fi
 function widget(c){
  const t=ledger(c);
  const inc=sum(t,'in'),out=sum(t,'out');
- const mt=t.filter(x=>x.date.slice(0,7)===S.mo),ms=[...new Set([mk(0),S.mo,...t.map(x=>x.date.slice(0,7))])].sort().reverse();
+ const mt=t.filter(inP),ms=[...new Set([mk(0),S.mo,...t.map(x=>x.date.slice(0,7))])].sort().reverse();
  
- return `<section class="card ${c.toLowerCase()}"><div class="head"><div class="hg"><div class="hl"><div class="cur"><span>${c==='AED'?'UAE dirham':'Indian rupee · available'}</span><span class="code">${c}</span></div>
+ return `<section class="card ${c.toLowerCase()}${S.mini?' mini':''}"><div class="head"><div class="hg"><div class="hl"><div class="cur"><span>${c==='AED'?'UAE dirham':'Indian rupee · available'}</span><span class="cr"><span class="code">${c}</span><button class="ghost mt" data-mn="1" aria-expanded="${!S.mini}">${S.mini?'Show chart and debts':'Hide chart and debts'} ${S.mini?IC.dn:IC.up}</button></span></div>
  <div class="bal">${fmt(c,r2((c==='INR'?OB.INR||0:0)+inc-out))}</div>
- <div class="io"><div class="i">Received · ${mname(S.mo)}<b>${fmt(c,mtot(t,S.mo,'in'))}</b></div><div class="o">Spent · ${mname(S.mo)}<b>${fmt(c,mtot(t,S.mo,'out'))}</b></div></div>
+ <div class="io"><div class="i">Received · ${pShort()}<b>${fmt(c,ptot(t,'in'))}</b></div><div class="o">Spent · ${pShort()}<b>${fmt(c,ptot(t,'out'))}</b></div></div>
  ${chart(t,c)}</div>${debts(c)}</div></div>
- <div class="lh">${dd('mo','Month',ms.map(m=>{const n=t.filter(x=>x.date.slice(0,7)===m).length,net=mtot(t,m,'in')-mtot(t,m,'out');return{v:m,l:mlabel(m),s:n+(n===1?' entry':' entries'),r:(net>=0?'+':'\u2212')+fmt(c,Math.abs(net)),rc:net>=0?'in':'out'}}),S.mo)}<span>${mt.length} ${mt.length===1?'entry':'entries'}</span></div>
+ <div class="lh"><div class="seg pm">${[['month','Month'],['all','All time'],['range','Custom']].map(([v,l])=>`<button data-pm="${v}" class="${S.pm===v?'on':''}">${l}</button>`).join('')}</div>${S.pm==='range'?`<span class="rg"><input id="rf" type="text" readonly data-dp value="${S.rf}" aria-label="From date"><i>to</i><input id="rt" type="text" readonly data-dp value="${S.rt}" aria-label="To date"></span>`:S.pm==='all'?'':dd('mo','Month',ms.map(m=>{const n=t.filter(x=>x.date.slice(0,7)===m).length,net=mtot(t,m,'in')-mtot(t,m,'out');return{v:m,l:mlabel(m),s:n+(n===1?' entry':' entries'),r:(net>=0?'+':'\u2212')+fmt(c,Math.abs(net)),rc:net>=0?'in':'out'}}),S.mo)}<span>${mt.length} ${mt.length===1?'entry':'entries'}</span></div>
  <div class="tb"><input id="q" type="search" placeholder="Search category or notes" aria-label="Search" value="${esc(S.q)}">${dd('ft','Type filter',[{v:'all',l:'All types'},{v:'in',l:'Received',d:'var(--in)'},{v:'out',l:'Spent',d:'var(--out)'}],S.f)}${dd('pp','Rows per page',[10,25,50].map(n=>({v:n,l:n+' rows'})),S.pp)}</div>
  <div id="tbl">${tbl(c)}</div></section>`;
 }
@@ -166,7 +171,7 @@ $('#sv').onclick=()=>{
  const ex=S.eid&&S.tx.find(t=>t.id===S.eid);
  if(ex)Object.assign(ex,f,{ver:(ex.ver||1)+1});else S.tx.push({id:uid(),ts:Date.now(),ver:1,...f});
  S.tab=S.cur=f.cur;S.pg=1;
- S.mo=date.slice(0,7);save();$('#dlg').close();render();
+ S.mo=date.slice(0,7);if(S.pm==='range'&&(date<S.rf||date>S.rt))S.pm='month';save();$('#dlg').close();render();
  toast(syncOn()?(online()?'Saved. Syncing…':'Saved offline. Will sync when online.'):'Saved on this device');sync();
 };
 $('#tg').onclick=()=>{S.off=!S.off;render();toast(S.off?'Offline mode on. New entries will queue.':'Back online');sync()};
@@ -222,13 +227,13 @@ $('#ca').onclick=()=>{const n=$('#cn').value.trim();
  if(!n){$('#ce').textContent='Enter a category name.';return}
  if(CT.some(x=>!x.del&&x.n.toLowerCase()===n.toLowerCase())){$('#ce').textContent='That category already exists.';return}
  const rv=CT.find(x=>x.del&&x.n.toLowerCase()===n.toLowerCase());if(rv){rv.del=0;rv.t=NT}else CT.push({n,t:NT,a:1});saveC();$('#cn').value='';$('#ce').textContent='';renderCm();toast('Category added')};
-$('#app').addEventListener('change',e=>{const i=e.target.id;if(i==='mo')S.mo=e.target.value;else if(i==='ft')S.f=e.target.value;else if(i==='pp')S.pp=+e.target.value;else return;S.pg=1;render()});
+$('#app').addEventListener('change',e=>{const i=e.target.id;if(i==='mo')S.mo=e.target.value;else if(i==='ft')S.f=e.target.value;else if(i==='pp')S.pp=+e.target.value;else if(i==='rf')S.rf=e.target.value;else if(i==='rt')S.rt=e.target.value;else return;if(S.rf>S.rt){const z=S.rf;S.rf=S.rt;S.rt=z}S.pg=1;render()});
 $('#app').addEventListener('input',e=>{if(e.target.id==='q'){S.q=e.target.value;S.pg=1;$('#tbl').innerHTML=tbl(S.tab)}});
 $('#app').addEventListener('click',e=>{const o=e.target.closest('.ddo'),h=e.target.closest('.ddb');
  if(o){const id=o.closest('.dd').dataset.dd,v=o.dataset.v;if(id==='mo')S.mo=v;else if(id==='ft')S.f=v;else if(id==='pp')S.pp=+v;S.pg=1;render();return}
  if(h){const p=h.parentNode,was=p.classList.contains('open');closeDd();if(!was){p.classList.add('open');h.setAttribute('aria-expanded','true')}return}
- const b=e.target.closest&&e.target.closest('[data-m],[data-p],[data-e],[data-d],[data-ob]');if(!b)return;const d=b.dataset;
- if(d.m){S.mo=d.m;S.pg=1;render()}else if(d.p){S.pg+=+d.p;$('#tbl').innerHTML=tbl(S.tab)}else if(d.e)openEdit(d.e);else if(d.d)del(d.d);else if(d.ob!==undefined)openOb()});
+ const b=e.target.closest&&e.target.closest('[data-m],[data-p],[data-e],[data-d],[data-ob],[data-pm],[data-mn]');if(!b)return;const d=b.dataset;
+ if(d.m){S.mo=d.m;S.pm='month';S.pg=1;render()}else if(d.pm){S.pm=d.pm;S.pg=1;render()}else if(d.mn!==undefined){S.mini=!S.mini;render()}else if(d.p){S.pg+=+d.p;$('#tbl').innerHTML=tbl(S.tab)}else if(d.e)openEdit(d.e);else if(d.d)del(d.d);else if(d.ob!==undefined)openOb()});
 IC.pl=SV+'<path d="M15 6l-6 6 6 6"/></svg>';IC.nx=SV+'<path d="M9 6l6 6-6 6"/></svg>';
 const cal=document.createElement('div');cal.className='cal';cal.hidden=true;document.body.appendChild(cal);
 let CI=null,CY=0,CM=0;
@@ -241,7 +246,7 @@ function calOpen(inp){CI=inp;const [y,m]=(inp.value||iso(0)).split('-').map(Numb
 document.addEventListener('click',e=>{const dp=e.target.closest('[data-dp]');if(dp){calOpen(dp);return}
  if(e.target.closest('.cal')){const n=e.target.closest('[data-cn]'),d=e.target.closest('[data-cd]');
   if(n){CM+=+n.dataset.cn;if(CM<0){CM=11;CY--}if(CM>11){CM=0;CY++}calDraw()}
-  else if(d){CI.value=d.dataset.cd;cal.hidden=true}
+  else if(d){CI.value=d.dataset.cd;cal.hidden=true;CI.dispatchEvent(new Event('change',{bubbles:true}))}
   return}
  cal.hidden=true});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!cal.hidden){e.preventDefault();cal.hidden=true}
