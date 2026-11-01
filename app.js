@@ -30,11 +30,12 @@ const psD=()=>S.pm==='all'?'0000-00-00':S.pm==='range'?S.rf:S.mo+'-01';
 const pLab=()=>S.pm==='all'?'all time':S.pm==='range'?S.rf+' to '+S.rt:mlabel(S.mo);
 const pShort=()=>S.pm==='all'?'All time':S.pm==='range'?'Range':mname(S.mo);
 const ptot=(t,ty)=>Math.round(t.filter(x=>inP(x)&&x.type===ty).reduce((a,x)=>a+x.amt,0)*100)/100;
+
 function chart(t,c){
  const ms=[5,4,3,2,1,0].map(mk),I=ms.map(m=>mtot(t,m,'in')),O=ms.map(m=>mtot(t,m,'out')),mx=Math.max(...I,...O,1);
  const X=i=>20+i*52,Y=v=>12+(1-v/mx)*66,P=a=>a.map((v,i)=>X(i)+','+Y(v).toFixed(1)).join(' '),si=S.pm==='month'?ms.indexOf(S.mo):-1;
  const dots=(a,col)=>ms.map((m,i)=>`<circle data-m="${m}" cx="${X(i)}" cy="${Y(a[i]).toFixed(1)}" r="${i===si?5:3.5}" fill="${col}"><title>${mname(m)}: ${fmt(c,a[i])}</title></circle>`).join('');
- return `<div class="lg"><span><i style="background:var(--in)"></i>Received</span><span><i style="background:var(--out)"></i>Spent</span><span>Last 6 months. Tap a month to open it.</span></div>
+ return `<div class="lg"><span><i style="background:var(--in)"></i>Received</span><span><i style="background:var(--out)"></i>Spent</span><span>Last 6 months · tap month</span></div>
  <svg viewBox="0 0 300 108" class="ch" role="img" aria-label="Monthly received and spent, last 6 months">
  ${si>=0?`<rect x="${X(si)-25}" y="4" width="50" height="78" rx="10" fill="var(--acc)" opacity=".16"/>`:''}
  <line x1="8" x2="292" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--line)"/>
@@ -43,14 +44,36 @@ function chart(t,c){
  <polyline points="${P(O)}" fill="none" stroke="var(--out)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
  ${dots(I,'var(--in)')}${dots(O,'var(--out)')}
  ${ms.map((m,i)=>`<text x="${X(i)}" y="100" text-anchor="middle" font-size="11" fill="var(--mut)" font-weight="${i===si?700:400}">${mname(m)}</text>`).join('')}
- </svg>`;
+ </svg>${catStrip(t,c)}`;
 }
-let S={tx:null,off:false,tab:'AED',cur:'AED',mo:mk(0),q:'',f:'all',pp:10,pg:1,eid:null,dcur:'INR',ds:'open',dq:'',did:null,xp:{},pm:'month',rf:mk(0)+'-01',rt:iso(0),mini:true,type:'out',cat:'',busy:false};
+
+function catStrip(t,c){
+ const sp=t.filter(x=>inP(x)&&x.type==='out');
+ if(!sp.length)return '';
+ const tot=sp.reduce((a,x)=>a+x.amt,0),by={};
+ sp.forEach(x=>{by[x.cat]=(by[x.cat]||0)+x.amt});
+ const top=Object.entries(by).sort((a,b)=>b[1]-a[1]).slice(0,5);
+ return `<div class="cb"><div class="cb-h"><span>Top spent · ${pShort()}</span><span>Tap category to filter</span></div>
+ <div class="cb-bar">${top.map(([k,v],i)=>`<i style="width:${Math.max(4,Math.round(v/tot*100))}%;opacity:${1-i*0.16}"></i>`).join('')}</div>
+ <div class="cb-pills">${top.map(([k,v])=>`<button type="button" class="cb-p${S.q===k?' on':''}" data-cf="${esc(k)}"><span>${esc(k)}</span><em>${Math.round(v/tot*100)}%</em></button>`).join('')}</div></div>`;
+}
+
+let S={tx:null,off:false,tab:'AED',cur:'AED',mo:mk(0),q:'',f:'all',pp:10,pg:1,eid:null,dcur:'INR',ds:'open',dq:'',did:null,xp:{},pm:'month',rf:mk(0)+'-01',rt:iso(0),mini:true,type:'out',cat:'',busy:false,vm:STORE.getItem('ledger.vm')||'auto'};
 try{const r=STORE.getItem(LS);if(r)S.tx=JSON.parse(r)}catch(e){}
 if(!S.tx)S.tx=[];
 const save=()=>{try{STORE.setItem(LS,JSON.stringify(S.tx))}catch(e){}stamp();schedSync()};
 const online=()=>!S.off&&navigator.onLine;
 const sum=(t,ty)=>t.filter(x=>x.type===ty).reduce((a,x)=>a+x.amt,0);
+
+// Theme initialization
+const initTheme=STORE.getItem('ledger.theme');
+if(initTheme)document.documentElement.setAttribute('data-theme',initTheme);
+$('#thb').onclick=()=>{
+ const cur=document.documentElement.getAttribute('data-theme');
+ const next=cur==='dark'?'light':cur==='light'?'dark':(matchMedia('(prefers-color-scheme:dark)').matches?'light':'dark');
+ document.documentElement.setAttribute('data-theme',next);
+ STORE.setItem('ledger.theme',next);
+};
 
 const SV='<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
 const IC={e:SV+'<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',d:SV+'<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>'};
@@ -72,14 +95,27 @@ function dnet(c){const m={};DB.filter(d=>d.cur===c&&!d.del&&rem(d)>0).forEach(d=
 function debts(c){const L=dnet(c),got=r2(L.filter(p=>p.n>0).reduce((a,p)=>a+p.n,0)),ow=Math.abs(r2(L.filter(p=>p.n<0).reduce((a,p)=>a+p.n,0)));
  return `<aside class="dw"><div class="dh"><b>Debts</b><button class="ghost" data-dk="manage:">Manage</button></div><div class="ds"><span class="in">Owed to you<b>${fmt(c,got)}</b></span><span class="out">You owe<b>${fmt(c,ow)}</b></span></div><div class="dl">${L.map(p=>`<div class="dr"><span class="av2">${esc(p.who.slice(0,1).toUpperCase())}</span><span class="t"><b>${esc(p.who)}</b><small class="${p.n>0?'in':'out'}">${p.n>0?'owes you':'you owe'}</small></span><em class="${p.n>0?'in':'out'}">${fmt(c,Math.abs(p.n))}</em></div>`).join('')||'<div class="empty">No debts. All settled.</div>'}</div></aside>`}
 const ledger=c=>S.tx.filter(x=>x.cur===c&&!x.del).sort((a,b)=>b.date.localeCompare(a.date)||b.ts-a.ts);
+
+function mcards(c,rows,all,av,bfrCard){
+ if(!rows.length)return `<div class="mfeed"><div class="empty">No matching entries in ${pLab()}.</div>${bfrCard||''}</div>`;
+ const groups=[];
+ rows.forEach(x=>{let g=groups[groups.length-1];if(!g||g.date!==x.date){g={date:x.date,items:[]};groups.push(g)}g.items.push(x)});
+ return `<div class="mfeed">${groups.map(g=>{
+  const day=all.filter(r=>r.date===g.date),net=r2(day.reduce((a,r)=>a+(r.type==='in'?r.amt:-r.amt),0));
+  const dtStr=new Date(g.date+'T00:00').toLocaleDateString('en',{day:'2-digit',month:'short',year:'numeric'});
+  return `<div class="mday"><div class="mday-h"><b>${dtStr}</b><span>${day.length} ${day.length===1?'entry':'entries'} · <em class="${net<0?'out':'in'}" style="font-style:normal;font-weight:600">${net<0?'−':'+'}${fmt(c,Math.abs(net))}</em></span></div>${g.items.map(x=>`<div class="mrow"><div class="mrow-l"><b>${esc(x.cat)}</b><span>${esc(x.note||'No notes')}</span></div><div class="mrow-r"><div class="mrow-amt"><b class="amt ${x.type}">${x.type==='in'?'+':'−'}${fmt(c,x.amt)}</b>${av?`<small>Avail: ${fmt(c,av[x.id])}</small>`:''}</div><div class="mrow-ac"><button class="ib" data-e="${x.id}" aria-label="Edit entry">${IC.e}</button><button class="ib d" data-d="${x.id}" aria-label="Delete entry">${IC.d}</button></div></div></div>`).join('')}</div>`;
+ }).join('')}${bfrCard||''}</div>`;
+}
+
 function tbl(c){if(c==='INR')return ltbl(c);
  const q=S.q.toLowerCase(),all=ledger(c).filter(x=>inP(x)&&(S.f==='all'||x.type===S.f)&&(!q||(x.cat+' '+x.note).toLowerCase().includes(q)));
  const pages=Math.max(1,Math.ceil(all.length/S.pp));S.pg=Math.max(1,Math.min(S.pg,pages));
  const st=(S.pg-1)*S.pp,rows=all.slice(st,st+S.pp);
- return `<div class="tw"><table class="lt"><colgroup><col style="width:46px"><col style="width:140px"><col><col style="width:92px"><col style="width:112px"><col style="width:128px"></colgroup><thead><tr><th>S.no</th><th>Date</th><th>Category / notes</th><th>Type</th><th class="r">Amount</th><th></th></tr></thead><tbody>${rows.map((x,i)=>{const f=i===0||rows[i-1].date!==x.date,l=i===rows.length-1||rows[i+1].date!==x.date,sp=rows.filter(r=>r.date===x.date).length,day=all.filter(r=>r.date===x.date),net=day.reduce((a,r)=>a+(r.type==='in'?r.amt:-r.amt),0);
- return `<tr class="${f?'f':''} ${l?'':'k'}"><td>${st+i+1}</td>${f?`<td rowspan="${sp}" class="dt"><b>${new Date(x.date+'T00:00').toLocaleDateString('en',{day:'2-digit',month:'short',year:'numeric'})}</b><span class="n">${day.length} ${day.length===1?'entry':'entries'} · ${net<0?'−':'+'}${fmt(c,Math.abs(net))}</span></td>`:''}<td><b>${esc(x.cat)}</b><span class="n">${esc(x.note||'No notes')}</span></td><td><span class="tp ${x.type}">${x.type==='in'?'Received':'Spent'}</span></td><td class="r amt ${x.type}">${x.type==='in'?'+':'\u2212'}${fmt(c,x.amt)}<i class="sd ${x.synced?'':'p'}" title="${x.synced?'Synced':'Waiting to sync'}"></i></td><td class="ac"><div class="aw"><button class="ib tg ra" data-ra="1" aria-label="Show actions" aria-expanded="false">${IC.nx}</button><span class="ax"><button class="ib" data-e="${x.id}" aria-label="Edit entry" title="Edit">${IC.e}</button><button class="ib d" data-d="${x.id}" aria-label="Delete entry" title="Delete">${IC.d}</button></span></div></td></tr>`}).join('')||`<tr><td colspan="6" class="empty">No matching entries in ${pLab()}.</td></tr>`}</tbody></table></div>
+ return `<div class="vm-${S.vm}">${mcards(c,rows,all,null,'')}<div class="tw tx-tw"><table class="lt"><colgroup><col style="width:46px"><col style="width:140px"><col><col style="width:92px"><col style="width:112px"><col style="width:128px"></colgroup><thead><tr><th>S.no</th><th>Date</th><th>Category / notes</th><th>Type</th><th class="r">Amount</th><th></th></tr></thead><tbody>${rows.map((x,i)=>{const f=i===0||rows[i-1].date!==x.date,l=i===rows.length-1||rows[i+1].date!==x.date,sp=rows.filter(r=>r.date===x.date).length,day=all.filter(r=>r.date===x.date),net=day.reduce((a,r)=>a+(r.type==='in'?r.amt:-r.amt),0);
+ return `<tr class="${f?'f':''} ${l?'':'k'}"><td>${st+i+1}</td>${f?`<td rowspan="${sp}" class="dt"><b>${new Date(x.date+'T00:00').toLocaleDateString('en',{day:'2-digit',month:'short',year:'numeric'})}</b><span class="n">${day.length} ${day.length===1?'entry':'entries'} · ${net<0?'−':'+'}${fmt(c,Math.abs(net))}</span></td>`:''}<td><b>${esc(x.cat)}</b><span class="n">${esc(x.note||'No notes')}</span></td><td><span class="tp ${x.type}">${x.type==='in'?'Received':'Spent'}</span></td><td class="r amt ${x.type}">${x.type==='in'?'+':'\u2212'}${fmt(c,x.amt)}</td><td class="ac"><div class="aw"><button class="ib tg ra" data-ra="1" aria-label="Show actions" aria-expanded="false">${IC.nx}</button><span class="ax"><button class="ib" data-e="${x.id}" aria-label="Edit entry" title="Edit">${IC.e}</button><button class="ib d" data-d="${x.id}" aria-label="Delete entry" title="Delete">${IC.d}</button></span></div></td></tr>`}).join('')||`<tr><td colspan="6" class="empty">No matching entries in ${pLab()}.</td></tr>`}</tbody></table></div></div>
  <div class="pg"><span>${all.length?st+1:0}\u2013${st+rows.length} of ${all.length}</span><span class="pn">${dd('pp','Rows per page',[10,25,50].map(n=>({v:n,l:n+' rows'})),S.pp)}<button class="ghost" data-p="-1"${S.pg<=1?' disabled':''}>Prev</button><button class="ghost" data-p="1"${S.pg>=pages?' disabled':''}>Next</button></span></div>`;
 }
+
 function ltbl(c){
  const A=S.tx.filter(x=>x.cur===c&&!x.del).sort((a,b)=>a.date.localeCompare(b.date)||a.ts-b.ts);
  let bal=OB[c]||0,bf=null;const av={};
@@ -90,11 +126,13 @@ function ltbl(c){
  const pages=Math.max(1,Math.ceil(all.length/S.pp));S.pg=Math.max(1,Math.min(S.pg,pages));
  const st=(S.pg-1)*S.pp,rows=all.slice(st,st+S.pp),tI=r2(M.filter(x=>x.type==='in').reduce((a,x)=>a+x.amt,0)),tO=r2(M.filter(x=>x.type==='out').reduce((a,x)=>a+x.amt,0)),close=M.length?av[M[M.length-1].id]:bf,neg=n=>n<0?' out':'';
  const body=rows.map((x,i)=>{const f=i===0||rows[i-1].date!==x.date,l=i===rows.length-1||rows[i+1].date!==x.date,sp=rows.filter(r=>r.date===x.date).length,day=all.filter(r=>r.date===x.date),net=r2(day.reduce((a,r)=>a+(r.type==='in'?r.amt:-r.amt),0));
-  return `<tr class="${f?'f':''} ${l?'':'k'}"><td>${st+i+1}</td>${f?`<td rowspan="${sp}" class="dt"><b>${new Date(x.date+'T00:00').toLocaleDateString('en',{day:'2-digit',month:'short',year:'numeric'})}</b><span class="n">${day.length} ${day.length===1?'entry':'entries'} · ${net<0?'−':'+'}${fmt(c,Math.abs(net))}</span></td>`:''}<td><b>${esc(x.cat)}</b><span class="n">${esc(x.note||'No notes')}</span></td><td class="r amt in">${x.type==='in'?fmt(c,x.amt):'<i class="z">–</i>'}</td><td class="r amt out">${x.type==='out'?fmt(c,x.amt):'<i class="z">–</i>'}</td><td class="r av${neg(av[x.id])}">${fmt(c,av[x.id])}<i class="sd ${x.synced?'':'p'}" title="${x.synced?'Synced':'Waiting to sync'}"></i></td><td class="ac"><div class="aw"><button class="ib tg ra" data-ra="1" aria-label="Show actions" aria-expanded="false">${IC.nx}</button><span class="ax"><button class="ib" data-e="${x.id}" aria-label="Edit entry" title="Edit">${IC.e}</button><button class="ib d" data-d="${x.id}" aria-label="Delete entry" title="Delete">${IC.d}</button></span></div></td></tr>`}).join('');
+  return `<tr class="${f?'f':''} ${l?'':'k'}"><td>${st+i+1}</td>${f?`<td rowspan="${sp}" class="dt"><b>${new Date(x.date+'T00:00').toLocaleDateString('en',{day:'2-digit',month:'short',year:'numeric'})}</b><span class="n">${day.length} ${day.length===1?'entry':'entries'} · ${net<0?'−':'+'}${fmt(c,Math.abs(net))}</span></td>`:''}<td><b>${esc(x.cat)}</b><span class="n">${esc(x.note||'No notes')}</span></td><td class="r amt in">${x.type==='in'?fmt(c,x.amt):'<i class="z">–</i>'}</td><td class="r amt out">${x.type==='out'?fmt(c,x.amt):'<i class="z">–</i>'}</td><td class="r av${neg(av[x.id])}">${fmt(c,av[x.id])}</td><td class="ac"><div class="aw"><button class="ib tg ra" data-ra="1" aria-label="Show actions" aria-expanded="false">${IC.nx}</button><span class="ax"><button class="ib" data-e="${x.id}" aria-label="Edit entry" title="Edit">${IC.e}</button><button class="ib d" data-d="${x.id}" aria-label="Delete entry" title="Delete">${IC.d}</button></span></div></td></tr>`}).join('');
  const bfr=S.pg===pages?`<tr class="bf"><td></td><td colspan="2"><b>${first?'Opening balance':'Brought forward'}</b><span class="n">${first?'Set once. Every entry updates Available.':'Balance before '+(S.pm==='range'?S.rf:mname(S.mo))}</span></td><td></td><td></td><td class="r av${neg(bf)}">${fmt(c,bf)}</td><td class="ac"><button class="ib" data-ob="1" aria-label="Edit opening balance" title="Edit opening balance">${IC.e}</button></td></tr>`:'';
- return `<div class="tw"><table class="lt l"><colgroup><col style="width:46px"><col style="width:136px"><col><col style="width:108px"><col style="width:108px"><col style="width:122px"><col style="width:128px"></colgroup><thead><tr><th>S.no</th><th>Date</th><th>Category</th><th class="r">Received</th><th class="r">Spent</th><th class="r">Available</th><th>Edit options</th></tr></thead><tbody>${body||`<tr><td colspan="7" class="empty">No matching entries in ${pLab()}.</td></tr>`}${bfr}</tbody><tfoot><tr><td></td><td colspan="2">${S.pm==='month'?'Month total and closing':'Total and closing'}</td><td class="r in">${fmt(c,tI)}</td><td class="r out">${fmt(c,tO)}</td><td class="r av${neg(close)}">${fmt(c,close)}</td><td></td></tr></tfoot></table></div>
+ const bfrCard=S.pg===pages?`<div class="mbf"><div><b>${first?'Opening balance':'Brought forward'}</b><div class="hint">${first?'Set once. Updates Available.':'Balance before '+(S.pm==='range'?S.rf:mname(S.mo))}</div></div><div style="display:flex;align-items:center;gap:8px"><b class="av${neg(bf)}">${fmt(c,bf)}</b><button class="ib" data-ob="1" aria-label="Edit opening balance">${IC.e}</button></div></div>`:'';
+ return `<div class="vm-${S.vm}">${mcards(c,rows,all,av,bfrCard)}<div class="tw tx-tw"><table class="lt l"><colgroup><col style="width:46px"><col style="width:136px"><col><col style="width:108px"><col style="width:108px"><col style="width:122px"><col style="width:128px"></colgroup><thead><tr><th>S.no</th><th>Date</th><th>Category</th><th class="r">Received</th><th class="r">Spent</th><th class="r">Available</th><th>Edit options</th></tr></thead><tbody>${body||`<tr><td colspan="7" class="empty">No matching entries in ${pLab()}.</td></tr>`}${bfr}</tbody><tfoot><tr><td></td><td colspan="2">${S.pm==='month'?'Month total and closing':'Total and closing'}</td><td class="r in">${fmt(c,tI)}</td><td class="r out">${fmt(c,tO)}</td><td class="r av${neg(close)}">${fmt(c,close)}</td><td></td></tr></tfoot></table></div></div>
  <div class="pg"><span>${all.length?st+1:0}–${st+rows.length} of ${all.length}</span><span class="pn">${dd('pp','Rows per page',[10,25,50].map(n=>({v:n,l:n+' rows'})),S.pp)}<button class="ghost" data-p="-1"${S.pg<=1?' disabled':''}>Prev</button><button class="ghost" data-p="1"${S.pg>=pages?' disabled':''}>Next</button></span></div>`;
 }
+
 const dlab=d=>rem(d)<=0?['Settled','in']:paid(d)>0?['Partial','mid']:['Open','op'];
 function dlist(){
  const c=S.dcur,q=S.dq.toLowerCase(),dt=s=>new Date(s+'T00:00').toLocaleDateString('en',{day:'2-digit',month:'short',year:'numeric'});
@@ -109,40 +147,28 @@ function debtsTab(){const c=S.dcur,L=DB.filter(d=>d.cur===c&&!d.del),got=r2(L.fi
  return `<section class="card wide ${c.toLowerCase()}"><div class="head"><div class="cur"><span>Debts and part-payments</span><span class="code">${c}</span></div><div class="io" style="margin-top:14px;gap:30px"><div class="i">Owed to you<b>${fmt(c,got)}</b></div><div class="o">You owe<b>${fmt(c,ow)}</b></div><div>Net<b>${fmt(c,r2(got-ow))}</b></div></div></div>
  <div class="tb"><div class="seg">${sg('cur','AED','AED')}${sg('cur','INR','INR')}</div><div class="seg">${sg('st','open','Open')}${sg('st','done','Settled')}${sg('st','all','All')}</div><input id="dq" type="search" placeholder="Search person or notes" aria-label="Search debts" value="${esc(S.dq)}"></div>
  <div id="dlist" style="padding-bottom:10px">${dlist()}</div></section>`}
+
 function widget(c){
  const t=ledger(c);
  const inc=sum(t,'in'),out=sum(t,'out');
  const mt=t.filter(inP),ms=[...new Set([mk(0),S.mo,...t.map(x=>x.date.slice(0,7))])].sort().reverse();
- 
+ const pIn=ptot(t,'in'),pOut=ptot(t,'out'),pNet=r2(pIn-pOut);
  return `<section class="card ${c.toLowerCase()}${S.mini?' mini':''}"><div class="head"><div class="hg"><div class="hl"><div class="cur"><span>${c==='AED'?'UAE dirham':'Indian rupee · available'}</span><span class="cr"><span class="code">${c}</span><button class="ib tg" data-mn="1" aria-expanded="${!S.mini}" aria-label="${S.mini?'Show chart and debts':'Hide chart and debts'}" title="${S.mini?'Show chart and debts':'Hide chart and debts'}">${S.mini?IC.dn:IC.up}</button></span></div>
  <div class="bal">${fmt(c,r2((c==='INR'?OB.INR||0:0)+inc-out))}</div>
- <div class="io"><div class="i">Received · ${pShort()}<b>${fmt(c,ptot(t,'in'))}</b></div><div class="o">Spent · ${pShort()}<b>${fmt(c,ptot(t,'out'))}</b></div></div>
+ <div class="io"><div class="i">Received · ${pShort()}<b>${fmt(c,pIn)}</b></div><div class="o">Spent · ${pShort()}<b>${fmt(c,pOut)}</b></div><div>Net · ${pShort()}<b>${pNet>=0?'+':'−'}${fmt(c,Math.abs(pNet))}</b></div></div>
  ${chart(t,c)}</div>${debts(c)}</div></div>
  <div class="lh${S.fh?' fh':''}"><div class="lc"><div class="seg pm">${[['month','Month'],['all','All time'],['range','Custom']].map(([v,l])=>`<button data-pm="${v}" class="${S.pm===v?'on':''}">${l}</button>`).join('')}</div>${S.pm==='range'?`<span class="rg"><input id="rf" type="text" readonly data-dp value="${S.rf}" aria-label="From date"><i>to</i><input id="rt" type="text" readonly data-dp value="${S.rt}" aria-label="To date"></span>`:S.pm==='all'?'':dd('mo','Month',ms.map(m=>{const n=t.filter(x=>x.date.slice(0,7)===m).length,net=mtot(t,m,'in')-mtot(t,m,'out');return{v:m,l:mlabel(m),s:n+(n===1?' entry':' entries'),r:(net>=0?'+':'\u2212')+fmt(c,Math.abs(net)),rc:net>=0?'in':'out'}}),S.mo)}</div><span class="lcnt">${S.fh?pLab()+((S.q||S.f!=='all')?' (filtered)':'')+' · ':''}${mt.length} ${mt.length===1?'entry':'entries'}</span><button class="ib tg vt" data-fl="1" aria-label="${S.fh?'Show filters':'Hide filters'}" aria-expanded="${!S.fh}" title="${S.fh?'Show filters':'Hide filters'}">${S.fh?IC.dn:IC.up}</button></div>
- <div class="tb${S.fh?' hid':''}"><input id="q" type="search" placeholder="Search category or notes" aria-label="Search" value="${esc(S.q)}">${dd('ft','Type filter',[{v:'all',l:'All types'},{v:'in',l:'Received',d:'var(--in)'},{v:'out',l:'Spent',d:'var(--out)'}],S.f)}</div>
+ <div class="tb${S.fh?' hid':''}"><input id="q" type="search" placeholder="Search category or notes" aria-label="Search" value="${esc(S.q)}">${dd('ft','Type filter',[{v:'all',l:'All types'},{v:'in',l:'Received',d:'var(--in)'},{v:'out',l:'Spent',d:'var(--out)'}],S.f)}<div class="seg" aria-label="View layout">${[['auto','Auto'],['cards','Cards'],['table','Table']].map(([v,l])=>`<button type="button" data-vm="${v}" class="${S.vm===v?'on':''}">${l}</button>`).join('')}</div></div>
  <div id="tbl">${tbl(c)}</div></section>`;
 }
-function plan(){return `<div class="card doc">
- <h2>How it works</h2>
- <p>Each entry is saved on your device first, so adding never waits for the internet. Pending entries show a hollow dot and are sent to your Google Sheet in one batch when you’re back online.</p>
- <ol><li><b>Create the sheet.</b> New Google Sheet in your personal account. The AED and INR tabs are created automatically, with columns ID, Date, Type, Amount, Category, Note, Synced at.</li>
- <li><b>Add the script.</b> Extensions → Apps Script. Paste the code below as Code.gs and add the page as Index.html.</li>
- <li><b>Deploy.</b> Deploy → New deployment → Web app. Execute as: Me. Who has access: Only myself.</li>
- <li><b>Install on your phone.</b> Open the web app link, then Add to Home Screen for a one-tap launch.</li>
- <li><b>Later.</b> Monthly summary tab, category budgets, CSV export.</li></ol>
- <div class="note"><b>Offline limits.</b> Apps Script pages can’t cache themselves, so open the app once while online. After that, entries added while offline are queued and synced automatically. To open the app cold with no signal, host the same page as an installable app (service worker) that posts to this script. I can build that next.</div>
- <h2>Sheet structure</h2><div class="tw" style="padding:0"><table style="min-width:0"><thead><tr><th>Tab</th><th>Columns</th></tr></thead><tbody><tr><td><b>Transactions</b></td><td>transaction_id, date, currency, type, amount_minor, category_id, notes, created_at, updated_at, deleted_at, version, server_revision, device_id</td></tr><tr><td><b>Categories</b></td><td>category_id, name, permitted_type, currency, active, version, updated_at</td></tr><tr><td><b>Meta</b></td><td>key, value (revision counter, schema version)</td></tr></tbody></table></div><p>One Transactions tab with a currency column keeps sync simple, and the app shows AED and INR separately. The Code.gs below is the simple demo version and will be replaced by the sync API.</p>
- <h2>Code.gs</h2><button class="ghost" id="cp" style="width:max-content">Copy code</button><pre id="code"></pre></div>`;}
 
 function render(){
  const p=pendingCount(),on=online();
  $('#st').className='pill '+(S.busy?'sy':(on&&!S.err&&syncOn())||(!syncOn()&&on)?'':'off');
  $('#stx').textContent=statusText(p,on);
- $('#tg').textContent=S.off?'Go online':'Simulate offline';
- $('#app').innerHTML=S.tab==='p'?plan():S.tab==='D'?debtsTab():widget(S.tab);
+ $('#app').innerHTML=S.tab==='D'?debtsTab():widget(S.tab);
  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===S.tab));
- if(S.tab==='p'){$('#code').textContent=$('#gs').textContent;$('#cp').onclick=async()=>{try{await navigator.clipboard.writeText($('#gs').textContent);toast('Code copied')}catch(e){const r=document.createRange();r.selectNodeContents($('#code'));getSelection().removeAllRanges();getSelection().addRange(r);toast('Selected. Press copy.')}}}
- $('#add').style.display=S.tab==='p'?'none':'';$('#add').textContent=S.tab==='D'?'+ Add debt':'+ Add entry';
+ $('#add').textContent=S.tab==='D'?'+ Add debt':'+ Add entry';
 }
 let tt;function toast(m,u){const t=$('#toast');t.textContent=m;t.style.pointerEvents=u?'auto':'none';t.style.cursor=u?'pointer':'';t.onclick=u?()=>{u();t.classList.remove('show')}:null;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),u?5000:2400)}
 
@@ -157,7 +183,7 @@ function paint(){
 function openEdit(id){const x=S.tx.find(t=>t.id===id);if(!x)return;S.eid=id;S.cur=x.cur;S.type=x.type;S.cat=x.cat;$('#dh').textContent='Edit entry';$('#sv').textContent='Save changes';$('#am').value=x.amt;$('#nt').value=x.note||'';$('#dt').value=x.date;$('#er').textContent='';paint();$('#dlg').showModal()}
 function del(id){const x=S.tx.find(t=>t.id===id);if(!x)return;x.del=true;x.synced=false;x.ver=(x.ver||1)+1;save();render();sync();
  toast('Entry deleted. Tap to undo.',()=>{x.del=false;x.synced=false;x.ver=(x.ver||1)+1;save();render();sync()})}
-$('#add').onclick=()=>{if(S.tab==='D'){openDb();return}S.eid=null;$('#dh').textContent='New entry';$('#sv').textContent='Save entry';if(S.tab!=='p')S.cur=S.tab;$('#am').value='';$('#nt').value='';$('#dt').value=iso(0);$('#er').textContent='';paint();$('#dlg').showModal();$('#am').focus()};
+$('#add').onclick=()=>{if(S.tab==='D'){openDb();return}S.eid=null;$('#dh').textContent='New entry';$('#sv').textContent='Save entry';S.cur=S.tab;$('#am').value='';$('#nt').value='';$('#dt').value=iso(0);$('#er').textContent='';paint();$('#dlg').showModal();$('#am').focus()};
 $('#cx').onclick=()=>$('#dlg').close();
 $('#sc').onclick=e=>{if(e.target.dataset.v){S.cur=e.target.dataset.v;paint()}};
 $('#sty').onclick=e=>{if(e.target.dataset.v){S.type=e.target.dataset.v;paint()}};
@@ -174,9 +200,7 @@ $('#sv').onclick=()=>{
  S.mo=date.slice(0,7);if(S.pm==='range'&&(date<S.rf||date>S.rt))S.pm='month';save();$('#dlg').close();render();
  toast(syncOn()?(online()?'Saved. Syncing…':'Saved offline. Will sync when online.'):'Saved on this device');sync();
 };
-$('#tg').onclick=()=>{S.off=!S.off;render();toast(S.off?'Offline mode on. New entries will queue.':'Back online');sync()};
 document.querySelector('.tabs').onclick=e=>{const t=e.target.dataset.t;if(!t)return;S.tab=t;if(t!=='D')S.cur=t;render()};
-$('#pl').onclick=()=>{S.tab='p';render()};
 function renderCm(){$('#cl').innerHTML=CT.map((c,i)=>c.del?'':`<div class="crow"><input type="text" data-n="${i}" value="${esc(c.n)}" aria-label="Category name"><button class="ib d" data-x="${i}" aria-label="Delete category" title="Delete">${IC.d}</button><div class="seg">${[['out','Spent'],['in','Received'],['both','Both']].map(([v,l])=>`<button data-t="${i}" data-v="${v}" class="${c.t===v?'on':''}">${l}</button>`).join('')}</div></div>`).join('')}
 let NT='out';
 $('#ct').onclick=e=>{const v=e.target.dataset.v;if(!v)return;NT=v;document.querySelectorAll('#ct button').forEach(b=>b.classList.toggle('on',b.dataset.v===v))};
@@ -210,6 +234,35 @@ $('#pys').onclick=()=>{const d=DB.find(x=>x.id===S.did),a=parseFloat($('#pya').v
  if(r2(a)>rem(d)){$('#pye').textContent='That is more than the remaining '+fmt(d.cur,rem(d))+'.';return}
  if(!t){$('#pye').textContent='Pick a date.';return}
  d.pays.push({id:uid(),amt:r2(a),date:t,note:$('#pyn').value.trim()});S.xp[d.id]=1;dsave();$('#pyd').close();render();toast(rem(d)<=0?'Fully paid':'Payment saved. Remaining '+fmt(d.cur,rem(d)))};
+
+// Backup & Restore handlers
+const dlFile=(name,type,content)=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
+$('#bkb').onclick()=>{$('#bke').textContent='';$('#bk-file').value='';$('#bkd').showModal()};
+$('#bkc').onclick=()=>$('#bkd').close();
+$('#bk-csv').onclick=()=>{
+ const rows=[['ID','Date','Currency','Type','Amount','Category','Notes']];
+ S.tx.filter(x=>!x.del).sort((a,b)=>b.date.localeCompare(a.date)).forEach(x=>{
+  rows.push([x.id,x.date,x.cur,x.type==='in'?'Received':'Spent',x.amt,x.cat,x.note||'']);
+ });
+ const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+ dlFile(`daily-ledger-${iso(0)}.csv`,'text/csv;charset=utf-8',csv);
+ toast('CSV exported');
+};
+$('#bk-json').onclick=()=>{
+ const payload=JSON.stringify({version:9,exported_at:new Date().toISOString(),tx:S.tx,cats:CT,debts:DB,ob:OB},null,2);
+ dlFile(`daily-ledger-backup-${iso(0)}.json`,'application/json',payload);
+ toast('JSON backup downloaded');
+};
+$('#bk-file').onchange=async e=>{
+ const f=e.target.files&&e.target.files[0];if(!f)return;
+ try{
+  const j=JSON.parse(await f.text());
+  if(!Array.isArray(j.tx))throw new Error('Invalid backup file');
+  S.tx=j.tx;if(Array.isArray(j.cats))CT=j.cats;if(Array.isArray(j.debts))DB=j.debts;if(j.ob)OB=j.ob;
+  stamp();persist();$('#bkd').close();render();sync();toast('Backup restored');
+ }catch(err){$('#bke').textContent='Could not read backup JSON.'}
+};
+
 $('#app').addEventListener('input',e=>{if(e.target.id==='dq'){S.dq=e.target.value;$('#dlist').innerHTML=dlist()}});
 $('#app').addEventListener('click',e=>{const b=e.target.closest('[data-dk]');if(!b)return;const[a,i,j]=b.dataset.dk.split(':');
  if(a==='manage'){S.dcur=S.tab;S.tab='D';render()}
@@ -232,8 +285,18 @@ $('#app').addEventListener('input',e=>{if(e.target.id==='q'){S.q=e.target.value;
 $('#app').addEventListener('click',e=>{const o=e.target.closest('.ddo'),h=e.target.closest('.ddb');
  if(o){const id=o.closest('.dd').dataset.dd,v=o.dataset.v;if(id==='mo')S.mo=v;else if(id==='ft')S.f=v;else if(id==='pp')S.pp=+v;S.pg=1;render();return}
  if(h){const p=h.parentNode,was=p.classList.contains('open');closeDd();if(!was){p.classList.add('open');h.setAttribute('aria-expanded','true')}return}
- const b=e.target.closest&&e.target.closest('[data-m],[data-p],[data-e],[data-d],[data-ob],[data-pm],[data-mn],[data-ra],[data-fl]');if(!b)return;const d=b.dataset;
- if(d.m){S.mo=d.m;S.pm='month';S.pg=1;render()}else if(d.pm){S.pm=d.pm;S.pg=1;render()}else if(d.mn!==undefined){S.mini=!S.mini;render()}else if(d.fl!==undefined){S.fh=!S.fh;render()}else if(d.ra!==undefined){const tr=b.closest('tr');document.querySelectorAll('#tbl tr.ro').forEach(r=>{if(r!==tr){r.classList.remove('ro');const q=r.querySelector('.ra');if(q){q.setAttribute('aria-expanded','false');q.setAttribute('aria-label','Show actions')}}});const o=tr.classList.toggle('ro');b.setAttribute('aria-expanded',o);b.setAttribute('aria-label',o?'Hide actions':'Show actions')}else if(d.p){S.pg+=+d.p;$('#tbl').innerHTML=tbl(S.tab)}else if(d.e)openEdit(d.e);else if(d.d)del(d.d);else if(d.ob!==undefined)openOb()});
+ const b=e.target.closest&&e.target.closest('[data-m],[data-p],[data-e],[data-d],[data-ob],[data-pm],[data-mn],[data-ra],[data-fl],[data-vm],[data-cf]');if(!b)return;const d=b.dataset;
+ if(d.m){S.mo=d.m;S.pm='month';S.pg=1;render()}
+ else if(d.pm){S.pm=d.pm;S.pg=1;render()}
+ else if(d.vm){S.vm=d.vm;STORE.setItem('ledger.vm',S.vm);render()}
+ else if(d.cf){S.q=S.q===d.cf?'':d.cf;S.pg=1;render()}
+ else if(d.mn!==undefined){S.mini=!S.mini;render()}
+ else if(d.fl!==undefined){S.fh=!S.fh;render()}
+ else if(d.ra!==undefined){const tr=b.closest('tr');document.querySelectorAll('#tbl tr.ro').forEach(r=>{if(r!==tr){r.classList.remove('ro');const q=r.querySelector('.ra');if(q){q.setAttribute('aria-expanded','false');q.setAttribute('aria-label','Show actions')}}});const o=tr.classList.toggle('ro');b.setAttribute('aria-expanded',o);b.setAttribute('aria-label',o?'Hide actions':'Show actions')}
+ else if(d.p){S.pg+=+d.p;$('#tbl').innerHTML=tbl(S.tab)}
+ else if(d.e)openEdit(d.e)
+ else if(d.d)del(d.d)
+ else if(d.ob!==undefined)openOb()});
 IC.pl=SV+'<path d="M15 6l-6 6 6 6"/></svg>';IC.nx=SV+'<path d="M9 6l6 6-6 6"/></svg>';
 const cal=document.createElement('div');cal.className='cal';cal.hidden=true;document.body.appendChild(cal);
 let CI=null,CY=0,CM=0;
@@ -252,7 +315,8 @@ document.addEventListener('click',e=>{const dp=e.target.closest('[data-dp]');if(
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!cal.hidden){e.preventDefault();cal.hidden=true}
  if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('[data-dp]')){e.preventDefault();calOpen(e.target)}});
 addEventListener('online',()=>{render();sync()});addEventListener('offline',render);
-// ---- Sync with the Google Sheet (M2 and M3) ----
+
+// ---- Sync with the Google Sheet ----
 const DEV=(()=>{let d=STORE.getItem('ledger.device');if(!d){d='d_'+uid();STORE.setItem('ledger.device',d)}return d})();
 const API=()=>({url:STORE.getItem('ledger.api.url')||'',token:STORE.getItem('ledger.api.token')||''});
 const syncOn=()=>{const a=API();return !!(a.url&&a.token)};
@@ -285,7 +349,6 @@ const LAST={};
 const snapSet=(t,id,h)=>{(SNAP[t]=SNAP[t]||{})[id]=h};
 const obHash=()=>String(r2(OB.INR||0));
 const EPOCH='1970-01-01T00:00:00.000Z';
-// Records changed since the last confirmed sync get a fresh updated_at.
 function stamp(init){
  CT.forEach(c=>{if(!c.id)c.id='c_'+hs(c.n.toLowerCase())});
  S.tx.forEach(x=>{x.date=fixDate(x.date);if(!x.cat)x.cat='📦 Other'});
