@@ -68,7 +68,7 @@ const sum=(t,ty)=>t.filter(x=>x.type===ty).reduce((a,x)=>a+x.amt,0);
 // Theme initialization
 const initTheme=STORE.getItem('ledger.theme');
 if(initTheme)document.documentElement.setAttribute('data-theme',initTheme);
-$('#thb').onclick=()=>{
+if($('#thb'))$('#thb').onclick=()=>{
  const cur=document.documentElement.getAttribute('data-theme');
  const next=cur==='dark'?'light':cur==='light'?'dark':(matchMedia('(prefers-color-scheme:dark)').matches?'light':'dark');
  document.documentElement.setAttribute('data-theme',next);
@@ -235,11 +235,11 @@ $('#pys').onclick=()=>{const d=DB.find(x=>x.id===S.did),a=parseFloat($('#pya').v
  if(!t){$('#pye').textContent='Pick a date.';return}
  d.pays.push({id:uid(),amt:r2(a),date:t,note:$('#pyn').value.trim()});S.xp[d.id]=1;dsave();$('#pyd').close();render();toast(rem(d)<=0?'Fully paid':'Payment saved. Remaining '+fmt(d.cur,rem(d)))};
 
-// Backup & Restore handlers
+// Backup & Restore handlers (Fixed syntax and null-safe guards)
 const dlFile=(name,type,content)=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
-$('#bkb').onclick()=>{$('#bke').textContent='';$('#bk-file').value='';$('#bkd').showModal()};
-$('#bkc').onclick=()=>$('#bkd').close();
-$('#bk-csv').onclick=()=>{
+if($('#bkb'))$('#bkb').onclick=()=>{if($('#bke'))$('#bke').textContent='';if($('#bk-file'))$('#bk-file').value='';if($('#bkd'))$('#bkd').showModal()};
+if($('#bkc'))$('#bkc').onclick=()=>$('#bkd').close();
+if($('#bk-csv'))$('#bk-csv').onclick=()=>{
  const rows=[['ID','Date','Currency','Type','Amount','Category','Notes']];
  S.tx.filter(x=>!x.del).sort((a,b)=>b.date.localeCompare(a.date)).forEach(x=>{
   rows.push([x.id,x.date,x.cur,x.type==='in'?'Received':'Spent',x.amt,x.cat,x.note||'']);
@@ -248,19 +248,19 @@ $('#bk-csv').onclick=()=>{
  dlFile(`daily-ledger-${iso(0)}.csv`,'text/csv;charset=utf-8',csv);
  toast('CSV exported');
 };
-$('#bk-json').onclick=()=>{
+if($('#bk-json'))$('#bk-json').onclick=()=>{
  const payload=JSON.stringify({version:9,exported_at:new Date().toISOString(),tx:S.tx,cats:CT,debts:DB,ob:OB},null,2);
  dlFile(`daily-ledger-backup-${iso(0)}.json`,'application/json',payload);
  toast('JSON backup downloaded');
 };
-$('#bk-file').onchange=async e=>{
+if($('#bk-file'))$('#bk-file').onchange=async e=>{
  const f=e.target.files&&e.target.files[0];if(!f)return;
  try{
   const j=JSON.parse(await f.text());
   if(!Array.isArray(j.tx))throw new Error('Invalid backup file');
   S.tx=j.tx;if(Array.isArray(j.cats))CT=j.cats;if(Array.isArray(j.debts))DB=j.debts;if(j.ob)OB=j.ob;
   stamp();persist();$('#bkd').close();render();sync();toast('Backup restored');
- }catch(err){$('#bke').textContent='Could not read backup JSON.'}
+ }catch(err){if($('#bke'))$('#bke').textContent='Could not read backup JSON.'}
 };
 
 $('#app').addEventListener('input',e=>{if(e.target.id==='dq'){S.dq=e.target.value;$('#dlist').innerHTML=dlist()}});
