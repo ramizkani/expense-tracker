@@ -9,6 +9,9 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Daily ledger · AED &amp; INR</title>
+<meta name="description" content="Personal daily financial ledger and debt tracker for AED and INR with offline storage, category management, and Google Sheets sync.">
+<meta property="og:title" content="Daily ledger · AED &amp; INR">
+<meta property="og:description" content="Personal daily financial ledger and debt tracker for AED and INR with offline storage, category management, and Google Sheets sync.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400..700&family=JetBrains+Mono:wght@500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap">
@@ -43,9 +46,12 @@ button{cursor:pointer}
 /* Header: Title on top, Status pill + Action buttons stacked neatly below */
 .top{display:flex;flex-direction:column;align-items:flex-start;gap:12px;margin-bottom:18px}
 h1{font:800 26px/1.1 var(--font-display);margin:0;letter-spacing:-.03em}
-.stat{display:flex;gap:8px;align-items:center;flex-wrap:wrap;width:100%}
-.pill{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:99px;background:var(--card);border:1px solid var(--line);font-size:13px;font-weight:500}
-.dot{width:9px;height:9px;border-radius:50%;background:var(--in)}
+.stat{display:flex;flex-direction:column;gap:8px;align-items:flex-start;width:100%}
+.stat-r{display:flex;gap:8px;align-items:center;width:100%}
+.pill{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:99px;background:var(--card);border:1px solid var(--line);font-size:13px;font-weight:500;min-width:0;max-width:100%}
+#stx{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--in);flex-shrink:0}
+.stat-r button{flex-shrink:0}
 .pill.off .dot{background:var(--out)}
 .pill.sy .dot{background:var(--warn);animation:pu 1s infinite}
 @keyframes pu{50%{opacity:.3}}
@@ -55,9 +61,10 @@ h1{font:800 26px/1.1 var(--font-display);margin:0;letter-spacing:-.03em}
 .icon-btn:hover{border-color:var(--acc);background:color-mix(in srgb,var(--acc) 10%,var(--card))}
 .icon-btn svg{width:17px;height:17px;display:block}
 
-/* Navigation Tabs & 3 Distinct Themes */
-.tabs{display:flex;gap:4px;margin:0 0 18px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:4px;width:max-content;max-width:100%}
-.tabs button{border:0;background:none;padding:8px 18px;border-radius:10px;color:var(--mut);font:600 14px var(--font-display);transition:background .15s,color .15s}
+/* Unified Bottom Navigation & Action Dock (4 equal columns) */
+.bbar{position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));max-width:640px;margin:0 auto;z-index:40;display:grid;grid-template-columns:repeat(4,1fr);align-items:center;gap:5px;padding:5px;border-radius:20px;background:color-mix(in srgb,var(--card) 94%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid var(--line);box-shadow:0 12px 34px rgba(10,20,40,.22)}
+.tabs{grid-column:span 3;display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin:0;padding:0;background:none;border:0}
+.tabs button{width:100%;min-width:0;height:40px;border:0;background:var(--bg);padding:0 6px;border-radius:14px;color:var(--mut);font:700 13.5px/1 var(--font-display);display:inline-flex;align-items:center;justify-content:center;transition:background .15s,color .15s;white-space:nowrap}
 .tabs button.on{background:var(--ink);color:var(--card)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:24px;overflow:hidden;box-shadow:0 6px 24px rgba(10,20,40,.05)}
 .aed{--acc:var(--aed)}.inr{--acc:var(--inr)}.dbt{--acc:var(--dbt)}
@@ -167,7 +174,6 @@ tr.k td:not(.dt){border-bottom:1px dashed var(--line)}
 @media(max-width:700px){
  .vm-auto .tw.tx-tw{display:none}
  .vm-auto .mfeed{display:grid}
- .tb .vm-seg{flex:1 1 100%;order:3}
 }
 
 .hg{display:grid;gap:18px}.hl{min-width:0}
@@ -208,7 +214,20 @@ td b{font-weight:600;display:block}td span.n{display:block;font-size:12.5px;colo
 .amt.in{color:var(--in)}.amt.out{color:var(--out)}
 .sd{display:none}
 .empty{padding:24px;text-align:center;color:var(--mut)}
-.fab{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--card);border:0;border-radius:99px;padding:15px 22px;font:700 14.5px var(--font-display);box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:35}
+.vm-dock{display:inline-flex;align-items:center;gap:1px;height:34px;background:var(--card);border:1px solid var(--line);border-radius:99px;padding:2px;flex-shrink:0}
+.vm-arr{width:22px;height:28px;border:0;background:none;border-radius:99px;color:var(--mut);display:inline-grid;place-items:center;padding:0;transition:color .15s,background .15s}
+.vm-arr:hover{color:var(--ink);background:color-mix(in srgb,var(--acc) 12%,transparent)}
+.vm-arr svg{transition:transform .25s ease;display:block}
+.vm-dock.col .vm-arr svg{transform:rotate(180deg)}
+.vm-dock .vm-seg{display:inline-flex;align-items:center;gap:2px;background:transparent;padding:0;border-radius:99px}
+.vm-dock .vm-seg button{width:28px;height:28px;padding:0;border-radius:99px;display:inline-grid;place-items:center;color:var(--mut);transition:width .24s ease,opacity .18s ease,background .15s,color .15s;overflow:hidden}
+.vm-dock .vm-seg button svg{display:block;flex-shrink:0}
+.vm-dock .vm-seg button.on{background:color-mix(in srgb,var(--acc) 16%,var(--bg));color:var(--acc);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--acc) 35%,var(--line))}
+.vm-dock.col .vm-seg{gap:0}
+.vm-dock.col .vm-seg button:not(.on){width:0;opacity:0;padding:0;margin:0;pointer-events:none}
+.fab{width:100%;min-width:0;background:var(--ink);color:var(--card);border:0;border-radius:14px;padding:0 6px;height:40px;font:700 13.5px/1 var(--font-display);display:inline-flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap;transition:transform .12s}
+.fab:active{transform:scale(.97)}
+.fab svg{display:block;flex-shrink:0}
 dialog{border:0;border-radius:26px;padding:0;width:min(440px,calc(100% - 20px));background:var(--card);color:var(--ink);box-shadow:0 20px 50px rgba(0,0,0,.35)}
 dialog::backdrop{background:rgba(8,12,18,.55);backdrop-filter:blur(3px)}
 .sh{padding:20px;display:grid;gap:14px}
@@ -238,11 +257,7 @@ tr.ro .ax{max-width:90px;opacity:1;visibility:visible;transform:none;transition-
 .pn .ddm{background:var(--card);top:auto;bottom:calc(100% + 8px);left:auto;right:0}
 
 @media(max-width:700px){
- .tabs{position:fixed;left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:40;margin:0;width:auto;max-width:none;padding:5px;border-radius:20px;background:color-mix(in srgb,var(--card) 92%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 10px 30px rgba(10,20,40,.22)}
- .tabs button{flex:1;padding:12px 0;border-radius:15px;font-weight:700}
- .wrap{padding-bottom:190px}
- .fab{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
- #toast{bottom:calc(150px + env(safe-area-inset-bottom,0px))}
+ .wrap{padding-bottom:104px}
  .cur{flex-wrap:wrap;row-gap:8px}
  dialog{width:100%;max-width:100%;margin:auto 0 0 0;border-radius:26px 26px 0 0;max-height:92vh;overflow-y:auto}
 }
@@ -253,18 +268,43 @@ tr.ro .ax{max-width:90px;opacity:1;visibility:visible;transform:none;transition-
  <div class="top">
   <h1>Daily ledger</h1>
   <div class="stat">
-   <span class="pill" id="st"><i class="dot"></i><span id="stx"></span></span>
-   <button class="ghost" id="tg"></button>
-   <button class="ghost" id="cmb">Categories</button>
-   <button class="ghost" id="bkb">Backup</button>
-   <button class="ghost" id="pl">Sync</button>
-   <button class="icon-btn" id="thb" aria-label="Toggle theme" title="Switch light / dark theme"></button>
+   <div class="stat-r">
+    <span class="pill" id="st"><i class="dot"></i><span id="stx"></span></span>
+    <button class="ghost" id="tg"></button>
+    <button class="ghost" id="cmb">Categories</button>
+   </div>
+   <div class="stat-r">
+    <button class="ghost" id="bkb">Backup</button>
+    <button class="ghost" id="pl">Sync</button>
+    <button class="icon-btn" id="thb" aria-label="Toggle theme" title="Switch light / dark theme"></button>
+    <div class="vm-dock col" id="vmd">
+     <button type="button" class="vm-arr" id="vmt" aria-label="Show or hide layout options" aria-expanded="false" title="Show or hide layout options">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+     </button>
+     <div class="seg vm-seg" id="vms" role="group" aria-label="View layout">
+      <button type="button" data-vm="auto" aria-label="Auto view (responsive)" title="Auto view (responsive)">
+       <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="14" height="10" rx="2"/><path d="M6 18h4M8 14v4"/><rect x="14" y="9" width="8" height="11" rx="1.8"/><path d="M17.5 17.5h1"/></svg>
+      </button>
+      <button type="button" data-vm="cards" aria-label="Cards view" title="Cards view">
+       <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="6.5" rx="2"/><rect x="3" y="13.5" width="18" height="6.5" rx="2"/></svg>
+      </button>
+      <button type="button" data-vm="table" aria-label="Table view" title="Table view">
+       <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9.5h18M3 14.8h18M9.5 4v16"/></svg>
+      </button>
+     </div>
+    </div>
+   </div>
   </div>
  </div>
- <div class="tabs" role="tablist"><button class="on" data-t="AED">AED</button><button data-t="INR">INR</button><button data-t="D">Debts</button></div>
  <main id="app"></main>
 </div>
-<button class="fab" id="add">+ Add entry</button>
+<div class="bbar">
+ <div class="tabs" role="tablist"><button class="on" data-t="AED">AED</button><button data-t="INR">INR</button><button data-t="D">Debts</button></div>
+ <button class="fab" id="add" aria-label="Add entry" title="Add entry">
+  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+  <span id="add-tx">Add</span>
+ </button>
+</div>
 <div id="toast" role="status"></div>
 
 <dialog id="dlg"><div class="sh">
