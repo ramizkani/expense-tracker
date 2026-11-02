@@ -60,8 +60,8 @@ function catStrip(t,c){
  <div class="cb-pills">${top.map(([k,v])=>`<button type="button" class="cb-p${S.q===k?' on':''}" data-cf="${esc(k)}"><span>${esc(k)}</span><em>${Math.round(v/tot*100)}%</em></button>`).join('')}</div></div>`;
 }
 
-// mini: true and fh: false keep chart/debts and dropdowns closed by default
-let S={tx:null,off:false,tab:'AED',cur:'AED',mo:mk(0),q:'',f:'all',pp:10,pg:1,eid:null,dcur:'INR',ds:'open',dq:'',did:null,xp:{},pm:'month',rf:mk(0)+'-01',rt:iso(0),mini:true,fh:false,type:'out',cat:'',busy:false,vm:STORE.getItem('ledger.vm')||'auto'};
+// mini: true and fh: true keep both chart/debts and filter section hidden by default
+let S={tx:null,off:false,tab:'AED',cur:'AED',mo:mk(0),q:'',f:'all',pp:10,pg:1,eid:null,dcur:'INR',ds:'open',dq:'',did:null,xp:{},pm:'month',rf:mk(0)+'-01',rt:iso(0),mini:true,fh:true,type:'out',cat:'',busy:false,vm:STORE.getItem('ledger.vm')||'auto'};
 try{const r=STORE.getItem(LS);if(r)S.tx=JSON.parse(r)}catch(e){}
 if(!S.tx)S.tx=[];
 const save=()=>{bumpCalc();try{STORE.setItem(LS,JSON.stringify(S.tx))}catch(e){}stamp();schedSync()};
@@ -76,7 +76,7 @@ const IC={
  moon:SV+'<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>'
 };
 
-// Theme initialization with crisp SVG Sun/Moon icon
+// Theme initialization with SVG Sun/Moon icon
 const isDark=()=>{
  const t=document.documentElement.getAttribute('data-theme');
  return t?t==='dark':matchMedia('(prefers-color-scheme:dark)').matches;
@@ -168,14 +168,20 @@ const dlab=d=>rem(d)<=0?['Settled','in']:paid(d)>0?['Partial','mid']:['Open','op
 function dlist(){
  const c=S.dcur,q=S.dq.toLowerCase(),dt=s=>new Date(s+'T00:00').toLocaleDateString('en',{day:'2-digit',month:'short',year:'numeric'});
  const rows=DB.filter(d=>d.cur===c&&!d.del&&(S.ds==='all'||(S.ds==='open'?rem(d)>0:rem(d)<=0))&&(!q||(d.who+' '+d.note).toLowerCase().includes(q))).sort((a,b)=>b.date.localeCompare(a.date)||b.ts-a.ts);
+ const dc= rows.map((d)=>{
+  const r=rem(d),p=paid(d),pc=d.amt?Math.min(100,Math.round(p/d.amt*100)):0,[sl,sc]=dlab(d),op=S.xp[d.id];
+  const pays=d.pays.filter(p=>!p.del).sort((a,b)=>b.date.localeCompare(a.date));
+  return `<div class="mday"><div class="mday-h"><b>${esc(d.who)}</b><span class="st ${sc}">${sl} · ${pc}%</span></div><div class="mrow"><div class="mrow-l"><b><span class="tp ${d.dir==='lent'?'lent':'out'}">${d.dir==='lent'?'They owe me':'I owe them'}</span></b><span style="margin-top:4px">${dt(d.date)} · ${esc(d.note||'No notes')}</span></div><div class="mrow-r"><div class="mrow-amt"><b class="num">${fmt(c,r)} left</b><small>of ${fmt(c,d.amt)} (Paid ${fmt(c,p)})</small></div></div></div><div class="mrow" style="background:var(--bg);padding:8px 14px"><span class="hint">${pays.length} ${pays.length===1?'payment':'payments'}</span><div class="mrow-ac">${r>0?`<button class="ghost pay" data-dk="pay:${d.id}">Pay</button>`:''}<button class="ib tg" data-dk="xp:${d.id}" aria-expanded="${!!op}">${IC.dn}</button><button class="ib" data-dk="edit:${d.id}">${IC.e}</button><button class="ib d" data-dk="del:${d.id}">${IC.d}</button></div></div>${op?`<div style="padding:8px 14px;border-top:1px dashed var(--line);font-size:13px">${pays.map(y=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0"><span>${dt(y.date)} · ${esc(y.note||'Payment')}</span><span style="display:flex;align-items:center;gap:6px"><b class="num">${fmt(c,y.amt)}</b><button class="ib d" style="width:26px;height:26px" data-dk="dp:${d.id}:${y.id}">${IC.d}</button></span></div>`).join('')||'<div class="hint">No payments yet.</div>'}</div>`:''}</div>`;
+ }).join('');
  const body=rows.map((d,i)=>{const r=rem(d),p=paid(d),pc=d.amt?Math.min(100,Math.round(p/d.amt*100)):0,[sl,sc]=dlab(d),op=S.xp[d.id];
   const sub=`<tr class="sub"><td></td><td colspan="8"><div class="ph"><div class="pht"><b>Payment history</b><span class="n">${d.pays.filter(p=>!p.del).length} ${d.pays.filter(p=>!p.del).length===1?'payment':'payments'}</span></div>${d.pays.filter(p=>!p.del).sort((a,b)=>b.date.localeCompare(a.date)).map(y=>`<div class="pr"><span>${dt(y.date)}</span><span class="n">${esc(y.note||'Payment')}</span><b class="num">${fmt(c,y.amt)}</b><button class="ib d" data-dk="dp:${d.id}:${y.id}" aria-label="Delete payment" title="Delete payment">${IC.d}</button></div>`).join('')||'<div class="n">No payments yet.</div>'}</div></td></tr>`;
-  return `<tr class="f${op?' xo':''}"><td class="num">${i+1}</td><td>${dt(d.date)}</td><td><b>${esc(d.who)}</b><span class="n">${esc(d.note||'No notes')}</span></td><td><span class="tp ${d.dir==='lent'?'':'out'}">${d.dir==='lent'?'They owe me':'I owe them'}</span></td><td class="r num">${fmt(c,d.amt)}</td><td class="r num">${fmt(c,p)}</td><td class="r av">${fmt(c,r)}<span class="pb"><i style="width:${pc}%"></i></span></td><td><span class="st ${sc}">${sl}</span></td><td class="ac">${r>0?`<button class="ghost pay" data-dk="pay:${d.id}">Pay</button>`:''}<button class="ib tg" data-dk="xp:${d.id}" aria-label="Payment history" title="Payment history" aria-expanded="${!!op}">${IC.dn}</button><button class="ib" data-dk="edit:${d.id}" aria-label="Edit debt" title="Edit">${IC.e}</button><button class="ib d" data-dk="del:${d.id}" aria-label="Delete debt" title="Delete">${IC.d}</button></td></tr>${sub}`}).join('');
- return `<div class="tw"><table class="lt dtb"><colgroup><col style="width:46px"><col style="width:108px"><col><col style="width:112px"><col style="width:92px"><col style="width:92px"><col style="width:120px"><col style="width:84px"><col style="width:176px"></colgroup><thead><tr><th>S.no</th><th>Date</th><th>Person / notes</th><th>Type</th><th class="r">Amount</th><th class="r">Paid</th><th class="r">Remaining</th><th>Status</th><th class="r">Actions</th></tr></thead><tbody>${body||`<tr><td colspan="9" class="empty">No debts here.</td></tr>`}</tbody></table></div>`;
+  return `<tr class="f${op?' xo':''}"><td class="num">${i+1}</td><td>${dt(d.date)}</td><td><b>${esc(d.who)}</b><span class="n">${esc(d.note||'No notes')}</span></td><td><span class="tp ${d.dir==='lent'?'lent':'out'}">${d.dir==='lent'?'They owe me':'I owe them'}</span></td><td class="r num">${fmt(c,d.amt)}</td><td class="r num">${fmt(c,p)}</td><td class="r av">${fmt(c,r)}<span class="pb"><i style="width:${pc}%"></i></span></td><td><span class="st ${sc}">${sl}</span></td><td class="ac">${r>0?`<button class="ghost pay" data-dk="pay:${d.id}">Pay</button>`:''}<button class="ib tg" data-dk="xp:${d.id}" aria-label="Payment history" title="Payment history" aria-expanded="${!!op}">${IC.dn}</button><button class="ib" data-dk="edit:${d.id}" aria-label="Edit debt" title="Edit">${IC.e}</button><button class="ib d" data-dk="del:${d.id}" aria-label="Delete debt" title="Delete">${IC.d}</button></td></tr>${sub}`}).join('');
+ return `<div class="vm-${S.vm}"><div class="mfeed">${dc||'<div class="empty">No debts here.</div>'}</div><div class="tw tx-tw"><table class="lt dtb"><colgroup><col style="width:46px"><col style="width:108px"><col><col style="width:112px"><col style="width:92px"><col style="width:92px"><col style="width:120px"><col style="width:84px"><col style="width:176px"></colgroup><thead><tr><th>S.no</th><th>Date</th><th>Person / notes</th><th>Type</th><th class="r">Amount</th><th class="r">Paid</th><th class="r">Remaining</th><th>Status</th><th class="r">Actions</th></tr></thead><tbody>${body||`<tr><td colspan="9" class="empty">No debts here.</td></tr>`}</tbody></table></div></div>`;
 }
-function debtsTab(){const c=S.dcur,L=DB.filter(d=>d.cur===c&&!d.del),got=r2(L.filter(d=>d.dir==='lent').reduce((a,d)=>a+rem(d),0)),ow=r2(L.filter(d=>d.dir==='owe').reduce((a,d)=>a+rem(d),0));
+
+function debtsTab(){const c=S.dcur,L=DB.filter(d=>d.cur===c&&!d.del),got=r2(L.filter(d=>d.dir==='lent').reduce((a,d)=>a+rem(d),0)),ow=r2(L.filter(d=>d.dir==='owe').reduce((a,d)=>a+rem(d),0)),net=r2(got-ow);
  const sg=(k,v,l)=>`<button data-dk="${k}:${v}" class="${(k==='cur'?S.dcur:S.ds)===v?'on':''}">${l}</button>`;
- return `<section class="card wide ${c.toLowerCase()}"><div class="head"><div class="cur"><span>Debts and part-payments</span><span class="code">${c}</span></div><div class="io" style="margin-top:14px;gap:30px"><div class="i">Owed to you<b>${fmt(c,got)}</b></div><div class="o">You owe<b>${fmt(c,ow)}</b></div><div>Net<b>${fmt(c,r2(got-ow))}</b></div></div></div>
+ return `<section class="card wide dbt"><div class="head"><div class="cur"><span>Debts &amp; part-payments · violet ledger</span><span class="code">${c} · DEBTS</span></div><div class="bal">${net>=0?'+':'−'}${fmt(c,Math.abs(net))}</div><div class="io"><div class="i">Owed to you<b>${fmt(c,got)}</b></div><div class="o">You owe<b>${fmt(c,ow)}</b></div><div class="net-dbt">Active records<b>${L.filter(d=>rem(d)>0).length} open</b></div></div></div>
  <div class="tb"><div class="seg">${sg('cur','AED','AED')}${sg('cur','INR','INR')}</div><div class="seg">${sg('st','open','Open')}${sg('st','done','Settled')}${sg('st','all','All')}</div><input id="dq" type="search" placeholder="Search person or notes" aria-label="Search debts" value="${esc(S.dq)}"></div>
  <div id="dlist" style="padding-bottom:10px">${dlist()}</div></section>`}
 
@@ -233,22 +239,35 @@ $('#sv').onclick=()=>{
  toast(syncOn()?(online()?'Saved. Syncing…':'Saved offline. Will sync when online.'):'Saved on this device');sync();
 };
 document.querySelector('.tabs').onclick=e=>{const t=e.target.dataset.t;if(!t)return;S.tab=t;if(t!=='D')S.cur=t;render()};
-function renderCm(){$('#cl').innerHTML=CT.map((c,i)=>c.del?'':`<div class="crow"><input type="text" data-n="${i}" value="${esc(c.n)}" aria-label="Category name"><button class="ib d" data-x="${i}" aria-label="Delete category" title="Delete">${IC.d}</button><div class="seg">${[['out','Spent'],['in','Received'],['both','Both']].map(([v,l])=>`<button data-t="${i}" data-v="${v}" class="${c.t===v?'on':''}">${l}</button>`).join('')}</div></div>`).join('')}
-let NT='out';
+
+// Redesigned Compact Category Manager
+let CMF='all',NT='out';
+const TLAB={out:'Spent',in:'Received',both:'Both'};
+const TNEXT={out:'in',in:'both',both:'out'};
+function renderCm(){
+ const active=CT.filter(c=>!c.del);
+ if($('#cm-cnt'))$('#cm-cnt').textContent=active.length+' active';
+ if($('#cm-f'))document.querySelectorAll('#cm-f button').forEach(b=>b.classList.toggle('on',b.dataset.f===CMF));
+ const shown=CT.map((c,i)=>({c,i})).filter(x=>!x.c.del&&(CMF==='all'||x.c.t===CMF));
+ $('#cl').innerHTML=shown.map(({c,i})=>`<div class="crow2"><input type="text" data-n="${i}" value="${esc(c.n)}" aria-label="Category name"><button type="button" class="tp-btn ${c.t}" data-cyc="${i}" title="Tap to switch type">${TLAB[c.t]} ↻</button><button type="button" class="ib d" style="width:30px;height:30px;margin:0" data-x="${i}" aria-label="Delete category" title="Delete">${IC.d}</button></div>`).join('')||'<div class="empty" style="padding:14px">No categories in this filter.</div>';
+}
+if($('#cm-f'))$('#cm-f').onclick=e=>{const f=e.target.dataset.f;if(!f)return;CMF=f;renderCm()};
+if($('#em-bar'))$('#em-bar').onclick=e=>{const b=e.target.closest('[data-em]');if(!b)return;const em=b.dataset.em,inp=$('#cn');inp.value=em+' '+inp.value.replace(/^[\p{Emoji}\u200d\ufe0f]+\s*/u,'');inp.focus()};
 $('#ct').onclick=e=>{const v=e.target.dataset.v;if(!v)return;NT=v;document.querySelectorAll('#ct button').forEach(b=>b.classList.toggle('on',b.dataset.v===v))};
 $('#cl').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const d=b.dataset;
- if(d.t!==undefined)CT[+d.t].t=d.v;
- else if(d.x!==undefined){if(CT.filter(x=>!x.del).length<2)return;CT[+d.x].del=1}
+ if(d.cyc!==undefined){const c=CT[+d.cyc];c.t=TNEXT[c.t]||'out'}
+ else if(d.x!==undefined){if(CT.filter(x=>!x.del).length<2){$('#ce').textContent='Keep at least 2 categories.';return}CT[+d.x].del=1}
  else return;
- saveC();renderCm()});
-$('#cmb').onclick=()=>{renderCm();$('#ce').textContent='';$('#cm').showModal()};
+ saveC();renderCm();paint()});
+$('#cmb').onclick=()=>{CMF='all';renderCm();$('#ce').textContent='';$('#cm').showModal()};
 $('#cc').onclick=()=>$('#cm').close();
+
 function openOb(){$('#obv').value=OB.INR||'';$('#obe').textContent='';$('#obd').showModal();$('#obv').focus()}
 $('#obs').onclick=()=>{const v=parseFloat($('#obv').value);if(isNaN(v)){$('#obe').textContent='Enter an amount (0 is fine).';return}OB.INR=r2(v);bumpCalc();try{STORE.setItem(LO,JSON.stringify(OB))}catch(e){}stamp();schedSync();$('#obd').close();render();toast('Opening balance saved')};
 $('#obc').onclick=()=>$('#obd').close();
 let DD='lent';
 
-function openDb(id){const d=id&&DB.find(x=>x.id===id);S.did=d?d.id:null;DD=d?d.dir:'lent';document.querySelectorAll('#dbs button').forEach(b=>b.classList.toggle('on',b.dataset.v===DD));$('#dbh').textContent=d?'Edit debt':'Add debt';$('#dbw').value=d?d.who:'';$('#dba').value=d?d.amt:'';$('#dbn').value=d?d.note:'';$('#dbt').value=d?d.date:iso(0);$('#dbe').textContent='';$('#dbd').style.setProperty('--acc',S.dcur==='AED'?'var(--aed)':'var(--inr)');$('#dbd').showModal();$('#dbw').focus()}
+function openDb(id){const d=id&&DB.find(x=>x.id===id);S.did=d?d.id:null;DD=d?d.dir:'lent';document.querySelectorAll('#dbs button').forEach(b=>b.classList.toggle('on',b.dataset.v===DD));$('#dbh').textContent=d?'Edit debt':'Add debt';$('#dbw').value=d?d.who:'';$('#dba').value=d?d.amt:'';$('#dbn').value=d?d.note:'';$('#dbt').value=d?d.date:iso(0);$('#dbe').textContent='';$('#dbd').style.setProperty('--acc','var(--dbt)');$('#dbd').showModal();$('#dbw').focus()}
 $('#dbs').onclick=e=>{const v=e.target.dataset.v;if(!v)return;DD=v;document.querySelectorAll('#dbs button').forEach(b=>b.classList.toggle('on',b.dataset.v===v))};
 $('#dbc').onclick=()=>$('#dbd').close();
 $('#dbv').onclick=()=>{const w=$('#dbw').value.trim(),a=parseFloat($('#dba').value),dt=$('#dbt').value,d=S.did&&DB.find(x=>x.id===S.did);
@@ -258,7 +277,7 @@ $('#dbv').onclick=()=>{const w=$('#dbw').value.trim(),a=parseFloat($('#dba').val
  if(d&&a<paid(d)){$('#dbe').textContent='Amount can’t be less than the '+fmt(d.cur,paid(d))+' already paid.';return}
  if(d)Object.assign(d,{who:w,amt:r2(a),dir:DD,note:$('#dbn').value.trim(),date:dt});else DB.push({id:uid(),cur:S.dcur,who:w,amt:r2(a),dir:DD,note:$('#dbn').value.trim(),date:dt,ts:Date.now(),pays:[]});
  dsave();$('#dbd').close();render();toast(d?'Debt updated':'Debt saved')};
-function openPay(id){const d=DB.find(x=>x.id===id);if(!d)return;S.did=id;$('#pyh').textContent=d.who+' · remaining '+fmt(d.cur,rem(d));$('#pya').value='';$('#pyt').value=iso(0);$('#pyn').value='';$('#pye').textContent='';$('#pyd').style.setProperty('--acc',d.cur==='AED'?'var(--aed)':'var(--inr)');$('#pyd').showModal();$('#pya').focus()}
+function openPay(id){const d=DB.find(x=>x.id===id);if(!d)return;S.did=id;$('#pyh').textContent=d.who+' · remaining '+fmt(d.cur,rem(d));$('#pya').value='';$('#pyt').value=iso(0);$('#pyn').value='';$('#pye').textContent='';$('#pyd').style.setProperty('--acc','var(--dbt)');$('#pyd').showModal();$('#pya').focus()}
 $('#pyf').onclick=()=>{const d=DB.find(x=>x.id===S.did);if(d)$('#pya').value=rem(d)};
 $('#pyc').onclick=()=>$('#pyd').close();
 $('#pys').onclick=()=>{const d=DB.find(x=>x.id===S.did),a=parseFloat($('#pya').value),t=$('#pyt').value;if(!d)return;
@@ -281,7 +300,7 @@ if($('#bk-csv'))$('#bk-csv').onclick=()=>{
  toast('CSV exported');
 };
 if($('#bk-json'))$('#bk-json').onclick=()=>{
- const payload=JSON.stringify({version:11,exported_at:new Date().toISOString(),tx:S.tx,cats:CT,debts:DB,ob:OB},null,2);
+ const payload=JSON.stringify({version:12,exported_at:new Date().toISOString(),tx:S.tx,cats:CT,debts:DB,ob:OB},null,2);
  dlFile(`daily-ledger-backup-${iso(0)}.json`,'application/json',payload);
  toast('JSON backup downloaded');
 };
@@ -300,7 +319,7 @@ $('#app').addEventListener('click',e=>{const b=e.target.closest('[data-dk]');if(
  if(a==='manage'){S.dcur=S.tab;S.tab='D';render()}
  else if(a==='cur'){S.dcur=i;render()}else if(a==='st'){S.ds=i;render()}
  else if(a==='add')openDb();else if(a==='edit')openDb(i);else if(a==='pay')openPay(i);
- else if(a==='xp'){S.xp[i]=!S.xp[i];b.closest('tr').classList.toggle('xo',!!S.xp[i]);b.setAttribute('aria-expanded',!!S.xp[i])}
+ else if(a==='xp'){S.xp[i]=!S.xp[i];render()}
  else if(a==='del'){const d=DB.find(x=>x.id===i);if(!d)return;d.del=1;dsave();render();toast('Debt deleted. Tap to undo.',()=>{d.del=0;dsave();render()})}
  else if(a==='dp'){const d=DB.find(x=>x.id===i),k=d?d.pays.findIndex(y=>y.id===j):-1;if(k<0)return;const y=d.pays[k];y.del=1;dsave();render();toast('Payment removed. Tap to undo.',()=>{y.del=0;dsave();render()})}});
 $('#cl').addEventListener('change',e=>{const el=e.target,d=el.dataset;
@@ -311,7 +330,7 @@ $('#cl').addEventListener('change',e=>{const el=e.target,d=el.dataset;
 $('#ca').onclick=()=>{const n=$('#cn').value.trim();
  if(!n){$('#ce').textContent='Enter a category name.';return}
  if(CT.some(x=>!x.del&&x.n.toLowerCase()===n.toLowerCase())){$('#ce').textContent='That category already exists.';return}
- const rv=CT.find(x=>x.del&&x.n.toLowerCase()===n.toLowerCase());if(rv){rv.del=0;rv.t=NT}else CT.push({n,t:NT,a:1});saveC();$('#cn').value='';$('#ce').textContent='';renderCm();toast('Category added')};
+ const rv=CT.find(x=>x.del&&x.n.toLowerCase()===n.toLowerCase());if(rv){rv.del=0;rv.t=NT}else CT.push({n,t:NT,a:1});saveC();$('#cn').value='';$('#ce').textContent='';renderCm();paint();toast('Category added')};
 $('#app').addEventListener('change',e=>{const i=e.target.id;if(i==='mo')S.mo=e.target.value;else if(i==='ft')S.f=e.target.value;else if(i==='pp')S.pp=+e.target.value;else if(i==='rf')S.rf=e.target.value;else if(i==='rt')S.rt=e.target.value;else return;if(S.rf>S.rt){const z=S.rf;S.rf=S.rt;S.rt=z}S.pg=1;render()});
 $('#app').addEventListener('input',e=>{if(e.target.id==='q'){S.q=e.target.value;S.pg=1;$('#tbl').innerHTML=tbl(S.tab)}});
 $('#app').addEventListener('click',e=>{const o=e.target.closest('.ddo'),h=e.target.closest('.ddb');
