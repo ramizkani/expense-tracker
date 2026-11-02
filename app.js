@@ -202,7 +202,7 @@ function widget(c){
  <div class="io"><div class="i">Received · ${pShort()}<b>${fmt(c,pIn)}</b></div><div class="o">Spent · ${pShort()}<b>${fmt(c,pOut)}</b></div><div>Net · ${pShort()}<b>${pNet>=0?'+':'−'}${fmt(c,Math.abs(pNet))}</b></div></div>
  ${chart(t,c)}</div>${debts(c)}</div></div>
  <div class="lh${S.fh?' fh':''}"><div class="lc"><div class="seg pm">${[['month','Month'],['all','All time'],['range','Custom']].map(([v,l])=>`<button data-pm="${v}" class="${S.pm===v?'on':''}">${l}</button>`).join('')}</div>${S.pm==='range'?`<span class="rg"><input id="rf" type="text" readonly data-dp value="${S.rf}" aria-label="From date"><i>to</i><input id="rt" type="text" readonly data-dp value="${S.rt}" aria-label="To date"></span>`:S.pm==='all'?'':dd('mo','Month',ms.map(m=>{const n=t.filter(x=>x.date.slice(0,7)===m).length,net=r2(mtot(t,m,'in')-mtot(t,m,'out'));return{v:m,l:mlabel(m),s:n+(n===1?' entry':' entries'),r:(net>=0?'+':'\u2212')+fmt(c,Math.abs(net)),rc:net>=0?'in':'out'}}),S.mo)}</div><span class="lcnt">${fCntTxt(c)}</span><button class="ib tg vt" data-fl="1" aria-label="${S.fh?'Show filters':'Hide filters'}" aria-expanded="${!S.fh}" title="${S.fh?'Show filters':'Hide filters'}">${S.fh?IC.dn:IC.up}</button></div>
- <div class="tb${S.fh?' hid':''}"><input id="q" type="search" placeholder="Search category or notes" aria-label="Search" value="${esc(S.q)}">${dd('ft','Type filter',[{v:'all',l:'All types'},{v:'in',l:'Received',d:'var(--in)'},{v:'out',l:'Spent',d:'var(--out)'}],S.f)}<div class="seg vm-seg" aria-label="View layout">${[['auto','Auto'],['cards','Cards'],['table','Table']].map(([v,l])=>`<button type="button" data-vm="${v}" class="${S.vm===v?'on':''}">${l}</button>`).join('')}</div></div>
+ <div class="tb${S.fh?' hid':''}"><input id="q" type="search" placeholder="Search category or notes" aria-label="Search" value="${esc(S.q)}">${dd('ft','Type filter',[{v:'all',l:'All types'},{v:'in',l:'Received',d:'var(--in)'},{v:'out',l:'Spent',d:'var(--out)'}],S.f)}</div>
  <div id="tbl">${tbl(c)}</div></section>`;
 }
 
@@ -213,7 +213,8 @@ function render(){
  $('#stx').textContent=statusText(p,on);
  $('#app').innerHTML=S.tab==='D'?debtsTab():widget(S.tab);
  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===S.tab));
- $('#add').textContent=S.tab==='D'?'+ Add debt':'+ Add entry';
+ document.querySelectorAll('#vms [data-vm]').forEach(b=>b.classList.toggle('on',b.dataset.vm===S.vm));
+ const lbl=S.tab==='D'?'Add debt':'Add entry',atx=$('#add-tx');if(atx){atx.textContent='Add';$('#add').setAttribute('aria-label',lbl);$('#add').setAttribute('title',lbl)}else $('#add').textContent='+ '+lbl;
 }
 let tt;function toast(m,u){const t=$('#toast');t.textContent=m;t.style.pointerEvents=u?'auto':'none';t.style.cursor=u?'pointer':'';t.onclick=u?()=>{u();t.classList.remove('show')}:null;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),u?5000:2400)}
 
@@ -229,6 +230,14 @@ function openEdit(id){const x=S.tx.find(t=>t.id===id);if(!x)return;S.eid=id;S.cu
 function del(id){const x=S.tx.find(t=>t.id===id);if(!x)return;x.del=true;x.synced=false;x.ver=(x.ver||1)+1;save();render();sync();
  toast('Entry deleted. Tap to undo.',()=>{x.del=false;x.synced=false;x.ver=(x.ver||1)+1;save();render();sync()})}
 $('#add').onclick=()=>{if(S.tab==='D'){openDb();return}S.eid=null;$('#dh').textContent='New entry';$('#sv').textContent='Save entry';S.cur=S.tab;$('#am').value='';$('#nt').value='';$('#dt').value=iso(0);$('#er').textContent='';paint();$('#dlg').showModal();$('#am').focus()};
+if($('#vmd'))$('#vmd').onclick=e=>{
+ const dock=$('#vmd'),arr=$('#vmt');
+ if(e.target.closest('#vmt')){const col=dock.classList.toggle('col');if(arr)arr.setAttribute('aria-expanded',!col);return}
+ const b=e.target.closest('[data-vm]');
+ if(!b)return;
+ if(dock.classList.contains('col')){dock.classList.remove('col');if(arr)arr.setAttribute('aria-expanded','true');return}
+ S.vm=b.dataset.vm;STORE.setItem('ledger.vm',S.vm);dock.classList.add('col');if(arr)arr.setAttribute('aria-expanded','false');render();toast('View: '+({auto:'Auto',cards:'Cards',table:'Table'}[S.vm]||S.vm));
+};
 $('#cx').onclick=()=>$('#dlg').close();
 $('#sc').onclick=e=>{if(e.target.dataset.v){S.cur=e.target.dataset.v;paint()}};
 $('#sty').onclick=e=>{if(e.target.dataset.v){S.type=e.target.dataset.v;paint()}};
