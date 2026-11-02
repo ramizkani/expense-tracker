@@ -15,7 +15,9 @@ const CATS={out:['🍔 Food','🚌 Transport','🧾 Bills','🛍️ Shopping','�
 const LC='ledger.cats.v1';
 let CT=null;try{CT=JSON.parse(STORE.getItem(LC))}catch(e){}
 if(!CT){CT=CATS.out.map(n=>({n,t:'out',a:1}));CATS.in.forEach(n=>{const c=CT.find(x=>x.n===n);c?c.t='both':CT.push({n,t:'in',a:1})})}
-const saveC=()=>{try{STORE.setItem(LC,JSON.stringify(CT))}catch(e){}stamp();schedSync()};
+let calcVer=1;
+const bumpCalc=()=>{calcVer++};
+const saveC=()=>{bumpCalc();try{STORE.setItem(LC,JSON.stringify(CT))}catch(e){}stamp();schedSync()};
 const catsFor=ty=>CT.filter(c=>!c.del&&(c.t===ty||c.t==='both')).map(c=>c.n);
 const iso=n=>{const d=new Date();d.setDate(d.getDate()-n);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -58,30 +60,48 @@ function catStrip(t,c){
  <div class="cb-pills">${top.map(([k,v])=>`<button type="button" class="cb-p${S.q===k?' on':''}" data-cf="${esc(k)}"><span>${esc(k)}</span><em>${Math.round(v/tot*100)}%</em></button>`).join('')}</div></div>`;
 }
 
-let S={tx:null,off:false,tab:'AED',cur:'AED',mo:mk(0),q:'',f:'all',pp:10,pg:1,eid:null,dcur:'INR',ds:'open',dq:'',did:null,xp:{},pm:'month',rf:mk(0)+'-01',rt:iso(0),mini:true,type:'out',cat:'',busy:false,vm:STORE.getItem('ledger.vm')||'auto'};
+// mini: true and fh: false keep chart/debts and dropdowns closed by default
+let S={tx:null,off:false,tab:'AED',cur:'AED',mo:mk(0),q:'',f:'all',pp:10,pg:1,eid:null,dcur:'INR',ds:'open',dq:'',did:null,xp:{},pm:'month',rf:mk(0)+'-01',rt:iso(0),mini:true,fh:false,type:'out',cat:'',busy:false,vm:STORE.getItem('ledger.vm')||'auto'};
 try{const r=STORE.getItem(LS);if(r)S.tx=JSON.parse(r)}catch(e){}
 if(!S.tx)S.tx=[];
-const save=()=>{try{STORE.setItem(LS,JSON.stringify(S.tx))}catch(e){}stamp();schedSync()};
+const save=()=>{bumpCalc();try{STORE.setItem(LS,JSON.stringify(S.tx))}catch(e){}stamp();schedSync()};
 const online=()=>!S.off&&navigator.onLine;
 const sum=(t,ty)=>t.filter(x=>x.type===ty).reduce((a,x)=>a+x.amt,0);
 
-// Theme initialization
-const initTheme=STORE.getItem('ledger.theme');
-if(initTheme)document.documentElement.setAttribute('data-theme',initTheme);
-if($('#thb'))$('#thb').onclick=()=>{
- const cur=document.documentElement.getAttribute('data-theme');
- const next=cur==='dark'?'light':cur==='light'?'dark':(matchMedia('(prefers-color-scheme:dark)').matches?'light':'dark');
- document.documentElement.setAttribute('data-theme',next);
- STORE.setItem('ledger.theme',next);
+const SV='<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
+const IC={
+ e:SV+'<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+ d:SV+'<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>',
+ sun:SV+'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>',
+ moon:SV+'<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>'
 };
 
-const SV='<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
-const IC={e:SV+'<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',d:SV+'<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>'};
+// Theme initialization with crisp SVG Sun/Moon icon
+const isDark=()=>{
+ const t=document.documentElement.getAttribute('data-theme');
+ return t?t==='dark':matchMedia('(prefers-color-scheme:dark)').matches;
+};
+const syncThemeIcon=()=>{
+ if(!$('#thb'))return;
+ const d=isDark();
+ $('#thb').innerHTML=d?IC.sun:IC.moon;
+ $('#thb').setAttribute('title',d?'Switch to light mode':'Switch to dark mode');
+};
+const initTheme=STORE.getItem('ledger.theme');
+if(initTheme)document.documentElement.setAttribute('data-theme',initTheme);
+syncThemeIcon();
+if($('#thb'))$('#thb').onclick=()=>{
+ const next=isDark()?'light':'dark';
+ document.documentElement.setAttribute('data-theme',next);
+ STORE.setItem('ledger.theme',next);
+ syncThemeIcon();
+};
+
 const CH='<svg viewBox="0 0 12 8" width="12" height="8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 1l5 5 5-5"/></svg>';
 const CK='<svg viewBox="0 0 16 12" width="14" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 6l4 4 8-8"/></svg>';
 function dd(id,lab,o,val){const on=x=>String(x.v)===String(val),cur=o.find(on)||o[0],dot=x=>x.d?`<i class="dc" style="background:${x.d}"></i>`:'';
  return `<div class="dd" data-dd="${id}"><button type="button" class="ddb" aria-haspopup="listbox" aria-expanded="false" aria-label="${lab}">${dot(cur)}<span>${esc(cur.l)}</span>${CH}</button><div class="ddm" role="listbox">${o.map(x=>`<button type="button" role="option" class="ddo${on(x)?' on':''}" data-v="${x.v}" aria-selected="${on(x)}">${dot(x)}<span class="t"><b>${esc(x.l)}</b>${x.s?`<small>${esc(x.s)}</small>`:''}</span>${x.r?`<em class="${x.rc||''}">${esc(x.r)}</em>`:''}${on(x)?CK:''}</button>`).join('')}</div></div>`}
-const closeDd=()=>document.querySelectorAll('.dd.open').forEach(d=>{d.classList.remove('open');d.firstChild.setAttribute('aria-expanded','false')});
+const closeDd=()=>document.querySelectorAll('.dd.open').forEach(d=>{d.classList.remove('open');if(d.firstChild)d.firstChild.setAttribute('aria-expanded','false')});
 document.addEventListener('click',e=>{if(!e.target.closest('.dd'))closeDd()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDd()});
 const LO='ledger.ob.v1';let OB={INR:0};try{const o=JSON.parse(STORE.getItem(LO));if(o)OB=o}catch(e){}
@@ -103,7 +123,7 @@ function mcards(c,rows,all,av,bfrCard){
  return `<div class="mfeed">${groups.map(g=>{
   const day=all.filter(r=>r.date===g.date),net=r2(day.reduce((a,r)=>a+(r.type==='in'?r.amt:-r.amt),0));
   const dtStr=new Date(g.date+'T00:00').toLocaleDateString('en',{day:'2-digit',month:'short',year:'numeric'});
-  return `<div class="mday"><div class="mday-h"><b>${dtStr}</b><span>${day.length} ${day.length===1?'entry':'entries'} · <em class="${net<0?'out':'in'}" style="font-style:normal;font-weight:600">${net<0?'−':'+'}${fmt(c,Math.abs(net))}</em></span></div>${g.items.map(x=>`<div class="mrow"><div class="mrow-l"><b>${esc(x.cat)}</b><span>${esc(x.note||'No notes')}</span></div><div class="mrow-r"><div class="mrow-amt"><b class="amt ${x.type}">${x.type==='in'?'+':'−'}${fmt(c,x.amt)}</b>${av?`<small>Avail: ${fmt(c,av[x.id])}</small>`:''}</div><div class="mrow-ac"><button class="ib" data-e="${x.id}" aria-label="Edit entry">${IC.e}</button><button class="ib d" data-d="${x.id}" aria-label="Delete entry">${IC.d}</button></div></div></div>`).join('')}</div>`;
+  return `<div class="mday"><div class="mday-h"><b>${dtStr}</b><span>${day.length} ${day.length===1?'entry':'entries'} · <em class="num ${net<0?'out':'in'}" style="font-style:normal;font-weight:600">${net<0?'−':'+'}${fmt(c,Math.abs(net))}</em></span></div>${g.items.map(x=>`<div class="mrow"><div class="mrow-l"><b>${esc(x.cat)}</b><span>${esc(x.note||'No notes')}</span></div><div class="mrow-r"><div class="mrow-amt"><b class="amt ${x.type}">${x.type==='in'?'+':'−'}${fmt(c,x.amt)}</b>${av?`<small>Avail: ${fmt(c,av[x.id])}</small>`:''}</div><div class="mrow-ac"><button class="ib" data-e="${x.id}" aria-label="Edit entry">${IC.e}</button><button class="ib d" data-d="${x.id}" aria-label="Delete entry">${IC.d}</button></div></div></div>`).join('')}</div>`;
  }).join('')}${bfrCard||''}</div>`;
 }
 
@@ -112,25 +132,36 @@ function tbl(c){if(c==='INR')return ltbl(c);
  const pages=Math.max(1,Math.ceil(all.length/S.pp));S.pg=Math.max(1,Math.min(S.pg,pages));
  const st=(S.pg-1)*S.pp,rows=all.slice(st,st+S.pp);
  return `<div class="vm-${S.vm}">${mcards(c,rows,all,null,'')}<div class="tw tx-tw"><table class="lt"><colgroup><col style="width:46px"><col style="width:140px"><col><col style="width:92px"><col style="width:112px"><col style="width:128px"></colgroup><thead><tr><th>S.no</th><th>Date</th><th>Category / notes</th><th>Type</th><th class="r">Amount</th><th></th></tr></thead><tbody>${rows.map((x,i)=>{const f=i===0||rows[i-1].date!==x.date,l=i===rows.length-1||rows[i+1].date!==x.date,sp=rows.filter(r=>r.date===x.date).length,day=all.filter(r=>r.date===x.date),net=day.reduce((a,r)=>a+(r.type==='in'?r.amt:-r.amt),0);
- return `<tr class="${f?'f':''} ${l?'':'k'}"><td>${st+i+1}</td>${f?`<td rowspan="${sp}" class="dt"><b>${new Date(x.date+'T00:00').toLocaleDateString('en',{day:'2-digit',month:'short',year:'numeric'})}</b><span class="n">${day.length} ${day.length===1?'entry':'entries'} · ${net<0?'−':'+'}${fmt(c,Math.abs(net))}</span></td>`:''}<td><b>${esc(x.cat)}</b><span class="n">${esc(x.note||'No notes')}</span></td><td><span class="tp ${x.type}">${x.type==='in'?'Received':'Spent'}</span></td><td class="r amt ${x.type}">${x.type==='in'?'+':'\u2212'}${fmt(c,x.amt)}</td><td class="ac"><div class="aw"><button class="ib tg ra" data-ra="1" aria-label="Show actions" aria-expanded="false">${IC.nx}</button><span class="ax"><button class="ib" data-e="${x.id}" aria-label="Edit entry" title="Edit">${IC.e}</button><button class="ib d" data-d="${x.id}" aria-label="Delete entry" title="Delete">${IC.d}</button></span></div></td></tr>`}).join('')||`<tr><td colspan="6" class="empty">No matching entries in ${pLab()}.</td></tr>`}</tbody></table></div></div>
- <div class="pg"><span>${all.length?st+1:0}\u2013${st+rows.length} of ${all.length}</span><span class="pn">${dd('pp','Rows per page',[10,25,50].map(n=>({v:n,l:n+' rows'})),S.pp)}<button class="ghost" data-p="-1"${S.pg<=1?' disabled':''}>Prev</button><button class="ghost" data-p="1"${S.pg>=pages?' disabled':''}>Next</button></span></div>`;
+ return `<tr class="${f?'f':''} ${l?'':'k'}"><td class="num">${st+i+1}</td>${f?`<td rowspan="${sp}" class="dt"><b>${new Date(x.date+'T00:00').toLocaleDateString('en',{day:'2-digit',month:'short',year:'numeric'})}</b><span class="n num">${day.length} ${day.length===1?'entry':'entries'} · ${net<0?'−':'+'}${fmt(c,Math.abs(net))}</span></td>`:''}<td><b>${esc(x.cat)}</b><span class="n">${esc(x.note||'No notes')}</span></td><td><span class="tp ${x.type}">${x.type==='in'?'Received':'Spent'}</span></td><td class="r amt ${x.type}">${x.type==='in'?'+':'\u2212'}${fmt(c,x.amt)}</td><td class="ac"><div class="aw"><button class="ib tg ra" data-ra="1" aria-label="Show actions" aria-expanded="false">${IC.nx}</button><span class="ax"><button class="ib" data-e="${x.id}" aria-label="Edit entry" title="Edit">${IC.e}</button><button class="ib d" data-d="${x.id}" aria-label="Delete entry" title="Delete">${IC.d}</button></span></div></td></tr>`}).join('')||`<tr><td colspan="6" class="empty">No matching entries in ${pLab()}.</td></tr>`}</tbody></table></div></div>
+ <div class="pg"><span class="num">${all.length?st+1:0}\u2013${st+rows.length} of ${all.length}</span><span class="pn">${dd('pp','Rows per page',[10,25,50].map(n=>({v:n,l:n+' rows'})),S.pp)}<button class="ghost" data-p="-1"${S.pg<=1?' disabled':''}>Prev</button><button class="ghost" data-p="1"${S.pg>=pages?' disabled':''}>Next</button></span></div>`;
+}
+
+// Memoized chronological INR balance calculation for instant 50k-row filtering
+let inrMemo={ver:-1,A:[],av:{}};
+function getInrCalc(c){
+ if(inrMemo.ver===calcVer)return inrMemo;
+ const A=S.tx.filter(x=>x.cur===c&&!x.del).sort((a,b)=>a.date.localeCompare(b.date)||a.ts-b.ts);
+ let bal=OB[c]||0;const av={};
+ A.forEach(x=>{bal=r2(bal+(x.type==='in'?x.amt:-x.amt));av[x.id]=bal});
+ inrMemo={ver:calcVer,A,av};
+ return inrMemo;
 }
 
 function ltbl(c){
- const A=S.tx.filter(x=>x.cur===c&&!x.del).sort((a,b)=>a.date.localeCompare(b.date)||a.ts-b.ts);
- let bal=OB[c]||0,bf=null;const av={};
- A.forEach(x=>{if(bf===null&&x.date>=psD())bf=bal;bal=r2(bal+(x.type==='in'?x.amt:-x.amt));av[x.id]=bal});
- if(bf===null)bf=bal;
- const first=!A.some(x=>x.date<psD()),M=A.filter(inP),q=S.q.toLowerCase();
+ const {A,av}=getInrCalc(c);
+ const pStart=psD();
+ let bf=OB[c]||0;
+ for(let i=0;i<A.length;i++){if(A[i].date>=pStart)break;bf=av[A[i].id]}
+ const first=!A.some(x=>x.date<pStart),M=A.filter(inP),q=S.q.toLowerCase();
  const all=M.filter(x=>(S.f==='all'||x.type===S.f)&&(!q||(x.cat+' '+x.note).toLowerCase().includes(q))).reverse();
  const pages=Math.max(1,Math.ceil(all.length/S.pp));S.pg=Math.max(1,Math.min(S.pg,pages));
  const st=(S.pg-1)*S.pp,rows=all.slice(st,st+S.pp),tI=r2(M.filter(x=>x.type==='in').reduce((a,x)=>a+x.amt,0)),tO=r2(M.filter(x=>x.type==='out').reduce((a,x)=>a+x.amt,0)),close=M.length?av[M[M.length-1].id]:bf,neg=n=>n<0?' out':'';
  const body=rows.map((x,i)=>{const f=i===0||rows[i-1].date!==x.date,l=i===rows.length-1||rows[i+1].date!==x.date,sp=rows.filter(r=>r.date===x.date).length,day=all.filter(r=>r.date===x.date),net=r2(day.reduce((a,r)=>a+(r.type==='in'?r.amt:-r.amt),0));
-  return `<tr class="${f?'f':''} ${l?'':'k'}"><td>${st+i+1}</td>${f?`<td rowspan="${sp}" class="dt"><b>${new Date(x.date+'T00:00').toLocaleDateString('en',{day:'2-digit',month:'short',year:'numeric'})}</b><span class="n">${day.length} ${day.length===1?'entry':'entries'} · ${net<0?'−':'+'}${fmt(c,Math.abs(net))}</span></td>`:''}<td><b>${esc(x.cat)}</b><span class="n">${esc(x.note||'No notes')}</span></td><td class="r amt in">${x.type==='in'?fmt(c,x.amt):'<i class="z">–</i>'}</td><td class="r amt out">${x.type==='out'?fmt(c,x.amt):'<i class="z">–</i>'}</td><td class="r av${neg(av[x.id])}">${fmt(c,av[x.id])}</td><td class="ac"><div class="aw"><button class="ib tg ra" data-ra="1" aria-label="Show actions" aria-expanded="false">${IC.nx}</button><span class="ax"><button class="ib" data-e="${x.id}" aria-label="Edit entry" title="Edit">${IC.e}</button><button class="ib d" data-d="${x.id}" aria-label="Delete entry" title="Delete">${IC.d}</button></span></div></td></tr>`}).join('');
+  return `<tr class="${f?'f':''} ${l?'':'k'}"><td class="num">${st+i+1}</td>${f?`<td rowspan="${sp}" class="dt"><b>${new Date(x.date+'T00:00').toLocaleDateString('en',{day:'2-digit',month:'short',year:'numeric'})}</b><span class="n num">${day.length} ${day.length===1?'entry':'entries'} · ${net<0?'−':'+'}${fmt(c,Math.abs(net))}</span></td>`:''}<td><b>${esc(x.cat)}</b><span class="n">${esc(x.note||'No notes')}</span></td><td class="r amt in">${x.type==='in'?fmt(c,x.amt):'<i class="z">–</i>'}</td><td class="r amt out">${x.type==='out'?fmt(c,x.amt):'<i class="z">–</i>'}</td><td class="r av${neg(av[x.id])}">${fmt(c,av[x.id])}</td><td class="ac"><div class="aw"><button class="ib tg ra" data-ra="1" aria-label="Show actions" aria-expanded="false">${IC.nx}</button><span class="ax"><button class="ib" data-e="${x.id}" aria-label="Edit entry" title="Edit">${IC.e}</button><button class="ib d" data-d="${x.id}" aria-label="Delete entry" title="Delete">${IC.d}</button></span></div></td></tr>`}).join('');
  const bfr=S.pg===pages?`<tr class="bf"><td></td><td colspan="2"><b>${first?'Opening balance':'Brought forward'}</b><span class="n">${first?'Set once. Every entry updates Available.':'Balance before '+(S.pm==='range'?S.rf:mname(S.mo))}</span></td><td></td><td></td><td class="r av${neg(bf)}">${fmt(c,bf)}</td><td class="ac"><button class="ib" data-ob="1" aria-label="Edit opening balance" title="Edit opening balance">${IC.e}</button></td></tr>`:'';
  const bfrCard=S.pg===pages?`<div class="mbf"><div><b>${first?'Opening balance':'Brought forward'}</b><div class="hint">${first?'Set once. Updates Available.':'Balance before '+(S.pm==='range'?S.rf:mname(S.mo))}</div></div><div style="display:flex;align-items:center;gap:8px"><b class="av${neg(bf)}">${fmt(c,bf)}</b><button class="ib" data-ob="1" aria-label="Edit opening balance">${IC.e}</button></div></div>`:'';
- return `<div class="vm-${S.vm}">${mcards(c,rows,all,av,bfrCard)}<div class="tw tx-tw"><table class="lt l"><colgroup><col style="width:46px"><col style="width:136px"><col><col style="width:108px"><col style="width:108px"><col style="width:122px"><col style="width:128px"></colgroup><thead><tr><th>S.no</th><th>Date</th><th>Category</th><th class="r">Received</th><th class="r">Spent</th><th class="r">Available</th><th>Edit options</th></tr></thead><tbody>${body||`<tr><td colspan="7" class="empty">No matching entries in ${pLab()}.</td></tr>`}${bfr}</tbody><tfoot><tr><td></td><td colspan="2">${S.pm==='month'?'Month total and closing':'Total and closing'}</td><td class="r in">${fmt(c,tI)}</td><td class="r out">${fmt(c,tO)}</td><td class="r av${neg(close)}">${fmt(c,close)}</td><td></td></tr></tfoot></table></div></div>
- <div class="pg"><span>${all.length?st+1:0}–${st+rows.length} of ${all.length}</span><span class="pn">${dd('pp','Rows per page',[10,25,50].map(n=>({v:n,l:n+' rows'})),S.pp)}<button class="ghost" data-p="-1"${S.pg<=1?' disabled':''}>Prev</button><button class="ghost" data-p="1"${S.pg>=pages?' disabled':''}>Next</button></span></div>`;
+ return `<div class="vm-${S.vm}">${mcards(c,rows,all,av,bfrCard)}<div class="tw tx-tw"><table class="lt l"><colgroup><col style="width:46px"><col style="width:136px"><col><col style="width:108px"><col style="width:108px"><col style="width:122px"><col style="width:128px"></colgroup><thead><tr><th>S.no</th><th>Date</th><th>Category</th><th class="r">Received</th><th class="r">Spent</th><th class="r">Available</th><th>Edit options</th></tr></thead><tbody>${body||`<tr><td colspan="7" class="empty">No matching entries in ${pLab()}.</td></tr>`}${bfr}</tbody><tfoot><tr><td></td><td colspan="2">${S.pm==='month'?'Month total and closing':'Total and closing'}</td><td class="r in num">${fmt(c,tI)}</td><td class="r out num">${fmt(c,tO)}</td><td class="r av${neg(close)}">${fmt(c,close)}</td><td></td></tr></tfoot></table></div></div>
+ <div class="pg"><span class="num">${all.length?st+1:0}–${st+rows.length} of ${all.length}</span><span class="pn">${dd('pp','Rows per page',[10,25,50].map(n=>({v:n,l:n+' rows'})),S.pp)}<button class="ghost" data-p="-1"${S.pg<=1?' disabled':''}>Prev</button><button class="ghost" data-p="1"${S.pg>=pages?' disabled':''}>Next</button></span></div>`;
 }
 
 const dlab=d=>rem(d)<=0?['Settled','in']:paid(d)>0?['Partial','mid']:['Open','op'];
@@ -138,8 +169,8 @@ function dlist(){
  const c=S.dcur,q=S.dq.toLowerCase(),dt=s=>new Date(s+'T00:00').toLocaleDateString('en',{day:'2-digit',month:'short',year:'numeric'});
  const rows=DB.filter(d=>d.cur===c&&!d.del&&(S.ds==='all'||(S.ds==='open'?rem(d)>0:rem(d)<=0))&&(!q||(d.who+' '+d.note).toLowerCase().includes(q))).sort((a,b)=>b.date.localeCompare(a.date)||b.ts-a.ts);
  const body=rows.map((d,i)=>{const r=rem(d),p=paid(d),pc=d.amt?Math.min(100,Math.round(p/d.amt*100)):0,[sl,sc]=dlab(d),op=S.xp[d.id];
-  const sub=`<tr class="sub"><td></td><td colspan="8"><div class="ph"><div class="pht"><b>Payment history</b><span class="n">${d.pays.filter(p=>!p.del).length} ${d.pays.filter(p=>!p.del).length===1?'payment':'payments'}</span></div>${d.pays.filter(p=>!p.del).sort((a,b)=>b.date.localeCompare(a.date)).map(y=>`<div class="pr"><span>${dt(y.date)}</span><span class="n">${esc(y.note||'Payment')}</span><b>${fmt(c,y.amt)}</b><button class="ib d" data-dk="dp:${d.id}:${y.id}" aria-label="Delete payment" title="Delete payment">${IC.d}</button></div>`).join('')||'<div class="n">No payments yet.</div>'}</div></td></tr>`;
-  return `<tr class="f${op?' xo':''}"><td>${i+1}</td><td>${dt(d.date)}</td><td><b>${esc(d.who)}</b><span class="n">${esc(d.note||'No notes')}</span></td><td><span class="tp ${d.dir==='lent'?'':'out'}">${d.dir==='lent'?'They owe me':'I owe them'}</span></td><td class="r">${fmt(c,d.amt)}</td><td class="r">${fmt(c,p)}</td><td class="r av">${fmt(c,r)}<span class="pb"><i style="width:${pc}%"></i></span></td><td><span class="st ${sc}">${sl}</span></td><td class="ac">${r>0?`<button class="ghost pay" data-dk="pay:${d.id}">Pay</button>`:''}<button class="ib tg" data-dk="xp:${d.id}" aria-label="Payment history" title="Payment history" aria-expanded="${!!op}">${IC.dn}</button><button class="ib" data-dk="edit:${d.id}" aria-label="Edit debt" title="Edit">${IC.e}</button><button class="ib d" data-dk="del:${d.id}" aria-label="Delete debt" title="Delete">${IC.d}</button></td></tr>${sub}`}).join('');
+  const sub=`<tr class="sub"><td></td><td colspan="8"><div class="ph"><div class="pht"><b>Payment history</b><span class="n">${d.pays.filter(p=>!p.del).length} ${d.pays.filter(p=>!p.del).length===1?'payment':'payments'}</span></div>${d.pays.filter(p=>!p.del).sort((a,b)=>b.date.localeCompare(a.date)).map(y=>`<div class="pr"><span>${dt(y.date)}</span><span class="n">${esc(y.note||'Payment')}</span><b class="num">${fmt(c,y.amt)}</b><button class="ib d" data-dk="dp:${d.id}:${y.id}" aria-label="Delete payment" title="Delete payment">${IC.d}</button></div>`).join('')||'<div class="n">No payments yet.</div>'}</div></td></tr>`;
+  return `<tr class="f${op?' xo':''}"><td class="num">${i+1}</td><td>${dt(d.date)}</td><td><b>${esc(d.who)}</b><span class="n">${esc(d.note||'No notes')}</span></td><td><span class="tp ${d.dir==='lent'?'':'out'}">${d.dir==='lent'?'They owe me':'I owe them'}</span></td><td class="r num">${fmt(c,d.amt)}</td><td class="r num">${fmt(c,p)}</td><td class="r av">${fmt(c,r)}<span class="pb"><i style="width:${pc}%"></i></span></td><td><span class="st ${sc}">${sl}</span></td><td class="ac">${r>0?`<button class="ghost pay" data-dk="pay:${d.id}">Pay</button>`:''}<button class="ib tg" data-dk="xp:${d.id}" aria-label="Payment history" title="Payment history" aria-expanded="${!!op}">${IC.dn}</button><button class="ib" data-dk="edit:${d.id}" aria-label="Edit debt" title="Edit">${IC.e}</button><button class="ib d" data-dk="del:${d.id}" aria-label="Delete debt" title="Delete">${IC.d}</button></td></tr>${sub}`}).join('');
  return `<div class="tw"><table class="lt dtb"><colgroup><col style="width:46px"><col style="width:108px"><col><col style="width:112px"><col style="width:92px"><col style="width:92px"><col style="width:120px"><col style="width:84px"><col style="width:176px"></colgroup><thead><tr><th>S.no</th><th>Date</th><th>Person / notes</th><th>Type</th><th class="r">Amount</th><th class="r">Paid</th><th class="r">Remaining</th><th>Status</th><th class="r">Actions</th></tr></thead><tbody>${body||`<tr><td colspan="9" class="empty">No debts here.</td></tr>`}</tbody></table></div>`;
 }
 function debtsTab(){const c=S.dcur,L=DB.filter(d=>d.cur===c&&!d.del),got=r2(L.filter(d=>d.dir==='lent').reduce((a,d)=>a+rem(d),0)),ow=r2(L.filter(d=>d.dir==='owe').reduce((a,d)=>a+rem(d),0));
@@ -158,11 +189,12 @@ function widget(c){
  <div class="io"><div class="i">Received · ${pShort()}<b>${fmt(c,pIn)}</b></div><div class="o">Spent · ${pShort()}<b>${fmt(c,pOut)}</b></div><div>Net · ${pShort()}<b>${pNet>=0?'+':'−'}${fmt(c,Math.abs(pNet))}</b></div></div>
  ${chart(t,c)}</div>${debts(c)}</div></div>
  <div class="lh${S.fh?' fh':''}"><div class="lc"><div class="seg pm">${[['month','Month'],['all','All time'],['range','Custom']].map(([v,l])=>`<button data-pm="${v}" class="${S.pm===v?'on':''}">${l}</button>`).join('')}</div>${S.pm==='range'?`<span class="rg"><input id="rf" type="text" readonly data-dp value="${S.rf}" aria-label="From date"><i>to</i><input id="rt" type="text" readonly data-dp value="${S.rt}" aria-label="To date"></span>`:S.pm==='all'?'':dd('mo','Month',ms.map(m=>{const n=t.filter(x=>x.date.slice(0,7)===m).length,net=mtot(t,m,'in')-mtot(t,m,'out');return{v:m,l:mlabel(m),s:n+(n===1?' entry':' entries'),r:(net>=0?'+':'\u2212')+fmt(c,Math.abs(net)),rc:net>=0?'in':'out'}}),S.mo)}</div><span class="lcnt">${S.fh?pLab()+((S.q||S.f!=='all')?' (filtered)':'')+' · ':''}${mt.length} ${mt.length===1?'entry':'entries'}</span><button class="ib tg vt" data-fl="1" aria-label="${S.fh?'Show filters':'Hide filters'}" aria-expanded="${!S.fh}" title="${S.fh?'Show filters':'Hide filters'}">${S.fh?IC.dn:IC.up}</button></div>
- <div class="tb${S.fh?' hid':''}"><input id="q" type="search" placeholder="Search category or notes" aria-label="Search" value="${esc(S.q)}">${dd('ft','Type filter',[{v:'all',l:'All types'},{v:'in',l:'Received',d:'var(--in)'},{v:'out',l:'Spent',d:'var(--out)'}],S.f)}<div class="seg" aria-label="View layout">${[['auto','Auto'],['cards','Cards'],['table','Table']].map(([v,l])=>`<button type="button" data-vm="${v}" class="${S.vm===v?'on':''}">${l}</button>`).join('')}</div></div>
+ <div class="tb${S.fh?' hid':''}"><input id="q" type="search" placeholder="Search category or notes" aria-label="Search" value="${esc(S.q)}">${dd('ft','Type filter',[{v:'all',l:'All types'},{v:'in',l:'Received',d:'var(--in)'},{v:'out',l:'Spent',d:'var(--out)'}],S.f)}<div class="seg vm-seg" aria-label="View layout">${[['auto','Auto'],['cards','Cards'],['table','Table']].map(([v,l])=>`<button type="button" data-vm="${v}" class="${S.vm===v?'on':''}">${l}</button>`).join('')}</div></div>
  <div id="tbl">${tbl(c)}</div></section>`;
 }
 
 function render(){
+ closeDd();
  const p=pendingCount(),on=online();
  $('#st').className='pill '+(S.busy?'sy':(on&&!S.err&&syncOn())||(!syncOn()&&on)?'':'off');
  $('#stx').textContent=statusText(p,on);
@@ -212,7 +244,7 @@ $('#cl').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)r
 $('#cmb').onclick=()=>{renderCm();$('#ce').textContent='';$('#cm').showModal()};
 $('#cc').onclick=()=>$('#cm').close();
 function openOb(){$('#obv').value=OB.INR||'';$('#obe').textContent='';$('#obd').showModal();$('#obv').focus()}
-$('#obs').onclick=()=>{const v=parseFloat($('#obv').value);if(isNaN(v)){$('#obe').textContent='Enter an amount (0 is fine).';return}OB.INR=r2(v);try{STORE.setItem(LO,JSON.stringify(OB))}catch(e){}stamp();schedSync();$('#obd').close();render();toast('Opening balance saved')};
+$('#obs').onclick=()=>{const v=parseFloat($('#obv').value);if(isNaN(v)){$('#obe').textContent='Enter an amount (0 is fine).';return}OB.INR=r2(v);bumpCalc();try{STORE.setItem(LO,JSON.stringify(OB))}catch(e){}stamp();schedSync();$('#obd').close();render();toast('Opening balance saved')};
 $('#obc').onclick=()=>$('#obd').close();
 let DD='lent';
 
@@ -235,7 +267,7 @@ $('#pys').onclick=()=>{const d=DB.find(x=>x.id===S.did),a=parseFloat($('#pya').v
  if(!t){$('#pye').textContent='Pick a date.';return}
  d.pays.push({id:uid(),amt:r2(a),date:t,note:$('#pyn').value.trim()});S.xp[d.id]=1;dsave();$('#pyd').close();render();toast(rem(d)<=0?'Fully paid':'Payment saved. Remaining '+fmt(d.cur,rem(d)))};
 
-// Backup & Restore handlers (Fixed syntax and null-safe guards)
+// Backup & Restore handlers
 const dlFile=(name,type,content)=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
 if($('#bkb'))$('#bkb').onclick=()=>{if($('#bke'))$('#bke').textContent='';if($('#bk-file'))$('#bk-file').value='';if($('#bkd'))$('#bkd').showModal()};
 if($('#bkc'))$('#bkc').onclick=()=>$('#bkd').close();
@@ -249,7 +281,7 @@ if($('#bk-csv'))$('#bk-csv').onclick=()=>{
  toast('CSV exported');
 };
 if($('#bk-json'))$('#bk-json').onclick=()=>{
- const payload=JSON.stringify({version:9,exported_at:new Date().toISOString(),tx:S.tx,cats:CT,debts:DB,ob:OB},null,2);
+ const payload=JSON.stringify({version:11,exported_at:new Date().toISOString(),tx:S.tx,cats:CT,debts:DB,ob:OB},null,2);
  dlFile(`daily-ledger-backup-${iso(0)}.json`,'application/json',payload);
  toast('JSON backup downloaded');
 };
@@ -259,7 +291,7 @@ if($('#bk-file'))$('#bk-file').onchange=async e=>{
   const j=JSON.parse(await f.text());
   if(!Array.isArray(j.tx))throw new Error('Invalid backup file');
   S.tx=j.tx;if(Array.isArray(j.cats))CT=j.cats;if(Array.isArray(j.debts))DB=j.debts;if(j.ob)OB=j.ob;
-  stamp();persist();$('#bkd').close();render();sync();toast('Backup restored');
+  bumpCalc();stamp();persist();$('#bkd').close();render();sync();toast('Backup restored');
  }catch(err){if($('#bke'))$('#bke').textContent='Could not read backup JSON.'}
 };
 
@@ -283,7 +315,7 @@ $('#ca').onclick=()=>{const n=$('#cn').value.trim();
 $('#app').addEventListener('change',e=>{const i=e.target.id;if(i==='mo')S.mo=e.target.value;else if(i==='ft')S.f=e.target.value;else if(i==='pp')S.pp=+e.target.value;else if(i==='rf')S.rf=e.target.value;else if(i==='rt')S.rt=e.target.value;else return;if(S.rf>S.rt){const z=S.rf;S.rf=S.rt;S.rt=z}S.pg=1;render()});
 $('#app').addEventListener('input',e=>{if(e.target.id==='q'){S.q=e.target.value;S.pg=1;$('#tbl').innerHTML=tbl(S.tab)}});
 $('#app').addEventListener('click',e=>{const o=e.target.closest('.ddo'),h=e.target.closest('.ddb');
- if(o){const id=o.closest('.dd').dataset.dd,v=o.dataset.v;if(id==='mo')S.mo=v;else if(id==='ft')S.f=v;else if(id==='pp')S.pp=+v;S.pg=1;render();return}
+ if(o){const id=o.closest('.dd').dataset.dd,v=o.dataset.v;closeDd();if(id==='mo')S.mo=v;else if(id==='ft')S.f=v;else if(id==='pp')S.pp=+v;S.pg=1;render();return}
  if(h){const p=h.parentNode,was=p.classList.contains('open');closeDd();if(!was){p.classList.add('open');h.setAttribute('aria-expanded','true')}return}
  const b=e.target.closest&&e.target.closest('[data-m],[data-p],[data-e],[data-d],[data-ob],[data-pm],[data-mn],[data-ra],[data-fl],[data-vm],[data-cf]');if(!b)return;const d=b.dataset;
  if(d.m){S.mo=d.m;S.pm='month';S.pg=1;render()}
@@ -391,6 +423,7 @@ function applyRemote(data){
   if(edited&&OB.upd>String(r.updated_at))return;
   OB.INR=Number(r.value)/100;OB.upd=String(r.updated_at);snapSet('Settings','opening_INR',obHash());LAST.OB=obHash();
  });
+ bumpCalc();
 }
 async function call(body){
  const a=API();
@@ -415,9 +448,16 @@ async function sync(){
    const res=await call({action:'push',ops:ops.slice(i,i+100)});
    (res.results||[]).forEach((x,j)=>{const d=ds[i+j];if(x&&(x.status==='ok'||x.status==='stale'))snapSet(d.t,d.t==='Settings'?'opening_INR':d.r.id,d.h);else S.err='the server rejected '+d.t+' changes. Update the Apps Script to the newest version'});
   }
-  const j=await call({action:'pull',since:Number(STORE.getItem('ledger.rev'))||0});
-  applyRemote(j.data||{});
-  STORE.setItem('ledger.rev',String(j.rev));STORE.setItem('ledger.last',now());
+  let since=Number(STORE.getItem('ledger.rev'))||0;
+  let guard=0;
+  while(guard++<20){
+   const j=await call({action:'pull',since,limit:2500});
+   applyRemote(j.data||{});
+   since=Number(j.next_since||j.rev)||since;
+   STORE.setItem('ledger.rev',String(since));
+   if(!j.has_more)break;
+  }
+  STORE.setItem('ledger.last',now());
   persist();
  }catch(e){S.err=friendly(e);try{saveSnap()}catch(x){}}
  S.busy=false;render();
