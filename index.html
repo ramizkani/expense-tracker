@@ -260,21 +260,53 @@ tr.sub{display:none}tr.xo+tr.sub{display:table-row}[data-dk^="xp:"] svg{transiti
 tr.ro .ax{max-width:90px;opacity:1;visibility:visible;transform:none;transition-delay:0s}
 .pn .ddm{background:var(--card);top:auto;bottom:calc(100% + 8px);left:auto;right:0}
 
+/* Redesigned Settings Button (#cmb) & 2-Tab Settings Modal */
+#cmb{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:99px;font-weight:600;background:var(--card);border:1px solid var(--line);color:var(--ink);box-shadow:0 1px 2px rgba(10,20,40,.04);transition:border-color .15s,background .15s,transform .12s}
+#cmb:hover{border-color:var(--acc);background:color-mix(in srgb,var(--acc) 10%,var(--card))}
+#cmb:active{transform:scale(.97)}
+#cmb svg{color:var(--mut);transition:transform .25s ease,color .15s}
+#cmb:hover svg{color:var(--acc);transform:rotate(35deg)}
+dialog#cm{width:min(460px,calc(100% - 20px));max-width:460px}
+.st-tabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--bg);padding:4px;border-radius:14px;border:1px solid var(--line)}
+.st-tabs button{border:0;background:none;padding:9px 10px;border-radius:10px;color:var(--mut);font:600 13px var(--font-display);display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:background .15s,color .15s}
+.st-tabs button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.14)}
+.st-tabs button[data-st="diary"].on{color:var(--dry)}
+.st-pane{display:grid;gap:12px}
+.st-pane[hidden]{display:none!important}
+.st-vcard{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 13px;border-radius:14px;background:color-mix(in srgb,var(--dry) 9%,var(--bg));border:1px solid color-mix(in srgb,var(--dry) 26%,var(--line))}
+.st-vcard b{display:block;font:700 13.5px var(--font-display);color:var(--ink)}
+.st-vcard small{display:block;font-size:12px;color:var(--mut)}
+.st-box{background:var(--bg);border:1px solid var(--line);border-radius:16px;padding:12px;display:grid;gap:10px}
+.st-box h4{margin:0;font:700 13.5px var(--font-display);color:var(--ink);display:flex;align-items:center;justify-content:space-between}
+.dr-link{border:0;background:none;padding:4px 0;color:var(--mut);font-size:12.5px;text-align:center;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.dr-link:hover{color:var(--dry)}
+
 /* Daily Diary Vault Modal & Date Note Badge */
 .dry-tag{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:2px 7px;border-radius:99px;font:600 11px var(--font-display);background:color-mix(in srgb,var(--dry) 14%,var(--card));color:var(--dry);border:1px solid color-mix(in srgb,var(--dry) 32%,var(--line));vertical-align:middle}
 .dry-tag:hover{background:color-mix(in srgb,var(--dry) 24%,var(--card));border-color:var(--dry)}
-dialog.dr-dlg{--acc:var(--dry);width:min(760px,calc(100% - 20px));max-width:760px}
-.dr-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 20px;border-bottom:1px solid var(--line);background:linear-gradient(135deg,color-mix(in srgb,var(--dry) 14%,var(--card)),color-mix(in srgb,var(--dry) 4%,var(--card)));flex-wrap:wrap}
+dialog.dr-dlg{--acc:var(--dry);width:min(390px,calc(100% - 20px));max-width:390px;transition:width .2s ease,max-width .2s ease}
+dialog.dr-dlg.un{width:min(760px,calc(100% - 20px));max-width:760px}
+.dr-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line);background:linear-gradient(135deg,color-mix(in srgb,var(--dry) 14%,var(--card)),color-mix(in srgb,var(--dry) 4%,var(--card)));flex-wrap:wrap}
 .dr-hl{display:flex;align-items:center;gap:10px}
-.dr-ic{width:36px;height:36px;border-radius:11px;background:var(--dry);color:#fff;display:grid;place-items:center;flex-shrink:0}
-.dr-hl h2{margin:0;font:700 18px/1.15 var(--font-display)}
-.dr-hl p{margin:2px 0 0;font-size:12px;color:var(--mut)}
+.dr-ic{width:34px;height:34px;border-radius:10px;background:var(--dry);color:#fff;display:grid;place-items:center;flex-shrink:0}
+.dr-hl h2{margin:0;font:700 17px/1.15 var(--font-display)}
+.dr-hl p{margin:2px 0 0;font-size:11.5px;color:var(--mut)}
 .dr-hr{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.dr-st{font:700 11px var(--font-mono);padding:4px 9px;border-radius:8px;letter-spacing:.02em}
+.dr-st{font:700 10.5px var(--font-mono);padding:3px 8px;border-radius:8px;letter-spacing:.02em}
 .dr-st.lk{background:color-mix(in srgb,var(--out) 14%,var(--card));color:var(--out);border:1px solid color-mix(in srgb,var(--out) 30%,var(--line))}
 .dr-st.un{background:color-mix(in srgb,var(--in) 14%,var(--card));color:var(--in);border:1px solid color-mix(in srgb,var(--in) 30%,var(--line))}
-.dr-gate{padding:24px 20px;max-width:420px;margin:0 auto;display:grid;gap:12px}
-.dr-gate h3{margin:0;font:700 18px var(--font-display)}
+.dr-gate{padding:18px;display:grid;gap:12px}
+.dr-gate h3{margin:0;font:700 16px var(--font-display)}
+select.dr-sel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;width:100%;color:var(--ink);font:inherit}
+details.dr-acc{border:1px solid var(--line);border-radius:14px;background:color-mix(in srgb,var(--bg) 55%,var(--card));overflow:hidden}
+details.dr-acc.sub{background:var(--card);border-style:dashed}
+details.dr-acc>summary{list-style:none;cursor:pointer;padding:10px 13px;font:600 13px var(--font-display);color:var(--ink);display:flex;align-items:center;justify-content:space-between;gap:8px;user-select:none}
+details.dr-acc>summary::-webkit-details-marker{display:none}
+details.dr-acc>summary::after{content:'▾';font-size:13px;color:var(--mut);transition:transform .2s}
+details.dr-acc[open]>summary{border-bottom:1px solid var(--line);color:var(--dry)}
+details.dr-acc[open]>summary::after{transform:rotate(180deg);color:var(--dry)}
+.dr-acc-b{padding:12px;display:grid;gap:10px}
+.dr-qbadge{padding:9px 11px;border-radius:10px;background:color-mix(in srgb,var(--dry) 10%,var(--card));border:1px solid color-mix(in srgb,var(--dry) 28%,var(--line));font-size:13px;font-weight:600;color:var(--ink)}
 .dr-work{display:grid;grid-template-columns:215px minmax(0,1fr);min-height:430px}
 .dr-side{border-right:1px solid var(--line);padding:12px;background:color-mix(in srgb,var(--bg) 55%,var(--card));display:flex;flex-direction:column;gap:8px}
 .dr-side input{padding:8px 10px;font-size:13px}
@@ -304,7 +336,7 @@ dialog.dr-dlg{--acc:var(--dry);width:min(760px,calc(100% - 20px));max-width:760p
 @media(max-width:700px){
  .wrap{padding-bottom:104px}
  .cur{flex-wrap:wrap;row-gap:8px}
- dialog,dialog.dr-dlg{width:100%;max-width:100%;margin:auto 0 0 0;border-radius:26px 26px 0 0;max-height:92vh;overflow-y:auto}
+ dialog,dialog#cm,dialog.dr-dlg,dialog.dr-dlg.un{width:100%;max-width:100%;margin:auto 0 0 0;border-radius:26px 26px 0 0;max-height:92vh;overflow-y:auto}
  .dr-work{grid-template-columns:1fr}
  .dr-side{border-right:0;border-bottom:1px solid var(--line)}
  .dr-list{display:flex;overflow-x:auto;max-height:none;padding-bottom:4px}
@@ -320,7 +352,10 @@ dialog.dr-dlg{--acc:var(--dry);width:min(760px,calc(100% - 20px));max-width:760p
    <div class="stat-r">
     <span class="pill" id="st"><i class="dot"></i><span id="stx"></span></span>
     <button class="ghost" id="tg"></button>
-    <button class="ghost" id="cmb">Categories</button>
+    <button class="ghost" id="cmb" type="button" title="Categories &amp; Diary Encryption Settings">
+     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+     <span>Settings</span>
+    </button>
     <button class="ghost dry-btn" id="drb" type="button" title="Open Encrypted Daily Diary">
      <i class="dry-dot" id="dr-dot"></i>
      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/><path d="M12 11V7"/><circle cx="12" cy="14" r="1"/></svg>
@@ -374,36 +409,122 @@ dialog.dr-dlg{--acc:var(--dry);width:min(760px,calc(100% - 20px));max-width:760p
 </div></dialog>
 
 <dialog id="cm"><div class="sh">
- <div class="cm-top"><h2>Categories</h2><span class="hint" id="cm-cnt"></span></div>
- <div class="seg" id="cm-f">
-  <button type="button" data-f="all" class="on">All</button>
-  <button type="button" data-f="out">Spent</button>
-  <button type="button" data-f="in">Received</button>
-  <button type="button" data-f="both">Both</button>
+ <div class="cm-top">
+  <h2>Settings</h2>
+  <span class="hint" id="cm-cnt"></span>
  </div>
- <p class="hint">Tap any name to rename. Tap the badge (Spent / Received / Both) to cycle type.</p>
- <div id="cl"></div>
- <div class="cadd-box">
-  <div class="em-bar" id="em-bar">
-   <button type="button" class="em-b" data-em="🍽️">🍽️</button>
-   <button type="button" class="em-b" data-em="☕">☕</button>
-   <button type="button" class="em-b" data-em="🛒">🛒</button>
-   <button type="button" class="em-b" data-em="⛽">⛽</button>
-   <button type="button" class="em-b" data-em="✈️">✈️</button>
-   <button type="button" class="em-b" data-em="🏥">🏥</button>
-   <button type="button" class="em-b" data-em="💡">💡</button>
-   <button type="button" class="em-b" data-em="🎮">🎮</button>
-   <button type="button" class="em-b" data-em="🎓">🎓</button>
-   <button type="button" class="em-b" data-em="📈">📈</button>
-  </div>
-  <div class="cadd-row">
-   <input id="cn" maxlength="30" placeholder="New category (e.g. ☕ Coffee)" aria-label="New category name">
-   <button class="prim" id="ca" style="padding:9px 16px">Add</button>
-  </div>
-  <div class="seg" id="ct"><button data-v="out" class="on">Spent</button><button data-v="in">Received</button><button data-v="both">Both</button></div>
+ <div class="st-tabs" id="st-tabs" role="tablist">
+  <button type="button" data-st="cats" class="on">
+   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+   <span>Categories</span>
+  </button>
+  <button type="button" data-st="diary">
+   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+   <span>Diary Encryption</span>
+  </button>
  </div>
- <div class="err" id="ce"></div>
- <button class="ghost" id="cc">Done</button>
+
+ <!-- Tab 1: Categories -->
+ <div class="st-pane" id="st-pane-cats">
+  <div class="seg" id="cm-f">
+   <button type="button" data-f="all" class="on">All</button>
+   <button type="button" data-f="out">Spent</button>
+   <button type="button" data-f="in">Received</button>
+   <button type="button" data-f="both">Both</button>
+  </div>
+  <p class="hint">Tap any name to rename. Tap the badge (Spent / Received / Both) to cycle type.</p>
+  <div id="cl"></div>
+  <div class="cadd-box">
+   <div class="em-bar" id="em-bar">
+    <button type="button" class="em-b" data-em="🍽️">🍽️</button>
+    <button type="button" class="em-b" data-em="☕">☕</button>
+    <button type="button" class="em-b" data-em="🛒">🛒</button>
+    <button type="button" class="em-b" data-em="⛽">⛽</button>
+    <button type="button" class="em-b" data-em="✈️">✈️</button>
+    <button type="button" class="em-b" data-em="🏥">🏥</button>
+    <button type="button" class="em-b" data-em="💡">💡</button>
+    <button type="button" class="em-b" data-em="🎮">🎮</button>
+    <button type="button" class="em-b" data-em="🎓">🎓</button>
+    <button type="button" class="em-b" data-em="📈">📈</button>
+   </div>
+   <div class="cadd-row">
+    <input id="cn" maxlength="30" placeholder="New category (e.g. ☕ Coffee)" aria-label="New category name">
+    <button class="prim" id="ca" style="padding:9px 16px">Add</button>
+   </div>
+   <div class="seg" id="ct"><button data-v="out" class="on">Spent</button><button data-v="in">Received</button><button data-v="both">Both</button></div>
+  </div>
+  <div class="err" id="ce"></div>
+ </div>
+
+ <!-- Tab 2: Diary Encryption & Reset Options -->
+ <div class="st-pane" id="st-pane-diary" hidden>
+  <div class="st-vcard">
+   <div>
+    <b id="st-dr-title">AES-256-GCM Diary Vault</b>
+    <small id="st-dr-sub">Zero-knowledge encryption</small>
+   </div>
+   <span class="dr-st lk" id="st-dr-badge">LOCKED</span>
+  </div>
+
+  <!-- Password & Security Question Setup / Update -->
+  <div class="st-box">
+   <h4 id="st-enc-hd">Vault Password &amp; Recovery Question</h4>
+   <label id="st-cur-wrap" hidden>Current password<input id="st-cur-pw" type="password" autocomplete="current-password" placeholder="Enter current password to modify"></label>
+   <div class="two">
+    <label><span id="st-np-lbl">New password / PIN</span><input id="st-np1" type="password" autocomplete="new-password" placeholder="Enter password"></label>
+    <label>Confirm<input id="st-np2" type="password" autocomplete="new-password" placeholder="Repeat password"></label>
+   </div>
+   <label>Security question (for password recovery)
+    <select id="dr-cq-sel" class="dr-sel">
+     <option value="What was my first school?">What was my first school?</option>
+     <option value="What is my childhood nickname?">What is my childhood nickname?</option>
+     <option value="What city was I born in?">What city was I born in?</option>
+     <option value="What is my favorite food?">What is my favorite food?</option>
+     <option value="custom">Custom question…</option>
+    </select>
+   </label>
+   <input id="dr-cq" type="text" maxlength="80" placeholder="Enter custom security question" hidden>
+   <div class="two">
+    <label>Security answer<input id="dr-ca" type="password" autocomplete="off" placeholder="Answer for recovery"></label>
+    <label>Password hint (optional)<input id="dr-chn" type="text" maxlength="50" placeholder="Optional hint"></label>
+   </div>
+   <div class="err" id="dr-cer"></div>
+   <button class="prim" id="dr-csv" type="button" style="background:var(--dry);padding:10px">Save encryption settings</button>
+  </div>
+
+  <!-- Recovery Dropdown: Forgot Password (Security Question & Sync Token) -->
+  <details class="dr-acc" id="dr-acc-try">
+   <summary>Forgot password? Recover via Security Question</summary>
+   <div class="dr-acc-b">
+    <div id="dr-qa-box" style="display:grid;gap:8px">
+     <label>Your configured security question<div class="dr-qbadge" id="dr-rq-txt"></div></label>
+     <div class="two">
+      <label>Security answer<input id="dr-ra" type="password" autocomplete="off" placeholder="Enter your answer"></label>
+      <label>New password<input id="dr-rp1" type="password" autocomplete="new-password" placeholder="Set new password"></label>
+     </div>
+     <div class="err" id="dr-rer"></div>
+     <button class="prim" id="dr-rsv" type="button" style="background:var(--dry);padding:10px">Reset password &amp; unlock</button>
+    </div>
+    <p class="hint" id="dr-no-qa" hidden>No security question saved yet. Save one above or use Sync Token / Reset below.</p>
+   </div>
+  </details>
+
+  <!-- Reset & Sync Token Recovery Dropdown -->
+  <details class="dr-acc sub" id="dr-acc-other">
+   <summary>Other recovery &amp; vault reset options</summary>
+   <div class="dr-acc-b">
+    <label>Option 1 · Recover with Google Sheet Sync Token<input id="dr-rtok" type="password" autocomplete="off" placeholder="Paste your Apps Script Sync Token"></label>
+    <label>New vault password<input id="dr-rtp" type="password" autocomplete="new-password" placeholder="Set new password"></label>
+    <div class="err" id="dr-rter"></div>
+    <button class="ghost" id="dr-rtbtn" type="button" style="border-color:var(--dry);color:var(--dry)">Recover with Sync Token</button>
+    <hr style="border:0;border-top:1px dashed var(--line);margin:2px 0">
+    <label>Option 2 · Reset Diary Vault (wipes locked diary notes only; keeps AED/INR/Debts safe)<input id="dr-rwipe" type="text" autocomplete="off" placeholder="Type RESET to confirm"></label>
+    <button class="ghost" id="dr-rwbtn" type="button" style="color:var(--out);border-color:color-mix(in srgb,var(--out) 35%,var(--line))">Reset diary vault</button>
+   </div>
+  </details>
+ </div>
+
+ <button class="ghost" id="cc" type="button">Done</button>
 </div></dialog>
 
 <dialog id="obd" style="--acc:var(--inr)"><div class="sh"><h2>Opening balance (INR)</h2><p class="hint">The amount available before your first entry. Available is then calculated automatically after every transaction.</p><label>Amount<input class="big" id="obv" type="number" inputmode="decimal" step="0.01" placeholder="0.00"></label><div class="err" id="obe"></div><button class="prim" id="obs">Save</button><button class="ghost" id="obc">Cancel</button></div></dialog>
@@ -433,81 +554,24 @@ dialog.dr-dlg{--acc:var(--dry);width:min(760px,calc(100% - 20px));max-width:760p
     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
    </div>
    <div>
-    <h2>Daily Diary Vault</h2>
-    <p>AES-256-GCM encrypted journal · unreadable in Google Sheet</p>
+    <h2>Daily Diary</h2>
+    <p>AES-256 encrypted journal</p>
    </div>
   </div>
   <div class="dr-hr">
    <span class="dr-st lk" id="dr-st">LOCKED</span>
-   <button class="ghost" id="dr-pw-btn" type="button" hidden style="padding:5px 11px;font-size:12px">Password</button>
    <button class="ghost" id="dr-lk-btn" type="button" hidden style="padding:5px 11px;font-size:12px">Lock</button>
    <button class="ghost" id="dr-cx" type="button" style="padding:5px 11px;font-size:12px">Close</button>
   </div>
  </div>
 
- <!-- State 1: First-Time Vault Password Setup -->
- <div class="dr-gate" id="dr-setup" hidden>
-  <h3>Set up your Diary Vault</h3>
-  <p class="hint">Notes are encrypted with a 256-bit AES-GCM Master Key wrapped by your password and security question. Even with years of notes, password resets are instant.</p>
-  <div class="two">
-   <label>Vault password<input id="dr-sp1" type="password" autocomplete="new-password" placeholder="Min 4 chars"></label>
-   <label>Confirm password<input id="dr-sp2" type="password" autocomplete="new-password" placeholder="Repeat password"></label>
-  </div>
-  <label>Security question (for password recovery)<input id="dr-sq" type="text" maxlength="80" placeholder="e.g. What was my first school / childhood nickname?"></label>
-  <div class="two">
-   <label>Security answer<input id="dr-sa" type="password" autocomplete="off" placeholder="Case-insensitive"></label>
-   <label>Password hint (optional)<input id="dr-shn" type="text" maxlength="50" placeholder="Optional reminder"></label>
-  </div>
-  <div class="err" id="dr-ser"></div>
-  <button class="prim" id="dr-ssv" type="button">Create encrypted vault</button>
- </div>
-
- <!-- State 2: Unlock Existing Vault -->
+ <!-- Password-Only Gate: Enter password -> Immediately loads diary data -->
  <div class="dr-gate" id="dr-lock" hidden>
-  <h3>Unlock Daily Diary</h3>
-  <p class="hint">Enter your vault password to decrypt your notes in memory. Vault locks automatically when hidden for 60s.</p>
-  <label>Vault password<input id="dr-upw" type="password" autocomplete="current-password" placeholder="Enter vault password"></label>
+  <label id="dr-upw-lbl">Vault password<input id="dr-upw" type="password" autocomplete="current-password" placeholder="Enter password"></label>
   <p class="hint" id="dr-uhint" hidden></p>
   <div class="err" id="dr-uer"></div>
   <button class="prim" id="dr-ubtn" type="button">Unlock diary</button>
-  <button class="ghost" id="dr-fgt-btn" type="button" style="font-size:12.5px;padding:7px 12px">Forgot password? Reset with security question</button>
- </div>
-
- <!-- State 2B: Recover Password via Security Question -->
- <div class="dr-gate" id="dr-rec" hidden>
-  <h3>Recover Vault Password</h3>
-  <p class="hint">Answer your security question to unwrap your 256-bit Master Key and set a new password without losing any notes.</p>
-  <label>Security question<input id="dr-rq-txt" type="text" readonly style="opacity:.85;font-weight:600"></label>
-  <label>Your security answer<input id="dr-ra" type="password" autocomplete="off" placeholder="Enter your answer (case-insensitive)"></label>
-  <div class="two">
-   <label>New password<input id="dr-rp1" type="password" autocomplete="new-password" placeholder="Min 4 chars"></label>
-   <label>Confirm password<input id="dr-rp2" type="password" autocomplete="new-password" placeholder="Repeat password"></label>
-  </div>
-  <div class="err" id="dr-rer"></div>
-  <div class="two">
-   <button class="ghost" id="dr-rcx" type="button">Back to login</button>
-   <button class="prim" id="dr-rsv" type="button">Reset &amp; unlock</button>
-  </div>
- </div>
-
- <!-- State 3: Change Vault Password & Recovery Question -->
- <div class="dr-gate" id="dr-chpw" hidden>
-  <h3>Password &amp; Recovery Settings</h3>
-  <p class="hint">Updates your wrapped 256-bit Master Key instantly in &lt;15ms without needing to re-upload your historical diary notes.</p>
-  <div class="two">
-   <label>New password<input id="dr-cp1" type="password" autocomplete="new-password" placeholder="Min 4 chars"></label>
-   <label>Confirm password<input id="dr-cp2" type="password" autocomplete="new-password" placeholder="Repeat password"></label>
-  </div>
-  <label>Security question (optional update)<input id="dr-cq" type="text" maxlength="80" placeholder="Leave blank to keep current question"></label>
-  <div class="two">
-   <label>New security answer<input id="dr-ca" type="password" autocomplete="off" placeholder="Leave blank to keep current"></label>
-   <label>Password hint (optional)<input id="dr-chn" type="text" maxlength="50"></label>
-  </div>
-  <div class="err" id="dr-cer"></div>
-  <div class="two">
-   <button class="ghost" id="dr-ccx" type="button">Back</button>
-   <button class="prim" id="dr-csv" type="button">Save security settings</button>
-  </div>
+  <button class="dr-link" id="dr-to-st" type="button">Manage encryption, recovery or reset in Settings →</button>
  </div>
 
  <!-- State 4: Unlocked Diary Workspace -->

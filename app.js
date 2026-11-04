@@ -285,7 +285,15 @@ $('#cl').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)r
  else if(d.x!==undefined){if(CT.filter(x=>!x.del).length<2){$('#ce').textContent='Keep at least 2 categories.';return}CT[+d.x].del=1}
  else return;
  saveC();renderCm();paint()});
-$('#cmb').onclick=()=>{CMF='all';renderCm();$('#ce').textContent='';$('#cm').showModal()};
+let ST_TAB='cats';
+function openSettings(tab){
+ ST_TAB=tab||'cats';CMF='all';renderCm();
+ if(typeof renderSettingsTab==='function')renderSettingsTab();
+ if($('#ce'))$('#ce').textContent='';
+ if($('#cm')&&!$('#cm').open)$('#cm').showModal();
+}
+if($('#st-tabs'))$('#st-tabs').onclick=e=>{const b=e.target.closest('[data-st]');if(!b)return;ST_TAB=b.dataset.st;if(typeof renderSettingsTab==='function')renderSettingsTab()};
+$('#cmb').onclick=()=>openSettings('cats');
 $('#cc').onclick=()=>$('#cm').close();
 
 function openOb(){$('#obv').value=OB.INR||'';$('#obe').textContent='';$('#obd').showModal();$('#obv').focus()}
@@ -500,7 +508,6 @@ function syncDiaryDot(){
  if($('#dr-dot'))$('#dr-dot').classList.toggle('on',un);
  if($('#dr-st')){$('#dr-st').className='dr-st '+(un?'un':'lk');$('#dr-st').textContent=un?'UNLOCKED':'LOCKED'}
  if($('#dr-lk-btn'))$('#dr-lk-btn').hidden=!un;
- if($('#dr-pw-btn'))$('#dr-pw-btn').hidden=!un;
 }
 function lockDiary(){
  drBgJob++;DIARY_KEY=null;DIARY_DEK_B64='';DIARY_CACHE={};drChPw=false;drRec=false;syncDiaryDot();
@@ -560,24 +567,68 @@ async function renderDiaryDate(keepInputs){
  if($('#dr-del'))$('#dr-del').hidden=!rec;
  if($('#dr-meta'))$('#dr-meta').textContent=rec?`Encrypted AES-256-GCM · Updated ${new Date(rec.upd).toLocaleTimeString('en',{hour:'numeric',minute:'2-digit'})}`:'AES-256-GCM · Not saved yet';
 }
+function syncQuestionSelect(selId,inpId,val){
+ const sel=$(selId),inp=$(inpId);
+ if(!sel||!inp)return;
+ if(val!==undefined){
+  const hasOpt=Array.from(sel.options).some(o=>o.value===val&&o.value!=='custom'&&o.value!=='');
+  if(hasOpt){sel.value=val;inp.value='';inp.hidden=true}
+  else if(val){sel.value='custom';inp.value=val;inp.hidden=false}
+  else{sel.value=sel.options[0].value;inp.value='';inp.hidden=true}
+ }else{
+  inp.hidden=(sel.value!=='custom');
+ }
+}
+function getQuestionVal(selId,inpId){
+ const sel=$(selId),inp=$(inpId);
+ if(!sel)return inp?inp.value.trim():'';
+ return sel.value==='custom'?(inp?inp.value.trim():''):sel.value.trim();
+}
+if($('#dr-cq-sel'))$('#dr-cq-sel').onchange=()=>{syncQuestionSelect('#dr-cq-sel','#dr-cq');if($('#dr-cq')&&!$('#dr-cq').hidden)$('#dr-cq').focus()};
+
+function renderSettingsTab(){
+ syncDiaryDot();
+ document.querySelectorAll('#st-tabs button').forEach(b=>b.classList.toggle('on',b.dataset.st===ST_TAB));
+ if($('#st-pane-cats'))$('#st-pane-cats').hidden=(ST_TAB!=='cats');
+ if($('#st-pane-diary'))$('#st-pane-diary').hidden=(ST_TAB!=='diary');
+ if($('#cm-cnt'))$('#cm-cnt').hidden=(ST_TAB!=='cats');
+ if(ST_TAB!=='diary')return;
+ const hasV=!!(DRV&&DRV.v),un=!!DIARY_KEY,nCnt=drDates.size;
+ if($('#st-dr-title'))$('#st-dr-title').textContent=hasV?'AES-256-GCM Diary Vault':'Diary Vault Not Set Up';
+ if($('#st-dr-sub'))$('#st-dr-sub').textContent=hasV?`${nCnt} encrypted ${nCnt===1?'note':'notes'} · ${DRV.q?'Security question active':'No security question set'}`:'Set a password below to encrypt your daily diary';
+ if($('#st-dr-badge')){$('#st-dr-badge').className='dr-st '+(un?'un':'lk');$('#st-dr-badge').textContent=!hasV?'NEW':(un?'UNLOCKED':'LOCKED')}
+ if($('#st-enc-hd'))$('#st-enc-hd').textContent=hasV?'Update Password & Recovery Question':'Create Password & Recovery Question';
+ if($('#st-cur-wrap'))$('#st-cur-wrap').hidden=!hasV||un;
+ if($('#st-np-lbl'))$('#st-np-lbl').textContent=hasV?'New password (optional)':'Set password / PIN';
+ if($('#st-cur-pw'))$('#st-cur-pw').value='';
+ if($('#st-np1'))$('#st-np1').value='';
+ if($('#st-np2'))$('#st-np2').value='';
+ syncQuestionSelect('#dr-cq-sel','#dr-cq',DRV.q||'');
+ if($('#dr-ca'))$('#dr-ca').value='';
+ if($('#dr-chn'))$('#dr-chn').value=DRV.hint||'';
+ if($('#dr-cer'))$('#dr-cer').textContent='';
+ if($('#dr-rer'))$('#dr-rer').textContent='';
+ if($('#dr-rter'))$('#dr-rter').textContent='';
+ if($('#dr-acc-try')){$('#dr-acc-try').hidden=!hasV;$('#dr-acc-try').open=false}
+ if($('#dr-acc-other')){$('#dr-acc-other').hidden=!hasV;$('#dr-acc-other').open=false}
+ const hasQA=!!(DRV.q&&DRV.r);
+ if($('#dr-qa-box'))$('#dr-qa-box').hidden=!hasQA;
+ if($('#dr-no-qa'))$('#dr-no-qa').hidden=hasQA;
+ if($('#dr-rq-txt'))$('#dr-rq-txt').textContent=DRV.q||'Not configured yet';
+}
+
 function renderDiaryModal(){
  syncDiaryDot();
  const hasV=!!(DRV&&DRV.v),un=!!DIARY_KEY;
- if($('#dr-setup'))$('#dr-setup').hidden=hasV;
- if($('#dr-lock'))$('#dr-lock').hidden=!hasV||un||drRec;
- if($('#dr-rec'))$('#dr-rec').hidden=!hasV||un||!drRec;
- if($('#dr-chpw'))$('#dr-chpw').hidden=!un||!drChPw;
- if($('#dr-work'))$('#dr-work').hidden=!un||drChPw;
- if(!hasV){
-  if($('#dr-ser'))$('#dr-ser').textContent='';
- }else if(!un&&drRec){
-  if($('#dr-rer'))$('#dr-rer').textContent='';
-  if($('#dr-rq-txt'))$('#dr-rq-txt').value=DRV.q||'No security question configured on this vault';
- }else if(!un){
+ if($('#drd'))$('#drd').classList.toggle('un',un);
+ if($('#dr-lock'))$('#dr-lock').hidden=un;
+ if($('#dr-work'))$('#dr-work').hidden=!un;
+ if(!un){
   if($('#dr-uer'))$('#dr-uer').textContent='';
-  if($('#dr-uhint')){$('#dr-uhint').hidden=!DRV.hint;$('#dr-uhint').textContent=DRV.hint?'Hint: '+DRV.hint:''}
-  if($('#dr-fgt-btn'))$('#dr-fgt-btn').hidden=!(DRV.q&&DRV.r);
- }else if(!drChPw){
+  if($('#dr-upw'))$('#dr-upw').placeholder=hasV?'Enter password':'Create a password to start';
+  if($('#dr-ubtn'))$('#dr-ubtn').textContent=hasV?'Unlock diary':'Set password & open diary';
+  if($('#dr-uhint')){$('#dr-uhint').hidden=!(hasV&&DRV.hint);$('#dr-uhint').textContent=DRV.hint?'Hint: '+DRV.hint:''}
+ }else{
   renderDiarySidebar();
   renderDiaryDate(false);
  }
@@ -585,112 +636,175 @@ function renderDiaryModal(){
 function openDiary(dt){
  if(dt)drDate=fixDate(dt);
  else if(!drDate)drDate=iso(0);
- drChPw=false;drRec=false;
  renderDiaryModal();
  if($('#drd')&&!$('#drd').open)$('#drd').showModal();
- if(!DRV.v&&$('#dr-sp1'))$('#dr-sp1').focus();
- else if(!DIARY_KEY&&$('#dr-upw')){$('#dr-upw').value='';$('#dr-upw').focus()}
+ if(!DIARY_KEY&&$('#dr-upw')){$('#dr-upw').value='';$('#dr-upw').focus()}
 }
 if($('#drb'))$('#drb').onclick=()=>openDiary();
 if($('#dr-cx'))$('#dr-cx').onclick=()=>$('#drd').close();
 if($('#dr-lk-btn'))$('#dr-lk-btn').onclick=()=>{lockDiary();renderDiaryModal();toast('Diary vault locked')};
-if($('#dr-fgt-btn'))$('#dr-fgt-btn').onclick=()=>{
- if(!DRV.q||!DRV.r){$('#dr-uer').textContent='No security question was set for this vault.';return}
- drRec=true;
- if($('#dr-ra'))$('#dr-ra').value='';
- if($('#dr-rp1'))$('#dr-rp1').value='';
- if($('#dr-rp2'))$('#dr-rp2').value='';
- renderDiaryModal();
- if($('#dr-ra'))$('#dr-ra').focus();
-};
-if($('#dr-rcx'))$('#dr-rcx').onclick=()=>{drRec=false;renderDiaryModal()};
-if($('#dr-pw-btn'))$('#dr-pw-btn').onclick=()=>{
- drChPw=true;
- if($('#dr-cp1'))$('#dr-cp1').value='';
- if($('#dr-cp2'))$('#dr-cp2').value='';
- if($('#dr-cq'))$('#dr-cq').value=DRV.q||'';
- if($('#dr-ca'))$('#dr-ca').value='';
- if($('#dr-chn'))$('#dr-chn').value=DRV.hint||'';
- if($('#dr-cer'))$('#dr-cer').textContent='';
- renderDiaryModal();
-};
-if($('#dr-ccx'))$('#dr-ccx').onclick=()=>{drChPw=false;renderDiaryModal()};
-if($('#dr-ssv'))$('#dr-ssv').onclick=async()=>{
- const p1=$('#dr-sp1').value,p2=$('#dr-sp2').value,sq=$('#dr-sq').value.trim(),sa=normAns($('#dr-sa').value),hn=$('#dr-shn').value.trim();
- if(p1.length<4){$('#dr-ser').textContent='Password must be at least 4 characters.';return}
- if(p1!==p2){$('#dr-ser').textContent='Passwords do not match.';return}
- if(!sq||sa.length<2){$('#dr-ser').textContent='Enter a security question and answer (at least 2 characters) for password recovery.';return}
- try{
-  const rawDek=crypto.getRandomValues(new Uint8Array(32));
-  const dekB64=b64e(rawDek);
-  const key=await importRawDek(dekB64);
-  const pwWrap=await wrapDekWithSecret(p1,dekB64);
-  const qaWrap=await wrapDekWithSecret(sa,dekB64);
-  DRV={v:pwWrap,q:sq,r:qaWrap,hint:hn,upd:now()};
-  DIARY_KEY=key;DIARY_DEK_B64=dekB64;
-  $('#dr-sp1').value='';$('#dr-sp2').value='';$('#dr-sa').value='';
-  drsave();renderDiaryModal();toast('Encrypted Diary Vault created');
- }catch(e){$('#dr-ser').textContent='Could not initialize Web Crypto vault.'}
-};
+if($('#dr-to-st'))$('#dr-to-st').onclick=()=>{if($('#drd'))$('#drd').close();openSettings('diary')};
+
 async function tryUnlockDiary(){
  const pw=$('#dr-upw').value;
- if(!pw){$('#dr-uer').textContent='Enter your vault password.';return}
+ if(!pw){$('#dr-uer').textContent='Enter your password.';return}
+ const hasV=!!(DRV&&DRV.v),tok=(STORE.getItem('ledger.api.token')||'').trim();
+ if(!hasV){
+  try{
+   const rawDek=crypto.getRandomValues(new Uint8Array(32));
+   const dekB64=b64e(rawDek),key=await importRawDek(dekB64);
+   const pwWrap=await wrapDekWithSecret(pw,dekB64);
+   const tokWrap=tok?await wrapDekWithSecret(tok,dekB64):'';
+   DRV={v:pwWrap,q:'',r:'',t:tokWrap,hint:'',upd:now()};
+   DIARY_KEY=key;DIARY_DEK_B64=dekB64;
+   $('#dr-upw').value='';$('#dr-uer').textContent='';
+   drsave();renderDiaryModal();toast('Diary password set & unlocked');
+  }catch(e){$('#dr-uer').textContent='Could not initialize Web Crypto vault.'}
+  return;
+ }
  try{
   const res=await unwrapDekWithSecret(pw,DRV.v);
   DIARY_KEY=res.key;DIARY_DEK_B64=res.dekB64;
   $('#dr-upw').value='';$('#dr-uer').textContent='';
   await decryptDiaryFast();
+  if(res.legacy){
+   const rawDek=crypto.getRandomValues(new Uint8Array(32));
+   const dekB64=b64e(rawDek),newKey=await importRawDek(dekB64),ts=now();
+   for(const r of DR){
+    if(r.del||!r.cipher)continue;
+    const plain=DIARY_CACHE[r.date]||await decDiaryObj(DIARY_KEY,r.cipher);
+    r.cipher=await encDiaryObj(newKey,plain);r.upd=ts;
+   }
+   DRV.v=await wrapDekWithSecret(pw,dekB64);
+   if(tok)DRV.t=await wrapDekWithSecret(tok,dekB64);
+   DRV.upd=ts;DIARY_KEY=newKey;DIARY_DEK_B64=dekB64;drsave();
+  }else if(tok&&!DRV.t&&DIARY_DEK_B64){
+   DRV.t=await wrapDekWithSecret(tok,DIARY_DEK_B64);DRV.upd=now();drsave();
+  }
   renderDiaryModal();
  }catch(e){
-  $('#dr-uer').textContent='Incorrect password.';
+  $('#dr-uer').textContent='Incorrect password. Use Settings → Diary Encryption to recover or reset.';
  }
 }
 if($('#dr-ubtn'))$('#dr-ubtn').onclick=tryUnlockDiary;
 if($('#dr-upw'))$('#dr-upw').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();tryUnlockDiary()}});
+
+if($('#dr-csv'))$('#dr-csv').onclick=async()=>{
+ const hasV=!!(DRV&&DRV.v),curPw=($('#st-cur-pw')&&$('#st-cur-pw').value)||'';
+ const p1=($('#st-np1')&&$('#st-np1').value)||'',p2=($('#st-np2')&&$('#st-np2').value)||'';
+ const sq=getQuestionVal('#dr-cq-sel','#dr-cq'),sa=normAns($('#dr-ca')&&$('#dr-ca').value),hn=($('#dr-chn')&&$('#dr-chn').value||'').trim();
+ const tok=(STORE.getItem('ledger.api.token')||'').trim(),ts=now();
+ if(!hasV){
+  if(!p1){$('#dr-cer').textContent='Enter a password or PIN to create your vault.';return}
+  if(p1!==p2){$('#dr-cer').textContent='Passwords do not match.';return}
+  if(sa&&!sq){$('#dr-cer').textContent='Select or enter a security question.';return}
+  try{
+   const rawDek=crypto.getRandomValues(new Uint8Array(32));
+   const dekB64=b64e(rawDek),key=await importRawDek(dekB64);
+   const pwWrap=await wrapDekWithSecret(p1,dekB64);
+   const qaWrap=sa?await wrapDekWithSecret(sa,dekB64):'';
+   const tokWrap=tok?await wrapDekWithSecret(tok,dekB64):'';
+   DRV={v:pwWrap,q:sq,r:qaWrap,t:tokWrap,hint:hn,upd:ts};
+   DIARY_KEY=key;DIARY_DEK_B64=dekB64;
+   drsave();renderSettingsTab();toast('Diary encryption configured & unlocked');
+  }catch(e){$('#dr-cer').textContent='Could not initialize vault.'}
+  return;
+ }
+ if(p1&&p1!==p2){$('#dr-cer').textContent='New passwords do not match.';return}
+ if(sa&&!sq){$('#dr-cer').textContent='Select or enter a security question for your answer.';return}
+ try{
+  let key=DIARY_KEY,dekB64=DIARY_DEK_B64;
+  if(!key){
+   if(!curPw){$('#dr-cer').textContent='Enter your current password (or use Forgot Password below).';return}
+   const res=await unwrapDekWithSecret(curPw,DRV.v);
+   key=res.key;dekB64=res.dekB64;
+   DIARY_KEY=key;DIARY_DEK_B64=dekB64;
+   await decryptDiaryFast();
+  }
+  if(!dekB64){
+   const effPw=p1||curPw;
+   if(!effPw){$('#dr-cer').textContent='Enter a password above to upgrade your vault.';return}
+   const rawDek=crypto.getRandomValues(new Uint8Array(32));
+   dekB64=b64e(rawDek);key=await importRawDek(dekB64);
+   for(const r of DR){
+    if(r.del||!r.cipher)continue;
+    const plain=DIARY_CACHE[r.date]||await decDiaryObj(DIARY_KEY,r.cipher);
+    r.cipher=await encDiaryObj(key,plain);r.upd=ts;
+   }
+   DRV.v=await wrapDekWithSecret(effPw,dekB64);
+  }
+  const newPwWrap=p1?await wrapDekWithSecret(p1,dekB64):DRV.v;
+  const newQaWrap=sa?await wrapDekWithSecret(sa,dekB64):(DRV.r||'');
+  const newTokWrap=tok?await wrapDekWithSecret(tok,dekB64):(DRV.t||'');
+  DRV={v:newPwWrap,q:sq||DRV.q||'',r:newQaWrap,t:newTokWrap,hint:hn,upd:ts};
+  DIARY_KEY=key;DIARY_DEK_B64=dekB64;
+  drsave();renderSettingsTab();toast('Diary encryption settings saved');
+ }catch(e){
+  $('#dr-cer').textContent='Incorrect current password.';
+ }
+};
+
 if($('#dr-rsv'))$('#dr-rsv').onclick=async()=>{
- const ans=normAns($('#dr-ra').value),p1=$('#dr-rp1').value,p2=$('#dr-rp2').value;
+ const ans=normAns($('#dr-ra')&&$('#dr-ra').value),p1=($('#dr-rp1')&&$('#dr-rp1').value)||'';
  if(!ans){$('#dr-rer').textContent='Enter your security answer.';return}
- if(p1.length<4){$('#dr-rer').textContent='New password must be at least 4 characters.';return}
- if(p1!==p2){$('#dr-rer').textContent='Passwords do not match.';return}
  try{
   const res=await unwrapDekWithSecret(ans,DRV.r);
   if(!res.dekB64)throw new Error('no dek');
-  const newPwWrap=await wrapDekWithSecret(p1,res.dekB64);
-  DRV=Object.assign({},DRV,{v:newPwWrap,upd:now()});
-  DIARY_KEY=res.key;DIARY_DEK_B64=res.dekB64;drRec=false;
-  $('#dr-ra').value='';$('#dr-rp1').value='';$('#dr-rp2').value='';$('#dr-rer').textContent='';
+  if(p1){
+   const newPwWrap=await wrapDekWithSecret(p1,res.dekB64);
+   DRV=Object.assign({},DRV,{v:newPwWrap,upd:now()});
+   drsave();
+  }
+  DIARY_KEY=res.key;DIARY_DEK_B64=res.dekB64;
+  if($('#dr-ra'))$('#dr-ra').value='';if($('#dr-rp1'))$('#dr-rp1').value='';$('#dr-rer').textContent='';
   await decryptDiaryFast();
-  drsave();renderDiaryModal();toast('Password reset & vault unlocked!');
+  renderSettingsTab();toast(p1?'Password reset & diary unlocked!':'Diary unlocked via security answer!');
  }catch(e){
   $('#dr-rer').textContent='Incorrect security answer.';
  }
 };
-if($('#dr-csv'))$('#dr-csv').onclick=async()=>{
- if(!DIARY_KEY)return;
- const p1=$('#dr-cp1').value,p2=$('#dr-cp2').value,sq=$('#dr-cq').value.trim(),sa=normAns($('#dr-ca').value),hn=$('#dr-chn').value.trim();
- if(p1.length<4){$('#dr-cer').textContent='New password must be at least 4 characters.';return}
- if(p1!==p2){$('#dr-cer').textContent='Passwords do not match.';return}
- if(sa&&!sq){$('#dr-cer').textContent='Enter a security question for your new answer.';return}
+if($('#dr-rtbtn'))$('#dr-rtbtn').onclick=async()=>{
+ const tok=($('#dr-rtok')&&$('#dr-rtok').value||'').trim(),np=($('#dr-rtp')&&$('#dr-rtp').value)||'';
+ const savedTok=(STORE.getItem('ledger.api.token')||'').trim();
+ if(!tok){$('#dr-rter').textContent='Enter your Google Sheet Sync Token.';return}
+ if(!np){$('#dr-rter').textContent='Enter a new vault password.';return}
  try{
-  const ts=now();
-  let dekB64=DIARY_DEK_B64,key=DIARY_KEY;
-  if(!dekB64){
-   const rawDek=crypto.getRandomValues(new Uint8Array(32));
-   dekB64=b64e(rawDek);
-   key=await importRawDek(dekB64);
-   for(const r of DR){
-    if(r.del||!r.cipher)continue;
-    const plain=DIARY_CACHE[r.date]||await decDiaryObj(DIARY_KEY,r.cipher);
-    r.cipher=await encDiaryObj(key,plain);
-    r.upd=ts;
-   }
+  if(DRV.t){
+   const res=await unwrapDekWithSecret(tok,DRV.t);
+   if(!res.dekB64)throw new Error('bad token');
+   DRV.v=await wrapDekWithSecret(np,res.dekB64);DRV.upd=now();
+   DIARY_KEY=res.key;DIARY_DEK_B64=res.dekB64;
+   $('#dr-rtok').value='';$('#dr-rtp').value='';$('#dr-rter').textContent='';
+   await decryptDiaryFast();drsave();renderSettingsTab();
+   toast('Vault recovered & password updated!');
+   return;
   }
-  const newPwWrap=await wrapDekWithSecret(p1,dekB64);
-  const newQaWrap=sa?await wrapDekWithSecret(sa,dekB64):(DRV.r||'');
-  DRV={v:newPwWrap,q:sq||DRV.q||'',r:newQaWrap,hint:hn,upd:ts};
-  DIARY_KEY=key;DIARY_DEK_B64=dekB64;drChPw=false;
-  drsave();renderDiaryModal();toast('Security settings updated instantly');
- }catch(e){$('#dr-cer').textContent='Failed to update security settings.'}
+  if(savedTok&&tok===savedTok){
+   const rawDek=crypto.getRandomValues(new Uint8Array(32));
+   const dekB64=b64e(rawDek),key=await importRawDek(dekB64),ts=now();
+   DR.forEach(r=>{if(!r.del){r.del=1;r.upd=ts}});
+   DRV={v:await wrapDekWithSecret(np,dekB64),q:DRV.q||'',r:'',t:await wrapDekWithSecret(tok,dekB64),hint:'',upd:ts};
+   DIARY_KEY=key;DIARY_DEK_B64=dekB64;DIARY_CACHE={};
+   $('#dr-rtok').value='';$('#dr-rtp').value='';$('#dr-rter').textContent='';
+   drsave();render();renderSettingsTab();
+   toast('Sync Token verified · New vault password set');
+   return;
+  }
+  $('#dr-rter').textContent='Sync Token does not match this vault.';
+ }catch(e){
+  $('#dr-rter').textContent='Invalid Sync Token for this vault.';
+ }
+};
+if($('#dr-rwbtn'))$('#dr-rwbtn').onclick=()=>{
+ const v=($('#dr-rwipe')&&$('#dr-rwipe').value||'').trim().toUpperCase();
+ if(v!=='RESET'){if($('#dr-rter'))$('#dr-rter').textContent='Type RESET in the box to confirm.';return}
+ const ts=now();
+ DR.forEach(r=>{if(!r.del){r.del=1;r.upd=ts}});
+ DRV={v:'',q:'',r:'',t:'',hint:'',upd:ts};
+ lockDiary();
+ if($('#dr-rwipe'))$('#dr-rwipe').value='';
+ drsave();render();renderSettingsTab();
+ toast('Diary vault reset. Set a new password above.');
 };
 const shiftDiaryDate=delta=>{
  const d=new Date(drDate+'T00:00:00');
@@ -778,7 +892,7 @@ let SNAP={};try{SNAP=JSON.parse(STORE.getItem('ledger.snap'))||{}}catch(e){}
 const LAST={};
 const snapSet=(t,id,h)=>{(SNAP[t]=SNAP[t]||{})[id]=h};
 const obHash=()=>String(r2(OB.INR||0));
-const drvVal=()=>JSON.stringify({v:DRV.v||'',q:DRV.q||'',r:DRV.r||'',hint:DRV.hint||''});
+const drvVal=()=>JSON.stringify({v:DRV.v||'',q:DRV.q||'',r:DRV.r||'',t:DRV.t||'',hint:DRV.hint||''});
 const drvHash=()=>DRV.v?hs(drvVal()):'';
 const EPOCH='1970-01-01T00:00:00.000Z';
 function stamp(init){
@@ -853,7 +967,7 @@ function applyRemote(data){
    if(edited&&DRV.upd>String(r.updated_at))return;
    try{
     const parsed=JSON.parse(r.value);
-    if(parsed&&parsed.v)DRV={v:parsed.v,q:parsed.q||'',r:parsed.r||'',hint:parsed.hint||'',upd:String(r.updated_at)};
+    if(parsed&&parsed.v)DRV={v:parsed.v,q:parsed.q||'',r:parsed.r||'',t:parsed.t||'',hint:parsed.hint||'',upd:String(r.updated_at)};
    }catch(e){
     if(r.value)DRV={v:String(r.value),q:'',r:'',hint:'',upd:String(r.updated_at)};
    }
