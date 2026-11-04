@@ -21,23 +21,23 @@
  --font-sans:'Instrument Sans',system-ui,-apple-system,sans-serif;
  --font-mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
  --bg:#e9eef5;--card:#fbfcfe;--ink:#0f172a;--mut:#5b6b82;--line:#d5dfec;
- --aed:#0b7a75;--inr:#1d4ed8;--dbt:#6d28d9;--in:#13795b;--out:#c0392b;--warn:#d97706;--acc:var(--aed);
+ --aed:#0b7a75;--inr:#1d4ed8;--dbt:#6d28d9;--dry:#4f46e5;--in:#13795b;--out:#c0392b;--warn:#d97706;--acc:var(--aed);
  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)
 }
 @media (prefers-color-scheme:dark){
  :root:not([data-theme="light"]){
   --bg:#0b101b;--card:#131c2e;--ink:#eaf0f8;--mut:#8fa1b8;--line:#223049;
-  --aed:#2dd4bf;--inr:#60a5fa;--dbt:#a78bfa;--in:#34d399;--out:#fb7185;--warn:#fbbf24;color-scheme:dark
+  --aed:#2dd4bf;--inr:#60a5fa;--dbt:#a78bfa;--dry:#818cf8;--in:#34d399;--out:#fb7185;--warn:#fbbf24;color-scheme:dark
  }
 }
 :root[data-theme="dark"]{
  --bg:#0b101b;--card:#131c2e;--ink:#eaf0f8;--mut:#8fa1b8;--line:#223049;
- --aed:#2dd4bf;--inr:#60a5fa;--dbt:#a78bfa;--in:#34d399;--out:#fb7185;--warn:#fbbf24;color-scheme:dark
+ --aed:#2dd4bf;--inr:#60a5fa;--dbt:#a78bfa;--dry:#818cf8;--in:#34d399;--out:#fb7185;--warn:#fbbf24;color-scheme:dark
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--font-sans);-webkit-font-smoothing:antialiased}
-button,input{font:inherit;color:inherit}
+button,input,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 .num,.amt,.bal,.io b,.av,.ds b,.ddo em{font-family:var(--font-mono);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
@@ -57,6 +57,10 @@ h1{font:800 26px/1.1 var(--font-display);margin:0;letter-spacing:-.03em}
 @keyframes pu{50%{opacity:.3}}
 .ghost{background:transparent;border:1px solid var(--line);border-radius:99px;padding:7px 13px;font-size:13px;font-weight:550;transition:background .15s,border-color .15s}
 .ghost:hover:not(:disabled){border-color:var(--acc);background:color-mix(in srgb,var(--acc) 10%,transparent)}
+.dry-btn{display:inline-flex;align-items:center;gap:6px;border-color:color-mix(in srgb,var(--dry) 36%,var(--line));background:color-mix(in srgb,var(--dry) 10%,var(--card));color:var(--dry);font-weight:650}
+.dry-btn:hover:not(:disabled){border-color:var(--dry);background:color-mix(in srgb,var(--dry) 18%,var(--card))}
+.dry-dot{width:7px;height:7px;border-radius:50%;background:var(--out);flex-shrink:0;transition:background .2s,box-shadow .2s}
+.dry-dot.on{background:var(--in);box-shadow:0 0 6px var(--in)}
 .icon-btn{display:inline-grid;place-items:center;width:34px;height:34px;padding:0;border-radius:50%;background:var(--card);border:1px solid var(--line);color:var(--ink);transition:border-color .15s,background .15s}
 .icon-btn:hover{border-color:var(--acc);background:color-mix(in srgb,var(--acc) 10%,var(--card))}
 .icon-btn svg{width:17px;height:17px;display:block}
@@ -256,10 +260,55 @@ tr.sub{display:none}tr.xo+tr.sub{display:table-row}[data-dk^="xp:"] svg{transiti
 tr.ro .ax{max-width:90px;opacity:1;visibility:visible;transform:none;transition-delay:0s}
 .pn .ddm{background:var(--card);top:auto;bottom:calc(100% + 8px);left:auto;right:0}
 
+/* Daily Diary Vault Modal & Date Note Badge */
+.dry-tag{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:2px 7px;border-radius:99px;font:600 11px var(--font-display);background:color-mix(in srgb,var(--dry) 14%,var(--card));color:var(--dry);border:1px solid color-mix(in srgb,var(--dry) 32%,var(--line));vertical-align:middle}
+.dry-tag:hover{background:color-mix(in srgb,var(--dry) 24%,var(--card));border-color:var(--dry)}
+dialog.dr-dlg{--acc:var(--dry);width:min(760px,calc(100% - 20px));max-width:760px}
+.dr-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 20px;border-bottom:1px solid var(--line);background:linear-gradient(135deg,color-mix(in srgb,var(--dry) 14%,var(--card)),color-mix(in srgb,var(--dry) 4%,var(--card)));flex-wrap:wrap}
+.dr-hl{display:flex;align-items:center;gap:10px}
+.dr-ic{width:36px;height:36px;border-radius:11px;background:var(--dry);color:#fff;display:grid;place-items:center;flex-shrink:0}
+.dr-hl h2{margin:0;font:700 18px/1.15 var(--font-display)}
+.dr-hl p{margin:2px 0 0;font-size:12px;color:var(--mut)}
+.dr-hr{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.dr-st{font:700 11px var(--font-mono);padding:4px 9px;border-radius:8px;letter-spacing:.02em}
+.dr-st.lk{background:color-mix(in srgb,var(--out) 14%,var(--card));color:var(--out);border:1px solid color-mix(in srgb,var(--out) 30%,var(--line))}
+.dr-st.un{background:color-mix(in srgb,var(--in) 14%,var(--card));color:var(--in);border:1px solid color-mix(in srgb,var(--in) 30%,var(--line))}
+.dr-gate{padding:24px 20px;max-width:420px;margin:0 auto;display:grid;gap:12px}
+.dr-gate h3{margin:0;font:700 18px var(--font-display)}
+.dr-work{display:grid;grid-template-columns:215px minmax(0,1fr);min-height:430px}
+.dr-side{border-right:1px solid var(--line);padding:12px;background:color-mix(in srgb,var(--bg) 55%,var(--card));display:flex;flex-direction:column;gap:8px}
+.dr-side input{padding:8px 10px;font-size:13px}
+.dr-list{display:grid;gap:6px;max-height:360px;overflow-y:auto;align-content:start;padding-right:2px;scrollbar-width:thin}
+.dr-item{text-align:left;padding:9px 10px;border-radius:12px;border:1px solid var(--line);background:var(--card);display:grid;gap:2px;transition:border-color .15s,background .15s}
+.dr-item:hover{border-color:var(--dry)}
+.dr-item.on{border-color:var(--dry);background:color-mix(in srgb,var(--dry) 12%,var(--card))}
+.dr-item-top{display:flex;justify-content:space-between;align-items:center;font:700 11.5px var(--font-mono);color:var(--dry)}
+.dr-item b{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
+.dr-item small{font:500 11px var(--font-mono);color:var(--mut)}
+.dr-main{padding:16px 20px;display:grid;gap:12px;align-content:start}
+.dr-dbar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.dr-dnav{display:flex;align-items:center;gap:6px}
+.dr-dnav input{width:142px;padding:7px 32px 7px 10px;font:600 13px var(--font-mono)}
+.dr-sum{background:var(--bg);border:1px solid var(--line);border-radius:16px;padding:11px 13px;display:grid;gap:8px}
+.dr-sum-hd{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--mut)}
+.dr-sum-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.dr-sum-box{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:7px 10px;display:flex;justify-content:space-between;align-items:center;font-size:12px}
+.dr-sum-tx{border-top:1px dashed var(--line);padding-top:7px;display:grid;gap:4px;max-height:96px;overflow-y:auto;font-size:12.5px;scrollbar-width:thin}
+.dr-sum-r{display:flex;justify-content:space-between;align-items:center;gap:8px;color:var(--mut)}
+.dr-sum-r b{color:var(--ink);font-weight:600}
+.dr-ttl{font:650 15px var(--font-display);padding:10px 12px}
+.dr-bdy{width:100%;min-height:136px;resize:vertical;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:11px 12px;color:var(--ink);line-height:1.55}
+.dr-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.dr-meta{font:500 11.5px var(--font-mono);color:var(--mut)}
+
 @media(max-width:700px){
  .wrap{padding-bottom:104px}
  .cur{flex-wrap:wrap;row-gap:8px}
- dialog{width:100%;max-width:100%;margin:auto 0 0 0;border-radius:26px 26px 0 0;max-height:92vh;overflow-y:auto}
+ dialog,dialog.dr-dlg{width:100%;max-width:100%;margin:auto 0 0 0;border-radius:26px 26px 0 0;max-height:92vh;overflow-y:auto}
+ .dr-work{grid-template-columns:1fr}
+ .dr-side{border-right:0;border-bottom:1px solid var(--line)}
+ .dr-list{display:flex;overflow-x:auto;max-height:none;padding-bottom:4px}
+ .dr-item{min-width:155px;flex:none}
 }
 </style>
 </head>
@@ -272,6 +321,11 @@ tr.ro .ax{max-width:90px;opacity:1;visibility:visible;transform:none;transition-
     <span class="pill" id="st"><i class="dot"></i><span id="stx"></span></span>
     <button class="ghost" id="tg"></button>
     <button class="ghost" id="cmb">Categories</button>
+    <button class="ghost dry-btn" id="drb" type="button" title="Open Encrypted Daily Diary">
+     <i class="dry-dot" id="dr-dot"></i>
+     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/><path d="M12 11V7"/><circle cx="12" cy="14" r="1"/></svg>
+     <span>Diary</span>
+    </button>
    </div>
    <div class="stat-r">
     <button class="ghost" id="bkb">Backup</button>
@@ -360,7 +414,7 @@ tr.ro .ax{max-width:90px;opacity:1;visibility:visible;transform:none;transition-
 
 <dialog id="bkd"><div class="sh">
  <h2>Backup &amp; Restore</h2>
- <p class="hint">Export your transactions to a spreadsheet (CSV) or save a full JSON snapshot of all transactions, categories, debts, and opening balance.</p>
+ <p class="hint">Export your transactions to a spreadsheet (CSV) or save a full JSON snapshot of all transactions, categories, debts, encrypted diary notes, and opening balance.</p>
  <div class="two">
   <button class="prim" id="bk-csv" type="button">Export CSV</button>
   <button class="prim" id="bk-json" type="button" style="background:var(--ink);color:var(--card)">Download JSON</button>
@@ -371,6 +425,127 @@ tr.ro .ax{max-width:90px;opacity:1;visibility:visible;transform:none;transition-
 </div></dialog>
 
 <dialog id="syd"><div class="sh"><h2>Sync with Google Sheet</h2><p class="hint">Enter the web app link and the token from your Apps Script. They stay on this device only.</p><label>Web app link<input id="syu" type="url" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off"></label><label>Token<input id="syt" type="password" autocomplete="off"></label><div class="err" id="sye"></div><p class="hint" id="syi"></p><button class="prim" id="sys">Save and sync now</button><button class="ghost" id="syx">Test connection</button><button class="ghost" id="syc">Close</button></div></dialog>
+
+<dialog id="drd" class="dr-dlg">
+ <div class="dr-hd">
+  <div class="dr-hl">
+   <div class="dr-ic">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+   </div>
+   <div>
+    <h2>Daily Diary Vault</h2>
+    <p>AES-256-GCM encrypted journal · unreadable in Google Sheet</p>
+   </div>
+  </div>
+  <div class="dr-hr">
+   <span class="dr-st lk" id="dr-st">LOCKED</span>
+   <button class="ghost" id="dr-pw-btn" type="button" hidden style="padding:5px 11px;font-size:12px">Password</button>
+   <button class="ghost" id="dr-lk-btn" type="button" hidden style="padding:5px 11px;font-size:12px">Lock</button>
+   <button class="ghost" id="dr-cx" type="button" style="padding:5px 11px;font-size:12px">Close</button>
+  </div>
+ </div>
+
+ <!-- State 1: First-Time Vault Password Setup -->
+ <div class="dr-gate" id="dr-setup" hidden>
+  <h3>Set up your Diary Vault</h3>
+  <p class="hint">Notes are encrypted with a 256-bit AES-GCM Master Key wrapped by your password and security question. Even with years of notes, password resets are instant.</p>
+  <div class="two">
+   <label>Vault password<input id="dr-sp1" type="password" autocomplete="new-password" placeholder="Min 4 chars"></label>
+   <label>Confirm password<input id="dr-sp2" type="password" autocomplete="new-password" placeholder="Repeat password"></label>
+  </div>
+  <label>Security question (for password recovery)<input id="dr-sq" type="text" maxlength="80" placeholder="e.g. What was my first school / childhood nickname?"></label>
+  <div class="two">
+   <label>Security answer<input id="dr-sa" type="password" autocomplete="off" placeholder="Case-insensitive"></label>
+   <label>Password hint (optional)<input id="dr-shn" type="text" maxlength="50" placeholder="Optional reminder"></label>
+  </div>
+  <div class="err" id="dr-ser"></div>
+  <button class="prim" id="dr-ssv" type="button">Create encrypted vault</button>
+ </div>
+
+ <!-- State 2: Unlock Existing Vault -->
+ <div class="dr-gate" id="dr-lock" hidden>
+  <h3>Unlock Daily Diary</h3>
+  <p class="hint">Enter your vault password to decrypt your notes in memory. Vault locks automatically when hidden for 60s.</p>
+  <label>Vault password<input id="dr-upw" type="password" autocomplete="current-password" placeholder="Enter vault password"></label>
+  <p class="hint" id="dr-uhint" hidden></p>
+  <div class="err" id="dr-uer"></div>
+  <button class="prim" id="dr-ubtn" type="button">Unlock diary</button>
+  <button class="ghost" id="dr-fgt-btn" type="button" style="font-size:12.5px;padding:7px 12px">Forgot password? Reset with security question</button>
+ </div>
+
+ <!-- State 2B: Recover Password via Security Question -->
+ <div class="dr-gate" id="dr-rec" hidden>
+  <h3>Recover Vault Password</h3>
+  <p class="hint">Answer your security question to unwrap your 256-bit Master Key and set a new password without losing any notes.</p>
+  <label>Security question<input id="dr-rq-txt" type="text" readonly style="opacity:.85;font-weight:600"></label>
+  <label>Your security answer<input id="dr-ra" type="password" autocomplete="off" placeholder="Enter your answer (case-insensitive)"></label>
+  <div class="two">
+   <label>New password<input id="dr-rp1" type="password" autocomplete="new-password" placeholder="Min 4 chars"></label>
+   <label>Confirm password<input id="dr-rp2" type="password" autocomplete="new-password" placeholder="Repeat password"></label>
+  </div>
+  <div class="err" id="dr-rer"></div>
+  <div class="two">
+   <button class="ghost" id="dr-rcx" type="button">Back to login</button>
+   <button class="prim" id="dr-rsv" type="button">Reset &amp; unlock</button>
+  </div>
+ </div>
+
+ <!-- State 3: Change Vault Password & Recovery Question -->
+ <div class="dr-gate" id="dr-chpw" hidden>
+  <h3>Password &amp; Recovery Settings</h3>
+  <p class="hint">Updates your wrapped 256-bit Master Key instantly in &lt;15ms without needing to re-upload your historical diary notes.</p>
+  <div class="two">
+   <label>New password<input id="dr-cp1" type="password" autocomplete="new-password" placeholder="Min 4 chars"></label>
+   <label>Confirm password<input id="dr-cp2" type="password" autocomplete="new-password" placeholder="Repeat password"></label>
+  </div>
+  <label>Security question (optional update)<input id="dr-cq" type="text" maxlength="80" placeholder="Leave blank to keep current question"></label>
+  <div class="two">
+   <label>New security answer<input id="dr-ca" type="password" autocomplete="off" placeholder="Leave blank to keep current"></label>
+   <label>Password hint (optional)<input id="dr-chn" type="text" maxlength="50"></label>
+  </div>
+  <div class="err" id="dr-cer"></div>
+  <div class="two">
+   <button class="ghost" id="dr-ccx" type="button">Back</button>
+   <button class="prim" id="dr-csv" type="button">Save security settings</button>
+  </div>
+ </div>
+
+ <!-- State 4: Unlocked Diary Workspace -->
+ <div class="dr-work" id="dr-work" hidden>
+  <aside class="dr-side">
+   <input id="dr-q" type="search" placeholder="Search decrypted notes…" aria-label="Search diary notes">
+   <div class="dr-list" id="dr-list"></div>
+  </aside>
+  <div class="dr-main">
+   <div class="dr-dbar">
+    <div class="dr-dnav">
+     <button class="ib" id="dr-prev" type="button" style="margin:0" aria-label="Previous day" title="Previous day">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+     </button>
+     <input id="dr-dt" type="text" readonly data-dp aria-label="Diary date">
+     <button class="ib" id="dr-next" type="button" style="margin:0" aria-label="Next day" title="Next day">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+     </button>
+     <button class="ghost" id="dr-td" type="button" style="padding:5px 10px;font-size:12px">Today</button>
+    </div>
+    <button class="ghost" id="dr-ins" type="button" style="padding:5px 11px;font-size:12px" title="Insert today's spending snapshot into note">+ Insert spending</button>
+   </div>
+
+   <div class="dr-sum" id="dr-sum"></div>
+
+   <input id="dr-ttl" class="dr-ttl" type="text" maxlength="80" placeholder="Headline for the day (e.g. Client lunch &amp; family remittance)…">
+   <textarea id="dr-bdy" class="dr-bdy" placeholder="Write your private daily reflections, meeting takeaways, or financial context for this date…"></textarea>
+
+   <div class="dr-foot">
+    <span class="dr-meta" id="dr-meta">AES-256-GCM</span>
+    <div style="display:flex;gap:8px;align-items:center">
+     <button class="ghost" id="dr-del" type="button" hidden style="padding:8px 12px;color:var(--out);border-color:color-mix(in srgb,var(--out) 35%,var(--line))">Delete note</button>
+     <button class="prim" id="dr-sv" type="button" style="padding:9px 18px">Encrypt &amp; save</button>
+    </div>
+   </div>
+  </div>
+ </div>
+</dialog>
 <script src="app.js"></script>
 </body>
 </html>

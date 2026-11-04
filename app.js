@@ -111,6 +111,16 @@ const paid=d=>r2(d.pays.filter(p=>!p.del).reduce((a,p)=>a+p.amt,0)),rem=d=>r2(d.
 const LD='ledger.debts.v2';let DB=null;try{DB=JSON.parse(STORE.getItem(LD))}catch(e){}
 if(!DB)DB=[];
 const dsave=()=>{try{STORE.setItem(LD,JSON.stringify(DB))}catch(e){}stamp();schedSync()};
+const LDR='ledger.diary.v1',LDRV='ledger.diary.verifier';
+let DR=null;try{DR=JSON.parse(STORE.getItem(LDR))}catch(e){}
+if(!Array.isArray(DR))DR=[];
+let DRV={v:'',q:'',r:'',hint:'',upd:'1970-01-01T00:00:00.000Z'};try{const v=JSON.parse(STORE.getItem(LDRV));if(v&&typeof v==='object')DRV=Object.assign(DRV,v)}catch(e){}
+let drDates=new Set();
+const rebuildDrDates=()=>{drDates=new Set(DR.filter(x=>!x.del&&x.cipher).map(x=>x.date))};
+rebuildDrDates();
+const drsave=()=>{rebuildDrDates();try{STORE.setItem(LDR,JSON.stringify(DR));STORE.setItem(LDRV,JSON.stringify(DRV))}catch(e){}stamp();schedSync()};
+const hasDiary=dt=>drDates.has(dt);
+const dryBadge=dt=>hasDiary(dt)?`<button type="button" class="dry-tag" data-drd="${dt}" title="Open encrypted diary note for ${dt}">📝 Note</button>`:'';
 function dnet(c){const m={};DB.filter(d=>d.cur===c&&!d.del&&rem(d)>0).forEach(d=>{const k=d.who.trim().toLowerCase();m[k]=m[k]||{who:d.who.trim(),n:0};m[k].n=r2(m[k].n+(d.dir==='lent'?rem(d):-rem(d)))});return Object.values(m).filter(p=>p.n!==0).sort((a,b)=>Math.abs(b.n)-Math.abs(a.n))}
 function debts(c){const L=dnet(c),got=r2(L.filter(p=>p.n>0).reduce((a,p)=>a+p.n,0)),ow=Math.abs(r2(L.filter(p=>p.n<0).reduce((a,p)=>a+p.n,0)));
  return `<aside class="dw"><div class="dh"><b>Debts</b><button class="ghost" data-dk="manage:">Manage</button></div><div class="ds"><span class="in">Owed to you<b>${fmt(c,got)}</b></span><span class="out">You owe<b>${fmt(c,ow)}</b></span></div><div class="dl">${L.map(p=>`<div class="dr"><span class="av2">${esc(p.who.slice(0,1).toUpperCase())}</span><span class="t"><b>${esc(p.who)}</b><small class="${p.n>0?'in':'out'}">${p.n>0?'owes you':'you owe'}</small></span><em class="${p.n>0?'in':'out'}">${fmt(c,Math.abs(p.n))}</em></div>`).join('')||'<div class="empty">No debts. All settled.</div>'}</div></aside>`}
@@ -123,7 +133,7 @@ function mcards(c,rows,all,av,bfrCard){
  return `<div class="mfeed">${groups.map(g=>{
   const day=all.filter(r=>r.date===g.date),net=r2(day.reduce((a,r)=>a+(r.type==='in'?r.amt:-r.amt),0));
   const dtStr=new Date(g.date+'T00:00').toLocaleDateString('en',{day:'2-digit',month:'short',year:'numeric'});
-  return `<div class="mday"><div class="mday-h"><b>${dtStr}</b><span>${day.length} ${day.length===1?'entry':'entries'} · <em class="num ${net<0?'out':'in'}" style="font-style:normal;font-weight:600">${net<0?'−':'+'}${fmt(c,Math.abs(net))}</em></span></div>${g.items.map(x=>`<div class="mrow"><div class="mrow-l"><b>${esc(x.cat)}</b><span>${esc(x.note||'No notes')}</span></div><div class="mrow-r"><div class="mrow-amt"><b class="amt ${x.type}">${x.type==='in'?'+':'−'}${fmt(c,x.amt)}</b>${av?`<small>Avail: ${fmt(c,av[x.id])}</small>`:''}</div><div class="mrow-ac"><button class="ib" data-e="${x.id}" aria-label="Edit entry">${IC.e}</button><button class="ib d" data-d="${x.id}" aria-label="Delete entry">${IC.d}</button></div></div></div>`).join('')}</div>`;
+  return `<div class="mday"><div class="mday-h"><b>${dtStr}${dryBadge(g.date)}</b><span>${day.length} ${day.length===1?'entry':'entries'} · <em class="num ${net<0?'out':'in'}" style="font-style:normal;font-weight:600">${net<0?'−':'+'}${fmt(c,Math.abs(net))}</em></span></div>${g.items.map(x=>`<div class="mrow"><div class="mrow-l"><b>${esc(x.cat)}</b><span>${esc(x.note||'No notes')}</span></div><div class="mrow-r"><div class="mrow-amt"><b class="amt ${x.type}">${x.type==='in'?'+':'−'}${fmt(c,x.amt)}</b>${av?`<small>Avail: ${fmt(c,av[x.id])}</small>`:''}</div><div class="mrow-ac"><button class="ib" data-e="${x.id}" aria-label="Edit entry">${IC.e}</button><button class="ib d" data-d="${x.id}" aria-label="Delete entry">${IC.d}</button></div></div></div>`).join('')}</div>`;
  }).join('')}${bfrCard||''}</div>`;
 }
 
@@ -132,7 +142,7 @@ function tbl(c){if(c==='INR')return ltbl(c);
  const pages=Math.max(1,Math.ceil(all.length/S.pp));S.pg=Math.max(1,Math.min(S.pg,pages));
  const st=(S.pg-1)*S.pp,rows=all.slice(st,st+S.pp);
  return `<div class="vm-${S.vm}">${mcards(c,rows,all,null,'')}<div class="tw tx-tw"><table class="lt"><colgroup><col style="width:46px"><col style="width:140px"><col><col style="width:92px"><col style="width:112px"><col style="width:128px"></colgroup><thead><tr><th>S.no</th><th>Date</th><th>Category / notes</th><th>Type</th><th class="r">Amount</th><th></th></tr></thead><tbody>${rows.map((x,i)=>{const f=i===0||rows[i-1].date!==x.date,l=i===rows.length-1||rows[i+1].date!==x.date,sp=rows.filter(r=>r.date===x.date).length,day=all.filter(r=>r.date===x.date),net=r2(day.reduce((a,r)=>a+(r.type==='in'?r.amt:-r.amt),0));
- return `<tr class="${f?'f':''} ${l?'':'k'}"><td class="num">${st+i+1}</td>${f?`<td rowspan="${sp}" class="dt"><b>${new Date(x.date+'T00:00').toLocaleDateString('en',{day:'2-digit',month:'short',year:'numeric'})}</b><span class="n num">${day.length} ${day.length===1?'entry':'entries'} · ${net<0?'−':'+'}${fmt(c,Math.abs(net))}</span></td>`:''}<td><b>${esc(x.cat)}</b><span class="n">${esc(x.note||'No notes')}</span></td><td><span class="tp ${x.type}">${x.type==='in'?'Received':'Spent'}</span></td><td class="r amt ${x.type}">${x.type==='in'?'+':'\u2212'}${fmt(c,x.amt)}</td><td class="ac"><div class="aw"><button class="ib tg ra" data-ra="1" aria-label="Show actions" aria-expanded="false">${IC.nx}</button><span class="ax"><button class="ib" data-e="${x.id}" aria-label="Edit entry" title="Edit">${IC.e}</button><button class="ib d" data-d="${x.id}" aria-label="Delete entry" title="Delete">${IC.d}</button></span></div></td></tr>`}).join('')||`<tr><td colspan="6" class="empty">No matching entries in ${pLab()}.</td></tr>`}</tbody></table></div></div>
+ return `<tr class="${f?'f':''} ${l?'':'k'}"><td class="num">${st+i+1}</td>${f?`<td rowspan="${sp}" class="dt"><b>${new Date(x.date+'T00:00').toLocaleDateString('en',{day:'2-digit',month:'short',year:'numeric'})}${dryBadge(x.date)}</b><span class="n num">${day.length} ${day.length===1?'entry':'entries'} · ${net<0?'−':'+'}${fmt(c,Math.abs(net))}</span></td>`:''}<td><b>${esc(x.cat)}</b><span class="n">${esc(x.note||'No notes')}</span></td><td><span class="tp ${x.type}">${x.type==='in'?'Received':'Spent'}</span></td><td class="r amt ${x.type}">${x.type==='in'?'+':'\u2212'}${fmt(c,x.amt)}</td><td class="ac"><div class="aw"><button class="ib tg ra" data-ra="1" aria-label="Show actions" aria-expanded="false">${IC.nx}</button><span class="ax"><button class="ib" data-e="${x.id}" aria-label="Edit entry" title="Edit">${IC.e}</button><button class="ib d" data-d="${x.id}" aria-label="Delete entry" title="Delete">${IC.d}</button></span></div></td></tr>`}).join('')||`<tr><td colspan="6" class="empty">No matching entries in ${pLab()}.</td></tr>`}</tbody></table></div></div>
  <div class="pg"><span class="num">${all.length?st+1:0}\u2013${st+rows.length} of ${all.length}</span><span class="pn">${dd('pp','Rows per page',[10,25,50].map(n=>({v:n,l:n+' rows'})),S.pp)}<button class="ghost" data-p="-1"${S.pg<=1?' disabled':''}>Prev</button><button class="ghost" data-p="1"${S.pg>=pages?' disabled':''}>Next</button></span></div>`;
 }
 
@@ -157,7 +167,7 @@ function ltbl(c){
  const pages=Math.max(1,Math.ceil(all.length/S.pp));S.pg=Math.max(1,Math.min(S.pg,pages));
  const st=(S.pg-1)*S.pp,rows=all.slice(st,st+S.pp),tI=r2(M.filter(x=>x.type==='in').reduce((a,x)=>a+x.amt,0)),tO=r2(M.filter(x=>x.type==='out').reduce((a,x)=>a+x.amt,0)),close=M.length?av[M[M.length-1].id]:bf,neg=n=>n<0?' out':'';
  const body=rows.map((x,i)=>{const f=i===0||rows[i-1].date!==x.date,l=i===rows.length-1||rows[i+1].date!==x.date,sp=rows.filter(r=>r.date===x.date).length,day=all.filter(r=>r.date===x.date),net=r2(day.reduce((a,r)=>a+(r.type==='in'?r.amt:-r.amt),0));
-  return `<tr class="${f?'f':''} ${l?'':'k'}"><td class="num">${st+i+1}</td>${f?`<td rowspan="${sp}" class="dt"><b>${new Date(x.date+'T00:00').toLocaleDateString('en',{day:'2-digit',month:'short',year:'numeric'})}</b><span class="n num">${day.length} ${day.length===1?'entry':'entries'} · ${net<0?'−':'+'}${fmt(c,Math.abs(net))}</span></td>`:''}<td><b>${esc(x.cat)}</b><span class="n">${esc(x.note||'No notes')}</span></td><td class="r amt in">${x.type==='in'?fmt(c,x.amt):'<i class="z">–</i>'}</td><td class="r amt out">${x.type==='out'?fmt(c,x.amt):'<i class="z">–</i>'}</td><td class="r av${neg(av[x.id])}">${fmt(c,av[x.id])}</td><td class="ac"><div class="aw"><button class="ib tg ra" data-ra="1" aria-label="Show actions" aria-expanded="false">${IC.nx}</button><span class="ax"><button class="ib" data-e="${x.id}" aria-label="Edit entry" title="Edit">${IC.e}</button><button class="ib d" data-d="${x.id}" aria-label="Delete entry" title="Delete">${IC.d}</button></span></div></td></tr>`}).join('');
+  return `<tr class="${f?'f':''} ${l?'':'k'}"><td class="num">${st+i+1}</td>${f?`<td rowspan="${sp}" class="dt"><b>${new Date(x.date+'T00:00').toLocaleDateString('en',{day:'2-digit',month:'short',year:'numeric'})}${dryBadge(x.date)}</b><span class="n num">${day.length} ${day.length===1?'entry':'entries'} · ${net<0?'−':'+'}${fmt(c,Math.abs(net))}</span></td>`:''}<td><b>${esc(x.cat)}</b><span class="n">${esc(x.note||'No notes')}</span></td><td class="r amt in">${x.type==='in'?fmt(c,x.amt):'<i class="z">–</i>'}</td><td class="r amt out">${x.type==='out'?fmt(c,x.amt):'<i class="z">–</i>'}</td><td class="r av${neg(av[x.id])}">${fmt(c,av[x.id])}</td><td class="ac"><div class="aw"><button class="ib tg ra" data-ra="1" aria-label="Show actions" aria-expanded="false">${IC.nx}</button><span class="ax"><button class="ib" data-e="${x.id}" aria-label="Edit entry" title="Edit">${IC.e}</button><button class="ib d" data-d="${x.id}" aria-label="Delete entry" title="Delete">${IC.d}</button></span></div></td></tr>`}).join('');
  const bfr=S.pg===pages?`<tr class="bf"><td></td><td colspan="2"><b>${first?'Opening balance':'Brought forward'}</b><span class="n">${first?'Set once. Every entry updates Available.':'Balance before '+(S.pm==='range'?S.rf:mname(S.mo))}</span></td><td></td><td></td><td class="r av${neg(bf)}">${fmt(c,bf)}</td><td class="ac"><button class="ib" data-ob="1" aria-label="Edit opening balance" title="Edit opening balance">${IC.e}</button></td></tr>`:'';
  const bfrCard=S.pg===pages?`<div class="mbf"><div><b>${first?'Opening balance':'Brought forward'}</b><div class="hint">${first?'Set once. Updates Available.':'Balance before '+(S.pm==='range'?S.rf:mname(S.mo))}</div></div><div style="display:flex;align-items:center;gap:8px"><b class="av${neg(bf)}">${fmt(c,bf)}</b><button class="ib" data-ob="1" aria-label="Edit opening balance">${IC.e}</button></div></div>`:'';
  return `<div class="vm-${S.vm}">${mcards(c,rows,all,av,bfrCard)}<div class="tw tx-tw"><table class="lt l"><colgroup><col style="width:46px"><col style="width:136px"><col><col style="width:108px"><col style="width:108px"><col style="width:122px"><col style="width:128px"></colgroup><thead><tr><th>S.no</th><th>Date</th><th>Category</th><th class="r">Received</th><th class="r">Spent</th><th class="r">Available</th><th>Edit options</th></tr></thead><tbody>${body||`<tr><td colspan="7" class="empty">No matching entries in ${pLab()}.</td></tr>`}${bfr}</tbody><tfoot><tr><td></td><td colspan="2">${S.pm==='month'?'Month total and closing':'Total and closing'}</td><td class="r in num">${fmt(c,tI)}</td><td class="r out num">${fmt(c,tO)}</td><td class="r av${neg(close)}">${fmt(c,close)}</td><td></td></tr></tfoot></table></div></div>
@@ -316,7 +326,7 @@ if($('#bk-csv'))$('#bk-csv').onclick=()=>{
  toast('CSV exported');
 };
 if($('#bk-json'))$('#bk-json').onclick=()=>{
- const payload=JSON.stringify({version:12,exported_at:new Date().toISOString(),tx:S.tx,cats:CT,debts:DB,ob:OB},null,2);
+ const payload=JSON.stringify({version:12,exported_at:new Date().toISOString(),tx:S.tx,cats:CT,debts:DB,diary:DR,diary_verifier:DRV,ob:OB},null,2);
  dlFile(`daily-ledger-backup-${iso(0)}.json`,'application/json',payload);
  toast('JSON backup downloaded');
 };
@@ -347,6 +357,15 @@ if($('#bk-file'))$('#bk-file').onchange=async e=>{
     return Object.assign({},d,{upd:tsNow,pays:pays.map(p=>Object.assign({},p,{upd:tsNow})).concat(delPays)});
    }).concat(delDb);
   }
+  if(Array.isArray(j.diary)){
+   const drIds=new Set(j.diary.map(d=>d.id));
+   const delDr=DR.filter(d=>d.id&&!drIds.has(d.id)).map(d=>Object.assign({},d,{del:1,upd:tsNow}));
+   DR=j.diary.map(d=>Object.assign({},d,{upd:tsNow})).concat(delDr);
+  }
+  if(j.diary_verifier&&j.diary_verifier.v){
+   DRV=Object.assign({v:'',hint:'',upd:tsNow},j.diary_verifier,{upd:tsNow});
+   lockDiary();
+  }
   if(j.ob)OB=Object.assign({},j.ob,{upd:tsNow});
   Object.keys(LAST).forEach(k=>delete LAST[k]);
   bumpCalc();stamp();persist();$('#bkd').close();render();sync();toast('Backup restored');
@@ -375,7 +394,8 @@ $('#app').addEventListener('input',e=>{if(e.target.id==='q'){S.q=e.target.value;
 $('#app').addEventListener('click',e=>{const o=e.target.closest('.ddo'),h=e.target.closest('.ddb');
  if(o){const id=o.closest('.dd').dataset.dd,v=o.dataset.v;closeDd();if(id==='mo')S.mo=v;else if(id==='ft')S.f=v;else if(id==='pp')S.pp=+v;S.pg=1;render();return}
  if(h){const p=h.parentNode,was=p.classList.contains('open');closeDd();if(!was){p.classList.add('open');h.setAttribute('aria-expanded','true')}return}
- const b=e.target.closest&&e.target.closest('[data-m],[data-p],[data-e],[data-d],[data-ob],[data-pm],[data-mn],[data-ra],[data-fl],[data-vm],[data-cf]');if(!b)return;const d=b.dataset;
+ const b=e.target.closest&&e.target.closest('[data-m],[data-p],[data-e],[data-d],[data-ob],[data-pm],[data-mn],[data-ra],[data-fl],[data-vm],[data-cf],[data-drd]');if(!b)return;const d=b.dataset;
+ if(d.drd){openDiary(d.drd);return}
  if(d.m){S.mo=d.m;S.pm='month';S.pg=1;render()}
  else if(d.pm){S.pm=d.pm;S.pg=1;render()}
  else if(d.vm){S.vm=d.vm;STORE.setItem('ledger.vm',S.vm);render()}
@@ -406,6 +426,322 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!cal.hidden){e.prev
  if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('[data-dp]')){e.preventDefault();calOpen(e.target)}});
 addEventListener('online',()=>{render();sync()});addEventListener('offline',render);
 
+// ---- Zero-Knowledge AES-256-GCM Daily Diary Vault (Wrapped 256-bit Master DEK + Security Question Recovery) ----
+const tEnc=new TextEncoder(),tDec=new TextDecoder();
+const b64e=buf=>{let s='';const u=new Uint8Array(buf);for(let i=0;i<u.length;i++)s+=String.fromCharCode(u[i]);return btoa(s)};
+const b64d=str=>{const b=atob(str),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u};
+const normAns=s=>String(s||'').trim().toLowerCase().replace(/\s+/g,' ');
+let DIARY_KEY=null,DIARY_DEK_B64='',DIARY_CACHE={},drDate=iso(0),drChPw=false,drRec=false,drLockTm=null,drBgJob=0;
+async function deriveDiaryKey(secret,saltBytes){
+ const bk=await crypto.subtle.importKey('raw',tEnc.encode(secret),'PBKDF2',false,['deriveKey']);
+ return crypto.subtle.deriveKey({name:'PBKDF2',salt:saltBytes,iterations:100000,hash:'SHA-256'},bk,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
+}
+async function importRawDek(b64){
+ return crypto.subtle.importKey('raw',b64d(b64),{name:'AES-GCM'},false,['encrypt','decrypt']);
+}
+async function encDiaryObj(key,obj){
+ const iv=crypto.getRandomValues(new Uint8Array(12));
+ const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,tEnc.encode(JSON.stringify(obj)));
+ return b64e(iv)+':'+b64e(ct);
+}
+async function decDiaryObj(key,cipherStr){
+ const i=String(cipherStr||'').indexOf(':');
+ if(i<1)throw new Error('bad cipher');
+ const iv=b64d(cipherStr.slice(0,i)),ct=b64d(cipherStr.slice(i+1));
+ const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv},key,ct);
+ return JSON.parse(tDec.decode(pt));
+}
+async function wrapDekWithSecret(secret,dekB64){
+ const salt=crypto.getRandomValues(new Uint8Array(16));
+ const kek=await deriveDiaryKey(secret,salt);
+ const ct=await encDiaryObj(kek,{check:'DAILY_LEDGER_DIARY_OK',dek:dekB64});
+ return b64e(salt)+':'+ct;
+}
+async function unwrapDekWithSecret(secret,wrappedStr){
+ const raw=String(wrappedStr||''),idx=raw.indexOf(':');
+ if(idx<1)throw new Error('corrupt verifier');
+ const salt=b64d(raw.slice(0,idx)),vCt=raw.slice(idx+1);
+ const kek=await deriveDiaryKey(secret,salt);
+ const chk=await decDiaryObj(kek,vCt);
+ if(!chk||chk.check!=='DAILY_LEDGER_DIARY_OK')throw new Error('mismatch');
+ if(chk.dek){
+  return {key:await importRawDek(chk.dek),dekB64:chk.dek,legacy:false};
+ }
+ return {key:kek,dekB64:'',legacy:true};
+}
+// Instant first-paint decryption (<2ms for current date + top 20 sidebar dates), followed by non-blocking background chunks for multi-year scale
+async function decryptDiaryFast(){
+ if(!DIARY_KEY)return;
+ const job=++drBgJob,key=DIARY_KEY;
+ const active=DR.filter(r=>!r.del&&r.cipher).sort((a,b)=>b.date.localeCompare(a.date));
+ const urgent=active.filter(r=>r.date===drDate).concat(active.filter(r=>r.date!==drDate).slice(0,20));
+ for(const r of urgent){
+  if(job!==drBgJob||!DIARY_KEY)return;
+  if(!DIARY_CACHE[r.date]){try{DIARY_CACHE[r.date]=await decDiaryObj(key,r.cipher)}catch(e){}}
+ }
+ const rest=active.slice(20);
+ if(!rest.length)return;
+ let i=0;
+ const step=async()=>{
+  if(job!==drBgJob||!DIARY_KEY)return;
+  const end=Math.min(i+50,rest.length);
+  for(;i<end;i++){
+   const r=rest[i];
+   if(!DIARY_CACHE[r.date]){try{DIARY_CACHE[r.date]=await decDiaryObj(key,r.cipher)}catch(e){}}
+  }
+  if(job!==drBgJob||!DIARY_KEY)return;
+  if($('#drd')&&$('#drd').open&&!drChPw&&!drRec)renderDiarySidebar();
+  if(i<rest.length)setTimeout(step,0);
+ };
+ setTimeout(step,10);
+}
+function syncDiaryDot(){
+ const un=!!DIARY_KEY;
+ if($('#dr-dot'))$('#dr-dot').classList.toggle('on',un);
+ if($('#dr-st')){$('#dr-st').className='dr-st '+(un?'un':'lk');$('#dr-st').textContent=un?'UNLOCKED':'LOCKED'}
+ if($('#dr-lk-btn'))$('#dr-lk-btn').hidden=!un;
+ if($('#dr-pw-btn'))$('#dr-pw-btn').hidden=!un;
+}
+function lockDiary(){
+ drBgJob++;DIARY_KEY=null;DIARY_DEK_B64='';DIARY_CACHE={};drChPw=false;drRec=false;syncDiaryDot();
+}
+let dayTxMemo={ver:-1,map:new Map()},drShowAll=false;
+function dayLedgerSummary(dt){
+ if(dayTxMemo.ver!==calcVer){
+  const m=new Map();
+  for(let i=0;i<S.tx.length;i++){
+   const x=S.tx[i];if(x.del)continue;
+   let g=m.get(x.date);
+   if(!g){g={list:[],AED:{in:0,out:0},INR:{in:0,out:0}};m.set(x.date,g)}
+   g.list.push(x);
+   if(g[x.cur])g[x.cur][x.type]=r2(g[x.cur][x.type]+x.amt);
+  }
+  dayTxMemo={ver:calcVer,map:m};
+ }
+ return dayTxMemo.map.get(dt)||{list:[],AED:{in:0,out:0},INR:{in:0,out:0}};
+}
+function renderDiarySidebar(){
+ if(!$('#dr-list'))return;
+ const q=($('#dr-q')&&$('#dr-q').value||'').trim().toLowerCase();
+ const allDates=Array.from(new Set([...drDates,drDate])).sort().reverse();
+ const matched=q?allDates.filter(dt=>{const n=DIARY_CACHE[dt]||{title:'',body:''};return dt.includes(q)||(n.title||'').toLowerCase().includes(q)||(n.body||'').toLowerCase().includes(q)}):allDates;
+ const slice=(!q&&!drShowAll&&matched.length>60)?matched.slice(0,60):matched;
+ if(slice.length<matched.length&&!slice.includes(drDate))slice.unshift(drDate);
+ $('#dr-list').innerHTML=slice.map(dt=>{
+  const n=DIARY_CACHE[dt]||{title:'',body:''},saved=hasDiary(dt);
+  const sm=dayLedgerSummary(dt),fp=[];
+  if(sm.AED.out||sm.AED.in)fp.push('AED −'+sm.AED.out);
+  if(sm.INR.out||sm.INR.in)fp.push('₹ −'+sm.INR.out);
+  const dtStr=new Date(dt+'T00:00').toLocaleDateString('en',{day:'2-digit',month:'short',year:'numeric'});
+  return `<button type="button" class="dr-item${dt===drDate?' on':''}" data-dr-item="${dt}"><div class="dr-item-top"><span>${dtStr}</span><span>${saved?'🔒 AES':'New'}</span></div><b>${esc(n.title||(saved?'Saved note':'No note yet'))}</b><small>${esc(fp.join(' · ')||'No ledger entries')}</small></button>`;
+ }).join('')+(slice.length<matched.length?`<button type="button" class="ghost" data-dr-more="1" style="font-size:12px;padding:7px">Show all ${matched.length} dates</button>`:'')||'<div class="hint" style="padding:8px">No matching diary notes.</div>';
+}
+async function renderDiaryDate(keepInputs){
+ if($('#dr-dt'))$('#dr-dt').value=drDate;
+ const sm=dayLedgerSummary(drDate);
+ const dtLabel=new Date(drDate+'T00:00').toLocaleDateString('en',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+ if($('#dr-sum')){
+  $('#dr-sum').innerHTML=`<div class="dr-sum-hd"><span>Auto-linked spending · ${esc(dtLabel)}</span><span>${sm.list.length} ${sm.list.length===1?'entry':'entries'}</span></div>
+   <div class="dr-sum-grid">
+    <div class="dr-sum-box"><span class="code" style="--acc:var(--aed)">AED</span><div class="num" style="text-align:right"><div style="color:var(--out)">Spent: ${fmt('AED',sm.AED.out)}</div><div style="color:var(--in)">In: +${fmt('AED',sm.AED.in)}</div></div></div>
+    <div class="dr-sum-box"><span class="code" style="--acc:var(--inr)">INR</span><div class="num" style="text-align:right"><div style="color:var(--out)">Spent: ${fmt('INR',sm.INR.out)}</div><div style="color:var(--in)">In: +${fmt('INR',sm.INR.in)}</div></div></div>
+   </div>
+   ${sm.list.length?`<div class="dr-sum-tx">${sm.list.map(x=>`<div class="dr-sum-r"><span><b>${esc(x.cat)}</b>${x.note?' · '+esc(x.note):''}</span><span class="num amt ${x.type}">${x.type==='out'?'−':'+'}${fmt(x.cur,x.amt)}</span></div>`).join('')}</div>`:`<div class="hint" style="font-size:12px">No AED or INR transactions recorded on ${esc(drDate)}.</div>`}`;
+ }
+ const rec=DR.find(x=>!x.del&&x.date===drDate&&x.cipher);
+ if(rec&&DIARY_KEY&&!DIARY_CACHE[drDate]){
+  try{DIARY_CACHE[drDate]=await decDiaryObj(DIARY_KEY,rec.cipher)}catch(e){}
+ }
+ const n=DIARY_CACHE[drDate]||{title:'',body:''};
+ if(!keepInputs){
+  if($('#dr-ttl'))$('#dr-ttl').value=n.title||'';
+  if($('#dr-bdy'))$('#dr-bdy').value=n.body||'';
+ }
+ if($('#dr-del'))$('#dr-del').hidden=!rec;
+ if($('#dr-meta'))$('#dr-meta').textContent=rec?`Encrypted AES-256-GCM · Updated ${new Date(rec.upd).toLocaleTimeString('en',{hour:'numeric',minute:'2-digit'})}`:'AES-256-GCM · Not saved yet';
+}
+function renderDiaryModal(){
+ syncDiaryDot();
+ const hasV=!!(DRV&&DRV.v),un=!!DIARY_KEY;
+ if($('#dr-setup'))$('#dr-setup').hidden=hasV;
+ if($('#dr-lock'))$('#dr-lock').hidden=!hasV||un||drRec;
+ if($('#dr-rec'))$('#dr-rec').hidden=!hasV||un||!drRec;
+ if($('#dr-chpw'))$('#dr-chpw').hidden=!un||!drChPw;
+ if($('#dr-work'))$('#dr-work').hidden=!un||drChPw;
+ if(!hasV){
+  if($('#dr-ser'))$('#dr-ser').textContent='';
+ }else if(!un&&drRec){
+  if($('#dr-rer'))$('#dr-rer').textContent='';
+  if($('#dr-rq-txt'))$('#dr-rq-txt').value=DRV.q||'No security question configured on this vault';
+ }else if(!un){
+  if($('#dr-uer'))$('#dr-uer').textContent='';
+  if($('#dr-uhint')){$('#dr-uhint').hidden=!DRV.hint;$('#dr-uhint').textContent=DRV.hint?'Hint: '+DRV.hint:''}
+  if($('#dr-fgt-btn'))$('#dr-fgt-btn').hidden=!(DRV.q&&DRV.r);
+ }else if(!drChPw){
+  renderDiarySidebar();
+  renderDiaryDate(false);
+ }
+}
+function openDiary(dt){
+ if(dt)drDate=fixDate(dt);
+ else if(!drDate)drDate=iso(0);
+ drChPw=false;drRec=false;
+ renderDiaryModal();
+ if($('#drd')&&!$('#drd').open)$('#drd').showModal();
+ if(!DRV.v&&$('#dr-sp1'))$('#dr-sp1').focus();
+ else if(!DIARY_KEY&&$('#dr-upw')){$('#dr-upw').value='';$('#dr-upw').focus()}
+}
+if($('#drb'))$('#drb').onclick=()=>openDiary();
+if($('#dr-cx'))$('#dr-cx').onclick=()=>$('#drd').close();
+if($('#dr-lk-btn'))$('#dr-lk-btn').onclick=()=>{lockDiary();renderDiaryModal();toast('Diary vault locked')};
+if($('#dr-fgt-btn'))$('#dr-fgt-btn').onclick=()=>{
+ if(!DRV.q||!DRV.r){$('#dr-uer').textContent='No security question was set for this vault.';return}
+ drRec=true;
+ if($('#dr-ra'))$('#dr-ra').value='';
+ if($('#dr-rp1'))$('#dr-rp1').value='';
+ if($('#dr-rp2'))$('#dr-rp2').value='';
+ renderDiaryModal();
+ if($('#dr-ra'))$('#dr-ra').focus();
+};
+if($('#dr-rcx'))$('#dr-rcx').onclick=()=>{drRec=false;renderDiaryModal()};
+if($('#dr-pw-btn'))$('#dr-pw-btn').onclick=()=>{
+ drChPw=true;
+ if($('#dr-cp1'))$('#dr-cp1').value='';
+ if($('#dr-cp2'))$('#dr-cp2').value='';
+ if($('#dr-cq'))$('#dr-cq').value=DRV.q||'';
+ if($('#dr-ca'))$('#dr-ca').value='';
+ if($('#dr-chn'))$('#dr-chn').value=DRV.hint||'';
+ if($('#dr-cer'))$('#dr-cer').textContent='';
+ renderDiaryModal();
+};
+if($('#dr-ccx'))$('#dr-ccx').onclick=()=>{drChPw=false;renderDiaryModal()};
+if($('#dr-ssv'))$('#dr-ssv').onclick=async()=>{
+ const p1=$('#dr-sp1').value,p2=$('#dr-sp2').value,sq=$('#dr-sq').value.trim(),sa=normAns($('#dr-sa').value),hn=$('#dr-shn').value.trim();
+ if(p1.length<4){$('#dr-ser').textContent='Password must be at least 4 characters.';return}
+ if(p1!==p2){$('#dr-ser').textContent='Passwords do not match.';return}
+ if(!sq||sa.length<2){$('#dr-ser').textContent='Enter a security question and answer (at least 2 characters) for password recovery.';return}
+ try{
+  const rawDek=crypto.getRandomValues(new Uint8Array(32));
+  const dekB64=b64e(rawDek);
+  const key=await importRawDek(dekB64);
+  const pwWrap=await wrapDekWithSecret(p1,dekB64);
+  const qaWrap=await wrapDekWithSecret(sa,dekB64);
+  DRV={v:pwWrap,q:sq,r:qaWrap,hint:hn,upd:now()};
+  DIARY_KEY=key;DIARY_DEK_B64=dekB64;
+  $('#dr-sp1').value='';$('#dr-sp2').value='';$('#dr-sa').value='';
+  drsave();renderDiaryModal();toast('Encrypted Diary Vault created');
+ }catch(e){$('#dr-ser').textContent='Could not initialize Web Crypto vault.'}
+};
+async function tryUnlockDiary(){
+ const pw=$('#dr-upw').value;
+ if(!pw){$('#dr-uer').textContent='Enter your vault password.';return}
+ try{
+  const res=await unwrapDekWithSecret(pw,DRV.v);
+  DIARY_KEY=res.key;DIARY_DEK_B64=res.dekB64;
+  $('#dr-upw').value='';$('#dr-uer').textContent='';
+  await decryptDiaryFast();
+  renderDiaryModal();
+ }catch(e){
+  $('#dr-uer').textContent='Incorrect password.';
+ }
+}
+if($('#dr-ubtn'))$('#dr-ubtn').onclick=tryUnlockDiary;
+if($('#dr-upw'))$('#dr-upw').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();tryUnlockDiary()}});
+if($('#dr-rsv'))$('#dr-rsv').onclick=async()=>{
+ const ans=normAns($('#dr-ra').value),p1=$('#dr-rp1').value,p2=$('#dr-rp2').value;
+ if(!ans){$('#dr-rer').textContent='Enter your security answer.';return}
+ if(p1.length<4){$('#dr-rer').textContent='New password must be at least 4 characters.';return}
+ if(p1!==p2){$('#dr-rer').textContent='Passwords do not match.';return}
+ try{
+  const res=await unwrapDekWithSecret(ans,DRV.r);
+  if(!res.dekB64)throw new Error('no dek');
+  const newPwWrap=await wrapDekWithSecret(p1,res.dekB64);
+  DRV=Object.assign({},DRV,{v:newPwWrap,upd:now()});
+  DIARY_KEY=res.key;DIARY_DEK_B64=res.dekB64;drRec=false;
+  $('#dr-ra').value='';$('#dr-rp1').value='';$('#dr-rp2').value='';$('#dr-rer').textContent='';
+  await decryptDiaryFast();
+  drsave();renderDiaryModal();toast('Password reset & vault unlocked!');
+ }catch(e){
+  $('#dr-rer').textContent='Incorrect security answer.';
+ }
+};
+if($('#dr-csv'))$('#dr-csv').onclick=async()=>{
+ if(!DIARY_KEY)return;
+ const p1=$('#dr-cp1').value,p2=$('#dr-cp2').value,sq=$('#dr-cq').value.trim(),sa=normAns($('#dr-ca').value),hn=$('#dr-chn').value.trim();
+ if(p1.length<4){$('#dr-cer').textContent='New password must be at least 4 characters.';return}
+ if(p1!==p2){$('#dr-cer').textContent='Passwords do not match.';return}
+ if(sa&&!sq){$('#dr-cer').textContent='Enter a security question for your new answer.';return}
+ try{
+  const ts=now();
+  let dekB64=DIARY_DEK_B64,key=DIARY_KEY;
+  if(!dekB64){
+   const rawDek=crypto.getRandomValues(new Uint8Array(32));
+   dekB64=b64e(rawDek);
+   key=await importRawDek(dekB64);
+   for(const r of DR){
+    if(r.del||!r.cipher)continue;
+    const plain=DIARY_CACHE[r.date]||await decDiaryObj(DIARY_KEY,r.cipher);
+    r.cipher=await encDiaryObj(key,plain);
+    r.upd=ts;
+   }
+  }
+  const newPwWrap=await wrapDekWithSecret(p1,dekB64);
+  const newQaWrap=sa?await wrapDekWithSecret(sa,dekB64):(DRV.r||'');
+  DRV={v:newPwWrap,q:sq||DRV.q||'',r:newQaWrap,hint:hn,upd:ts};
+  DIARY_KEY=key;DIARY_DEK_B64=dekB64;drChPw=false;
+  drsave();renderDiaryModal();toast('Security settings updated instantly');
+ }catch(e){$('#dr-cer').textContent='Failed to update security settings.'}
+};
+const shiftDiaryDate=delta=>{
+ const d=new Date(drDate+'T00:00:00');
+ d.setDate(d.getDate()+delta);
+ drDate=ymd(d);
+ renderDiarySidebar();
+ renderDiaryDate(false);
+};
+if($('#dr-prev'))$('#dr-prev').onclick=()=>shiftDiaryDate(-1);
+if($('#dr-next'))$('#dr-next').onclick=()=>shiftDiaryDate(1);
+if($('#dr-td'))$('#dr-td').onclick=()=>{drDate=iso(0);renderDiarySidebar();renderDiaryDate(false)};
+if($('#dr-dt'))$('#dr-dt').onchange=e=>{if(e.target.value){drDate=fixDate(e.target.value);renderDiarySidebar();renderDiaryDate(false)}};
+if($('#dr-q'))$('#dr-q').oninput=()=>renderDiarySidebar();
+if($('#dr-list'))$('#dr-list').onclick=e=>{if(e.target.closest('[data-dr-more]')){drShowAll=true;renderDiarySidebar();return}const b=e.target.closest('[data-dr-item]');if(!b)return;drDate=b.dataset.drItem;renderDiarySidebar();renderDiaryDate(false)};
+if($('#dr-ins'))$('#dr-ins').onclick=()=>{
+ const sm=dayLedgerSummary(drDate);
+ const lines=[`--- Spending Summary (${drDate}) ---`];
+ if(sm.AED.out||sm.AED.in)lines.push(`AED: Spent ${fmt('AED',sm.AED.out)} | Received ${fmt('AED',sm.AED.in)}`);
+ if(sm.INR.out||sm.INR.in)lines.push(`INR: Spent ${fmt('INR',sm.INR.out)} | Received ${fmt('INR',sm.INR.in)}`);
+ sm.list.forEach(x=>lines.push(`• ${x.cat}${x.note?' ('+x.note+')':''}: ${x.type==='out'?'−':'+'}${fmt(x.cur,x.amt)}`));
+ const b=$('#dr-bdy');
+ b.value=(b.value.trim()?b.value.trim()+'\n\n':'')+lines.join('\n');
+ b.focus();
+};
+if($('#dr-sv'))$('#dr-sv').onclick=async()=>{
+ if(!DIARY_KEY)return;
+ const title=$('#dr-ttl').value.trim(),body=$('#dr-bdy').value.trim();
+ if(!title&&!body){toast('Write a headline or note first');return}
+ const plain={title:title||'Daily note',body};
+ const cipher=await encDiaryObj(DIARY_KEY,plain);
+ const id='dry_'+drDate,ts=now();
+ let rec=DR.find(x=>x.id===id);
+ if(rec)Object.assign(rec,{date:drDate,cipher,del:0,upd:ts});
+ else DR.push({id,date:drDate,cipher,del:0,upd:ts});
+ DIARY_CACHE[drDate]=plain;
+ drsave();render();renderDiarySidebar();renderDiaryDate(true);
+ toast(syncOn()?'Encrypted & saved · syncing ciphertext…':'Encrypted & saved on this device');
+};
+if($('#dr-del'))$('#dr-del').onclick=()=>{
+ const rec=DR.find(x=>!x.del&&x.date===drDate);
+ if(!rec)return;
+ const backupCipher=rec.cipher,backupCache=DIARY_CACHE[drDate],dt=drDate;
+ rec.del=1;rec.upd=now();delete DIARY_CACHE[dt];
+ drsave();render();renderDiarySidebar();renderDiaryDate(false);
+ toast('Diary note deleted. Tap to undo.',()=>{
+  rec.del=0;rec.cipher=backupCipher;rec.upd=now();
+  if(backupCache&&DIARY_KEY)DIARY_CACHE[dt]=backupCache;
+  drsave();render();if($('#drd').open){renderDiarySidebar();renderDiaryDate(false)}
+ });
+};
+
 // ---- Sync with the Google Sheet ----
 const DEV=(()=>{let d=STORE.getItem('ledger.device');if(!d){d='d_'+uid();STORE.setItem('ledger.device',d)}return d})();
 const API=()=>({url:STORE.getItem('ledger.api.url')||'',token:STORE.getItem('ledger.api.token')||''});
@@ -428,7 +764,11 @@ const TB={
  DebtPayments:{all:()=>DB.flatMap(d=>d.pays.map(p=>{p.did=d.id;return p})),
   out:p=>({id:p.id,debt_id:p.did,date:p.date,amount_minor:Math.round(p.amt*100),notes:p.note||'',updated_at:p.upd,deleted_at:p.del?p.upd:''}),
   inn:r=>({id:r.id,did:r.debt_id,date:fixDate(r.date),amt:Number(r.amount_minor)/100,note:r.notes,upd:String(r.updated_at),del:!!r.deleted_at}),
-  add:o=>{const d=DB.find(x=>x.id===o.did);if(d){d.pays.push(o);return true}return false}}
+  add:o=>{const d=DB.find(x=>x.id===o.did);if(d){d.pays.push(o);return true}return false}},
+ Diary:{all:()=>DR,
+  out:d=>({id:d.id,date:d.date,cipher:d.cipher||'',updated_at:d.upd,deleted_at:d.del?d.upd:''}),
+  inn:r=>({id:r.id,date:fixDate(r.date),cipher:String(r.cipher||''),upd:String(r.updated_at),del:!!r.deleted_at}),
+  add:o=>DR.push(o)}
 };
 const ymd=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 const fixDate=v=>{const t=String(v);if(/^\d{4}-\d\d-\d\d$/.test(t))return t;const d=new Date(t);return isNaN(d)?t:ymd(d)};
@@ -438,11 +778,15 @@ let SNAP={};try{SNAP=JSON.parse(STORE.getItem('ledger.snap'))||{}}catch(e){}
 const LAST={};
 const snapSet=(t,id,h)=>{(SNAP[t]=SNAP[t]||{})[id]=h};
 const obHash=()=>String(r2(OB.INR||0));
+const drvVal=()=>JSON.stringify({v:DRV.v||'',q:DRV.q||'',r:DRV.r||'',hint:DRV.hint||''});
+const drvHash=()=>DRV.v?hs(drvVal()):'';
 const EPOCH='1970-01-01T00:00:00.000Z';
 function stamp(init){
  CT.forEach(c=>{if(!c.id)c.id='c_'+hs(c.n.toLowerCase())});
  S.tx.forEach(x=>{x.date=fixDate(x.date);if(!x.cat)x.cat='📦 Other'});
  DB.forEach(d=>{d.date=fixDate(d.date);d.pays.forEach(p=>{p.date=fixDate(p.date)})});
+ DR.forEach(d=>{d.date=fixDate(d.date);if(!d.id)d.id='dry_'+d.date});
+ rebuildDrDates();
  Object.keys(TB).forEach(t=>TB[t].all().forEach(r=>{const k=t+r.id,h=cf(t,r);
   if(!r.upd)r.upd=r.ts?new Date(r.ts).toISOString():now();
   else if(!init&&LAST[k]!==undefined&&LAST[k]!==h)r.upd=now();
@@ -450,20 +794,24 @@ function stamp(init){
  if(!OB.upd)OB.upd=EPOCH;
  else if(!init&&LAST.OB!==undefined&&LAST.OB!==obHash())OB.upd=now();
  LAST.OB=obHash();
+ if(!DRV.upd)DRV.upd=EPOCH;
+ else if(!init&&LAST.DRV!==undefined&&LAST.DRV!==drvHash())DRV.upd=now();
+ LAST.DRV=drvHash();
 }
 function dirty(){
  const o=[];
  Object.keys(TB).forEach(t=>TB[t].all().forEach(r=>{const h=cf(t,r);if((SNAP[t]||{})[r.id]!==h)o.push({t,r,h})}));
- if((SNAP.Settings||{}).opening_INR!==obHash()&&OB.upd>EPOCH)o.push({t:'Settings',h:obHash()});
+ if((SNAP.Settings||{}).opening_INR!==obHash()&&OB.upd>EPOCH)o.push({t:'Settings',id:'opening_INR',h:obHash()});
+ if(DRV.v&&(SNAP.Settings||{}).diary_verifier!==drvHash()&&DRV.upd>EPOCH)o.push({t:'Settings',id:'diary_verifier',h:drvHash()});
  return o;
 }
 const pendingCount=()=>dirty().length;
-const opOf=d=>({table:d.t,rec:d.t==='Settings'?{id:'opening_INR',value:String(Math.round((OB.INR||0)*100)),updated_at:OB.upd}:TB[d.t].out(d.r)});
+const opOf=d=>({table:d.t,rec:d.t==='Settings'?(d.id==='diary_verifier'?{id:'diary_verifier',value:drvVal(),updated_at:DRV.upd}:{id:'opening_INR',value:String(Math.round((OB.INR||0)*100)),updated_at:OB.upd}):TB[d.t].out(d.r)});
 const saveSnap=()=>STORE.setItem('ledger.snap',JSON.stringify(SNAP));
-const persist=()=>{STORE.setItem(LS,JSON.stringify(S.tx));STORE.setItem(LC,JSON.stringify(CT));STORE.setItem(LD,JSON.stringify(DB));STORE.setItem(LO,JSON.stringify(OB));saveSnap()};
+const persist=()=>{STORE.setItem(LS,JSON.stringify(S.tx));STORE.setItem(LC,JSON.stringify(CT));STORE.setItem(LD,JSON.stringify(DB));STORE.setItem(LDR,JSON.stringify(DR));STORE.setItem(LDRV,JSON.stringify(DRV));STORE.setItem(LO,JSON.stringify(OB));saveSnap()};
 let ORPHAN_PAYS=[];
 function applyRemote(data){
- ['Categories','Transactions','Debts','DebtPayments'].forEach(t=>{
+ ['Categories','Transactions','Debts','DebtPayments','Diary'].forEach(t=>{
   const K=TB[t];
   (data[t]||[]).forEach(r=>{
    const inc=K.inn(r);Object.keys(inc).forEach(k=>{if(inc[k]===undefined)delete inc[k]});const loc=K.all().find(x=>x.id===inc.id);
@@ -496,11 +844,24 @@ function applyRemote(data){
   }
  });
  (data.Settings||[]).forEach(r=>{
-  if(r.id!=='opening_INR')return;
-  const edited=(SNAP.Settings||{}).opening_INR!==obHash()&&OB.upd>EPOCH;
-  if(edited&&OB.upd>String(r.updated_at))return;
-  OB.INR=Number(r.value)/100;OB.upd=String(r.updated_at);snapSet('Settings','opening_INR',obHash());LAST.OB=obHash();
+  if(r.id==='opening_INR'){
+   const edited=(SNAP.Settings||{}).opening_INR!==obHash()&&OB.upd>EPOCH;
+   if(edited&&OB.upd>String(r.updated_at))return;
+   OB.INR=Number(r.value)/100;OB.upd=String(r.updated_at);snapSet('Settings','opening_INR',obHash());LAST.OB=obHash();
+  }else if(r.id==='diary_verifier'){
+   const edited=DRV.v&&(SNAP.Settings||{}).diary_verifier!==drvHash()&&DRV.upd>EPOCH;
+   if(edited&&DRV.upd>String(r.updated_at))return;
+   try{
+    const parsed=JSON.parse(r.value);
+    if(parsed&&parsed.v)DRV={v:parsed.v,q:parsed.q||'',r:parsed.r||'',hint:parsed.hint||'',upd:String(r.updated_at)};
+   }catch(e){
+    if(r.value)DRV={v:String(r.value),q:'',r:'',hint:'',upd:String(r.updated_at)};
+   }
+   snapSet('Settings','diary_verifier',drvHash());LAST.DRV=drvHash();
+  }
  });
+ rebuildDrDates();
+ if(DIARY_KEY&&(data.Diary||[]).length)decryptDiaryFast().then(()=>{if($('#drd')&&$('#drd').open)renderDiaryModal()});
  bumpCalc();
 }
 async function call(body){
@@ -524,7 +885,7 @@ async function sync(){
   const ds=dirty(),ops=ds.map(opOf);
   for(let i=0;i<ops.length;i+=100){
    const res=await call({action:'push',ops:ops.slice(i,i+100)});
-   (res.results||[]).forEach((x,j)=>{const d=ds[i+j];if(x&&(x.status==='ok'||x.status==='stale'))snapSet(d.t,d.t==='Settings'?'opening_INR':d.r.id,d.h);else S.err='the server rejected '+d.t+' changes. Update the Apps Script to the newest version'});
+   (res.results||[]).forEach((x,j)=>{const d=ds[i+j];if(x&&(x.status==='ok'||x.status==='stale'))snapSet(d.t,d.t==='Settings'?(d.id||'opening_INR'):d.r.id,d.h);else S.err='the server rejected '+d.t+' changes. Update the Apps Script to the newest version'});
   }
   let since=Number(STORE.getItem('ledger.rev'))||0;
   let guard=0;
@@ -564,9 +925,18 @@ $('#sys').onclick=()=>{const {u,t}=syIn();if(!syOk(u,t))return;STORE.setItem('le
 $('#syx').onclick=async()=>{const {u,t}=syIn();$('#sye').style.color='';if(!syOk(u,t))return;$('#sye').textContent='Testing…';
  try{const r=await fetch(u+(u.includes('?')?'&':'?')+'token='+encodeURIComponent(t));const j=await r.json();$('#sye').style.color=(j.ok&&(j.api||0)>=3)?'var(--in)':'';$('#sye').textContent=!j.ok?'The server answered: '+j.error+'. Check the token.':(j.api||0)<3?'Connected, but your Apps Script is an old version. In Apps Script use Deploy, Manage deployments, pencil, New version.':'Connection works.'}
  catch(e){$('#sye').textContent='Cannot reach the server. Check the link and your internet.'}};
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)sync()});
+document.addEventListener('visibilitychange',()=>{
+ if(document.hidden){
+  clearTimeout(drLockTm);
+  drLockTm=setTimeout(()=>{if(document.hidden&&DIARY_KEY){lockDiary();if($('#drd')&&$('#drd').open)renderDiaryModal()}},60000);
+ }else{
+  clearTimeout(drLockTm);
+  sync();
+ }
+});
 setInterval(()=>{if(!document.hidden)sync()},60000);
 stamp(true);
+syncDiaryDot();
 render();sync();
 if(!idb)toast('Storage is unavailable in this browser mode. Entries will not be kept.');
 if('serviceWorker' in navigator){
