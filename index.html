@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" id="theme-meta" content="#e9eef5">
-<link rel="manifest" href="manifest.webmanifest">
+<link rel="manifest" href="manifest.webmanifest?v=28">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -66,7 +66,8 @@ h1{font:800 26px/1.1 var(--font-display);margin:0;letter-spacing:-.03em}
 .icon-btn svg{width:17px;height:17px;display:block}
 
 /* Unified Bottom Navigation & Action Dock (4 equal columns) */
-.bbar{position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));max-width:640px;margin:0 auto;z-index:40;display:grid;grid-template-columns:repeat(4,1fr);align-items:center;gap:5px;padding:5px;border-radius:20px;background:color-mix(in srgb,var(--card) 94%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid var(--line);box-shadow:0 12px 34px rgba(10,20,40,.22)}
+.bbar{position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));max-width:640px;margin:0 auto;z-index:40;display:grid;grid-template-columns:repeat(4,1fr);align-items:center;gap:5px;padding:5px;border-radius:20px;background:color-mix(in srgb,var(--card) 94%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid var(--line);box-shadow:0 12px 34px rgba(10,20,40,.22);transition:opacity .18s ease,transform .18s ease}
+body.dlg-open .bbar{opacity:0;pointer-events:none;transform:translateY(12px)}
 .tabs{grid-column:span 3;display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin:0;padding:0;background:none;border:0}
 .tabs button{width:100%;min-width:0;height:40px;border:0;background:var(--bg);padding:0 6px;border-radius:14px;color:var(--mut);font:700 13.5px/1 var(--font-display);display:inline-flex;align-items:center;justify-content:center;transition:background .15s,color .15s;white-space:nowrap}
 .tabs button.on{background:var(--ink);color:var(--card)}
@@ -242,6 +243,7 @@ dialog::backdrop{background:rgba(8,12,18,.55);backdrop-filter:blur(3px)}
 .seg button.on{background:var(--card);color:var(--ink);font-weight:650;box-shadow:0 1px 3px rgba(0,0,0,.15)}
 label{display:grid;gap:5px;font-size:13px;color:var(--mut)}
 input{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:11px 12px;width:100%;color:var(--ink)}
+input.masked-inp{-webkit-text-security:disc;text-security:disc;font-family:var(--font-sans)}
 input.big{font:700 28px var(--font-mono)}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 /* Scrollable after 3 rows of category chips */
@@ -348,6 +350,7 @@ details.dr-acc[open]>summary::after{transform:rotate(180deg);color:var(--dry)}
  .wrap{padding-bottom:104px}
  .cur{flex-wrap:wrap;row-gap:8px}
  dialog,dialog#cm,dialog.dr-dlg,dialog.dr-dlg.un{width:100%;max-width:100%;margin:auto 0 0 0;border-radius:26px 26px 0 0;max-height:92vh;overflow-y:auto}
+ dialog .sh,dialog .dr-gate,dialog .dr-main{padding-bottom:calc(20px + env(safe-area-inset-bottom,0px))}
  .dr-work{grid-template-columns:1fr;max-height:none;min-height:0}
  .dr-side{border-right:0;border-bottom:1px solid var(--line);max-height:none}
  .dr-list{display:flex;overflow-x:auto;max-height:none;padding-bottom:4px}
@@ -485,10 +488,10 @@ details.dr-acc[open]>summary::after{transform:rotate(180deg);color:var(--dry)}
   <!-- Password & Security Question Setup / Update -->
   <div class="st-box">
    <h4 id="st-enc-hd">Vault Password &amp; Recovery Question</h4>
-   <label id="st-cur-wrap" hidden>Current password<input id="st-cur-pw" type="password" autocomplete="current-password" placeholder="Enter current password to modify"></label>
+   <label id="st-cur-wrap" hidden>Current password<input id="st-cur-pw" type="text" class="masked-inp" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-form-type="other" placeholder="Enter current password to modify"></label>
    <div class="two">
-    <label><span id="st-np-lbl">New password / PIN</span><input id="st-np1" type="password" autocomplete="new-password" placeholder="Enter password"></label>
-    <label>Confirm<input id="st-np2" type="password" autocomplete="new-password" placeholder="Repeat password"></label>
+    <label><span id="st-np-lbl">New password / PIN</span><input id="st-np1" type="text" class="masked-inp" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-form-type="other" placeholder="Enter password"></label>
+    <label>Confirm<input id="st-np2" type="text" class="masked-inp" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-form-type="other" placeholder="Repeat password"></label>
    </div>
    <label>Security question (for password recovery)
     <select id="dr-cq-sel" class="dr-sel">
@@ -499,10 +502,10 @@ details.dr-acc[open]>summary::after{transform:rotate(180deg);color:var(--dry)}
      <option value="custom">Custom question…</option>
     </select>
    </label>
-   <input id="dr-cq" type="text" maxlength="80" placeholder="Enter custom security question" hidden>
+   <input id="dr-cq" type="text" maxlength="80" autocomplete="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-form-type="other" placeholder="Enter custom security question" hidden>
    <div class="two">
-    <label>Security answer<input id="dr-ca" type="password" autocomplete="off" placeholder="Answer for recovery"></label>
-    <label>Password hint (optional)<input id="dr-chn" type="text" maxlength="50" placeholder="Optional hint"></label>
+    <label>Security answer<input id="dr-ca" type="text" class="masked-inp" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-form-type="other" placeholder="Answer for recovery"></label>
+    <label>Password hint (optional)<input id="dr-chn" type="text" maxlength="50" autocomplete="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-form-type="other" placeholder="Optional hint"></label>
    </div>
    <div class="err" id="dr-cer"></div>
    <button class="prim" id="dr-csv" type="button" style="background:var(--dry);padding:10px">Save encryption settings</button>
@@ -515,8 +518,8 @@ details.dr-acc[open]>summary::after{transform:rotate(180deg);color:var(--dry)}
     <div id="dr-qa-box" class="dr-qa-box">
      <label>Your configured security question<div class="dr-qbadge" id="dr-rq-txt"></div></label>
      <div class="two">
-      <label>Security answer<input id="dr-ra" type="password" autocomplete="off" placeholder="Enter your answer"></label>
-      <label>New password<input id="dr-rp1" type="password" autocomplete="new-password" placeholder="Set new password"></label>
+      <label>Security answer<input id="dr-ra" type="text" class="masked-inp" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-form-type="other" placeholder="Enter your answer"></label>
+      <label>New password<input id="dr-rp1" type="text" class="masked-inp" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-form-type="other" placeholder="Set new password"></label>
      </div>
      <div class="err" id="dr-rer"></div>
      <button class="prim" id="dr-rsv" type="button" style="background:var(--dry);padding:10px">Reset password &amp; unlock</button>
@@ -529,12 +532,12 @@ details.dr-acc[open]>summary::after{transform:rotate(180deg);color:var(--dry)}
   <details class="dr-acc sub" id="dr-acc-other">
    <summary>Other recovery &amp; vault reset options</summary>
    <div class="dr-acc-b">
-    <label>Option 1 · Recover with Google Sheet Sync Token<input id="dr-rtok" type="password" autocomplete="off" placeholder="Paste your Apps Script Sync Token"></label>
-    <label>New vault password<input id="dr-rtp" type="password" autocomplete="new-password" placeholder="Set new password"></label>
+    <label>Option 1 · Recover with Google Sheet Sync Token<input id="dr-rtok" type="text" class="masked-inp" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-form-type="other" placeholder="Paste your Apps Script Sync Token"></label>
+    <label>New vault password<input id="dr-rtp" type="text" class="masked-inp" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-form-type="other" placeholder="Set new password"></label>
     <div class="err" id="dr-rter"></div>
     <button class="ghost" id="dr-rtbtn" type="button" style="border-color:var(--dry);color:var(--dry)">Recover with Sync Token</button>
     <hr style="border:0;border-top:1px dashed var(--line);margin:2px 0">
-    <label>Option 2 · Reset Diary Vault (wipes locked diary notes only; keeps AED/INR/Debts safe)<input id="dr-rwipe" type="text" autocomplete="off" placeholder="Type RESET to confirm"></label>
+    <label>Option 2 · Reset Diary Vault (wipes locked diary notes only; keeps AED/INR/Debts safe)<input id="dr-rwipe" type="text" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-form-type="other" placeholder="Type RESET to confirm"></label>
     <button class="ghost" id="dr-rwbtn" type="button" style="color:var(--out);border-color:color-mix(in srgb,var(--out) 35%,var(--line))">Reset diary vault</button>
    </div>
   </details>
@@ -572,7 +575,7 @@ details.dr-acc[open]>summary::after{transform:rotate(180deg);color:var(--dry)}
  <button class="ghost" id="bkc" type="button">Close</button>
 </div></dialog>
 
-<dialog id="syd"><div class="sh"><h2>Sync with Google Sheet</h2><p class="hint">Enter the web app link and the token from your Apps Script. They stay on this device only.</p><label>Web app link<input id="syu" type="url" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off"></label><label>Token<input id="syt" type="password" autocomplete="off"></label><div class="err" id="sye"></div><p class="hint" id="syi"></p><button class="prim" id="sys">Save and sync now</button><button class="ghost" id="syx">Test connection</button><button class="ghost" id="syc">Close</button></div></dialog>
+<dialog id="syd"><div class="sh"><h2>Sync with Google Sheet</h2><p class="hint">Enter the web app link and the token from your Apps Script. They stay on this device only.</p><label>Web app link<input id="syu" type="url" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-form-type="other"></label><label>Token<input id="syt" type="text" class="masked-inp" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-form-type="other"></label><div class="err" id="sye"></div><p class="hint" id="syi"></p><button class="prim" id="sys">Save and sync now</button><button class="ghost" id="syx">Test connection</button><button class="ghost" id="syc">Close</button></div></dialog>
 
 <dialog id="drd" class="dr-dlg">
  <div class="dr-hd">
@@ -594,7 +597,7 @@ details.dr-acc[open]>summary::after{transform:rotate(180deg);color:var(--dry)}
 
  <!-- Password-Only Gate: Enter password -> Immediately loads diary data -->
  <div class="dr-gate" id="dr-lock" hidden>
-  <label id="dr-upw-lbl">Vault password<input id="dr-upw" type="password" autocomplete="current-password" placeholder="Enter password"></label>
+  <label id="dr-upw-lbl">Vault password<input id="dr-upw" type="text" class="masked-inp" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-form-type="other" placeholder="Enter password"></label>
   <p class="hint" id="dr-uhint" hidden></p>
   <div class="err" id="dr-uer"></div>
   <button class="prim" id="dr-ubtn" type="button">Unlock diary</button>

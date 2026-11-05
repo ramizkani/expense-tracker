@@ -78,14 +78,15 @@ const IC={
  moon:SV+'<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>'
 };
 
-// Theme initialization with SVG Sun/Moon icon
+// Theme initialization with SVG Sun/Moon icon + Dynamic Modal Backdrop Status-Bar Sync
 const isDark=()=>{
  const t=document.documentElement.getAttribute('data-theme');
  return t?t==='dark':matchMedia('(prefers-color-scheme:dark)').matches;
 };
 const syncThemeIcon=()=>{
- const d=isDark();
- if($('#theme-meta'))$('#theme-meta').setAttribute('content',d?'#0b101b':'#e9eef5');
+ const d=isDark(),dlgOpen=!!document.querySelector('dialog[open]');
+ document.body.classList.toggle('dlg-open',dlgOpen);
+ if($('#theme-meta'))$('#theme-meta').setAttribute('content',dlgOpen?(d?'#060910':'#686c71'):(d?'#0b101b':'#e9eef5'));
  if(!$('#thb'))return;
  $('#thb').innerHTML=d?IC.sun:IC.moon;
  $('#thb').setAttribute('title',d?'Switch to light mode':'Switch to dark mode');
@@ -93,6 +94,11 @@ const syncThemeIcon=()=>{
 matchMedia('(prefers-color-scheme:dark)').addEventListener('change',syncThemeIcon);
 const initTheme=STORE.getItem('ledger.theme');
 if(initTheme)document.documentElement.setAttribute('data-theme',initTheme);
+const dlgObs=new MutationObserver(syncThemeIcon);
+document.querySelectorAll('dialog').forEach(dlg=>{
+ dlgObs.observe(dlg,{attributes:true,attributeFilter:['open']});
+ dlg.addEventListener('close',syncThemeIcon);
+});
 syncThemeIcon();
 if($('#thb'))$('#thb').onclick=()=>{
  const next=isDark()?'light':'dark';
