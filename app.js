@@ -84,9 +84,11 @@ const isDark=()=>{
  return t?t==='dark':matchMedia('(prefers-color-scheme:dark)').matches;
 };
 const syncThemeIcon=()=>{
- const d=isDark(),dlgOpen=!!document.querySelector('dialog[open]');
+ const d=isDark(),openDlg=document.querySelector('dialog[open]'),dlgOpen=!!openDlg;
  document.body.classList.toggle('dlg-open',dlgOpen);
- if($('#theme-meta'))$('#theme-meta').setAttribute('content',dlgOpen?(d?'#060910':'#686c71'):(d?'#0b101b':'#e9eef5'));
+ if($('#theme-meta'))$('#theme-meta').setAttribute('content',dlgOpen?(d?'#060910':'#64686e'):(d?'#0b101b':'#e9eef5'));
+ const tst=$('#toast');
+ if(tst){const host=openDlg||document.body;if(tst.parentNode!==host)host.appendChild(tst)}
  if(!$('#thb'))return;
  $('#thb').innerHTML=d?IC.sun:IC.moon;
  $('#thb').setAttribute('title',d?'Switch to light mode':'Switch to dark mode');
@@ -238,7 +240,7 @@ function render(){
  document.querySelectorAll('#vms [data-vm]').forEach(b=>b.classList.toggle('on',b.dataset.vm===S.vm));
  const lbl=S.tab==='D'?'Add debt':'Add entry',atx=$('#add-tx');if(atx){atx.textContent='Add';$('#add').setAttribute('aria-label',lbl);$('#add').setAttribute('title',lbl)}else $('#add').textContent='+ '+lbl;
 }
-let tt;function toast(m,u){const t=$('#toast');t.textContent=m;t.style.pointerEvents=u?'auto':'none';t.style.cursor=u?'pointer':'';t.onclick=u?()=>{u();t.classList.remove('show')}:null;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),u?5000:2400)}
+let tt;function toast(m,u){const t=$('#toast');if(!t)return;const host=document.querySelector('dialog[open]')||document.body;if(t.parentNode!==host)host.appendChild(t);t.textContent=m;t.style.pointerEvents=u?'auto':'none';t.style.cursor=u?'pointer':'';t.onclick=u?()=>{u();t.classList.remove('show')}:null;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),u?5000:2600)}
 
 function paint(){
  $('#dlg').style.setProperty('--acc',S.cur==='AED'?'var(--aed)':'var(--inr)');
@@ -467,7 +469,7 @@ const tEnc=new TextEncoder(),tDec=new TextDecoder();
 const b64e=buf=>{let s='';const u=new Uint8Array(buf);for(let i=0;i<u.length;i++)s+=String.fromCharCode(u[i]);return btoa(s)};
 const b64d=str=>{const b=atob(str),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u};
 const normAns=s=>String(s||'').trim().toLowerCase().replace(/\s+/g,' ');
-let DIARY_KEY=null,DIARY_DEK_B64='',DIARY_CACHE={},drDate=iso(0),drChPw=false,drRec=false,drLockTm=null,drBgJob=0;
+let DIARY_KEY=null,DIARY_DEK_B64='',DIARY_CACHE={},drDate=iso(0),drEditMode=false,drChPw=false,drRec=false,drLockTm=null,drBgJob=0;
 async function deriveDiaryKey(secret,saltBytes){
  const bk=await crypto.subtle.importKey('raw',tEnc.encode(secret),'PBKDF2',false,['deriveKey']);
  return crypto.subtle.deriveKey({name:'PBKDF2',salt:saltBytes,iterations:100000,hash:'SHA-256'},bk,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
@@ -538,7 +540,7 @@ function syncDiaryDot(){
  if($('#dr-lk-btn'))$('#dr-lk-btn').hidden=!un;
 }
 async function autoSaveDiaryIfDirty(){
- if(!DIARY_KEY||!$('#dr-ttl')||!$('#dr-bdy'))return false;
+ if(!DIARY_KEY||!drEditMode||!$('#dr-ttl')||!$('#dr-bdy'))return false;
  const title=$('#dr-ttl').value.trim(),body=$('#dr-bdy').value.trim();
  const cur=DIARY_CACHE[drDate]||{title:'',body:''};
  if(title===(cur.title||'')&&body===(cur.body||''))return false;
@@ -552,13 +554,16 @@ async function autoSaveDiaryIfDirty(){
   Object.assign(rec,{date:drDate,cipher,del:0,upd:ts});
  }else DR.push({id,date:drDate,cipher,del:0,upd:ts});
  DIARY_CACHE[drDate]=plain;
+ drEditMode=false;
  drsave();render();
  return true;
 }
 function lockDiary(){
- drBgJob++;DIARY_KEY=null;DIARY_DEK_B64='';DIARY_CACHE={};drChPw=false;drRec=false;
+ drBgJob++;DIARY_KEY=null;DIARY_DEK_B64='';DIARY_CACHE={};drEditMode=false;drChPw=false;drRec=false;
  if($('#dr-ttl'))$('#dr-ttl').value='';
  if($('#dr-bdy'))$('#dr-bdy').value='';
+ if($('#dr-vttl'))$('#dr-vttl').textContent='';
+ if($('#dr-vbdy'))$('#dr-vbdy').textContent='';
  if($('#dr-list'))$('#dr-list').innerHTML='';
  if($('#dr-sum'))$('#dr-sum').innerHTML='';
  if($('#dr-upw'))$('#dr-upw').value='';
@@ -612,12 +617,22 @@ async function renderDiaryDate(keepInputs){
   try{DIARY_CACHE[drDate]=await decDiaryObj(DIARY_KEY,rec.cipher)}catch(e){}
  }
  const n=DIARY_CACHE[drDate]||{title:'',body:''};
+ const showEdit=!rec||drEditMode;
+ if($('#dr-view'))$('#dr-view').hidden=showEdit;
+ if($('#dr-form'))$('#dr-form').hidden=!showEdit;
+ if(!showEdit&&rec){
+  const tStr=new Date(rec.upd).toLocaleTimeString('en',{hour:'numeric',minute:'2-digit'});
+  if($('#dr-vmeta'))$('#dr-vmeta').textContent=`AES-256-GCM · Saved ${tStr}`;
+  if($('#dr-vttl'))$('#dr-vttl').textContent=n.title||'Daily note';
+  if($('#dr-vbdy'))$('#dr-vbdy').textContent=n.body||'No additional details written for this date.';
+ }
  if(!keepInputs){
   if($('#dr-ttl'))$('#dr-ttl').value=n.title||'';
   if($('#dr-bdy'))$('#dr-bdy').value=n.body||'';
  }
+ if($('#dr-cancel-edit'))$('#dr-cancel-edit').hidden=!rec;
  if($('#dr-del'))$('#dr-del').hidden=!rec;
- if($('#dr-meta'))$('#dr-meta').textContent=rec?`Encrypted AES-256-GCM · Updated ${new Date(rec.upd).toLocaleTimeString('en',{hour:'numeric',minute:'2-digit'})}`:'AES-256-GCM · Not saved yet';
+ if($('#dr-meta'))$('#dr-meta').textContent=rec?`Encrypted AES-256-GCM · Updated ${new Date(rec.upd).toLocaleTimeString('en',{hour:'numeric',minute:'2-digit'})}`:'AES-256-GCM · New note';
 }
 function syncQuestionSelect(selId,inpId,val){
  const sel=$(selId),inp=$(inpId);
@@ -651,7 +666,7 @@ function buildHistoryItems(){
   });
  });
  CT.forEach((c,idx)=>{
-  if(c.del)items.push({mode:'del',kind:'cat',id:String(idx),ts:c.upd||now(),tag:'Category',title:c.n,sub:`Permitted: ${TLAB[c.t]||c.t}`});
+  if(c.del)items.push({mode:'del',kind:'cat',id:c.id||String(idx),ts:c.upd||now(),tag:'Category',title:c.n,sub:`Permitted: ${TLAB[c.t]||c.t}`});
  });
  DR.forEach(r=>{
   if(r.del&&r.cipher)items.push({mode:'del',kind:'diary',id:r.id,ts:r.upd||now(),tag:'Diary Note',title:`Encrypted Note · ${r.date}`,sub:`AES-256-GCM record`});
@@ -689,7 +704,7 @@ if($('#hi-list'))$('#hi-list').onclick=async e=>{
    const p=(d.pays||[]).find(y=>y.id===id);if(!p)return;
    p.del=0;p.upd=ts;dsave();render();sync();toast('Payment restored');
   }else if(kind==='cat'){
-   const c=CT[+id];if(!c)return;
+   const c=CT.find(x=>x.id===id)||CT[+id];if(!c)return;
    c.del=0;c.upd=ts;saveC();renderCm();paint();sync();toast('Category restored');
   }else if(kind==='diary'){
    const r=DR.find(x=>x.id===id);if(!r)return;
@@ -772,6 +787,7 @@ function renderDiaryModal(){
 function openDiary(dt){
  if(dt)drDate=fixDate(dt);
  else if(!drDate)drDate=iso(0);
+ drEditMode=false;
  renderDiaryModal();
  if($('#drd')&&!$('#drd').open)$('#drd').showModal();
  if(!DIARY_KEY&&$('#dr-upw')){$('#dr-upw').value='';$('#dr-upw').focus()}
@@ -952,16 +968,18 @@ const shiftDiaryDate=async delta=>{
  const d=new Date(drDate+'T00:00:00');
  d.setDate(d.getDate()+delta);
  drDate=ymd(d);
+ drEditMode=false;
  renderDiarySidebar();
  renderDiaryDate(false);
 };
 if($('#dr-prev'))$('#dr-prev').onclick=()=>shiftDiaryDate(-1);
 if($('#dr-next'))$('#dr-next').onclick=()=>shiftDiaryDate(1);
-if($('#dr-td'))$('#dr-td').onclick=async()=>{await autoSaveDiaryIfDirty();drDate=iso(0);renderDiarySidebar();renderDiaryDate(false)};
-if($('#dr-dt'))$('#dr-dt').onchange=async e=>{if(e.target.value){await autoSaveDiaryIfDirty();drDate=fixDate(e.target.value);renderDiarySidebar();renderDiaryDate(false)}};
+if($('#dr-td'))$('#dr-td').onclick=async()=>{await autoSaveDiaryIfDirty();drDate=iso(0);drEditMode=false;renderDiarySidebar();renderDiaryDate(false)};
+if($('#dr-dt'))$('#dr-dt').onchange=async e=>{if(e.target.value){await autoSaveDiaryIfDirty();drDate=fixDate(e.target.value);drEditMode=false;renderDiarySidebar();renderDiaryDate(false)}};
 if($('#dr-q'))$('#dr-q').oninput=()=>renderDiarySidebar();
-if($('#dr-list'))$('#dr-list').onclick=async e=>{if(e.target.closest('[data-dr-more]')){drShowAll=true;renderDiarySidebar();return}const b=e.target.closest('[data-dr-item]');if(!b)return;await autoSaveDiaryIfDirty();drDate=b.dataset.drItem;renderDiarySidebar();renderDiaryDate(false)};
+if($('#dr-list'))$('#dr-list').onclick=async e=>{if(e.target.closest('[data-dr-more]')){drShowAll=true;renderDiarySidebar();return}const b=e.target.closest('[data-dr-item]');if(!b)return;await autoSaveDiaryIfDirty();drDate=b.dataset.drItem;drEditMode=false;renderDiarySidebar();renderDiaryDate(false)};
 if($('#dr-ins'))$('#dr-ins').onclick=()=>{
+ if(!drEditMode){drEditMode=true;renderDiaryDate(true)}
  const sm=dayLedgerSummary(drDate);
  const lines=[`--- Spending Summary (${drDate}) ---`];
  if(sm.AED.out||sm.AED.in)lines.push(`AED: Spent ${fmt('AED',sm.AED.out)} | Received ${fmt('AED',sm.AED.in)}`);
@@ -970,6 +988,15 @@ if($('#dr-ins'))$('#dr-ins').onclick=()=>{
  const b=$('#dr-bdy');
  b.value=(b.value.trim()?b.value.trim()+'\n\n':'')+lines.join('\n');
  b.focus();
+};
+if($('#dr-edit'))$('#dr-edit').onclick=()=>{
+ drEditMode=true;
+ renderDiaryDate(false);
+ if($('#dr-bdy'))$('#dr-bdy').focus();
+};
+if($('#dr-cancel-edit'))$('#dr-cancel-edit').onclick=()=>{
+ drEditMode=false;
+ renderDiaryDate(false);
 };
 if($('#dr-sv'))$('#dr-sv').onclick=async()=>{
  if(!DIARY_KEY)return;
@@ -986,21 +1013,26 @@ if($('#dr-sv'))$('#dr-sv').onclick=async()=>{
   Object.assign(rec,{date:drDate,cipher,del:0,upd:ts});
  }else DR.push({id,date:drDate,cipher,del:0,upd:ts});
  DIARY_CACHE[drDate]=plain;
- drsave();render();renderDiarySidebar();renderDiaryDate(true);
- toast(syncOn()?'Encrypted & saved · syncing ciphertext…':'Encrypted & saved on this device');
+ drEditMode=false;
+ drsave();render();renderDiarySidebar();renderDiaryDate(false);
+ toast(syncOn()?'✓ Encrypted & saved · syncing ciphertext…':'✓ Encrypted & saved on this device');
 };
-if($('#dr-del'))$('#dr-del').onclick=()=>{
+const deleteCurrentDiaryNote=()=>{
  const rec=DR.find(x=>!x.del&&x.date===drDate);
  if(!rec)return;
  const backupCipher=rec.cipher,backupCache=DIARY_CACHE[drDate],dt=drDate;
  rec.del=1;rec.upd=now();delete DIARY_CACHE[dt];
+ drEditMode=false;
  drsave();render();renderDiarySidebar();renderDiaryDate(false);
  toast('Diary note deleted. Tap to undo or restore in Settings → History.',()=>{
   rec.del=0;rec.cipher=backupCipher;rec.upd=now();
   if(backupCache&&DIARY_KEY)DIARY_CACHE[dt]=backupCache;
+  drEditMode=false;
   drsave();render();if($('#drd').open){renderDiarySidebar();renderDiaryDate(false)}
  });
 };
+if($('#dr-del'))$('#dr-del').onclick=deleteCurrentDiaryNote;
+if($('#dr-vdel'))$('#dr-vdel').onclick=deleteCurrentDiaryNote;
 
 // ---- Sync with the Google Sheet ----
 const DEV=(()=>{let d=STORE.getItem('ledger.device');if(!d){d='d_'+uid();STORE.setItem('ledger.device',d)}return d})();
