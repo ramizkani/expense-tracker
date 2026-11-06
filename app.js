@@ -405,7 +405,8 @@ if($('#bk-file'))$('#bk-file').onchange=async e=>{
  }catch(err){if($('#bke'))$('#bke').textContent='Could not read backup JSON.'}
 };
 
-$('#app').addEventListener('input',e=>{if(e.target.id==='dq'){S.dq=e.target.value;$('#dlist').innerHTML=dlist()}});
+let dqRaf=0,qRaf=0,drqRaf=0;
+$('#app').addEventListener('input',e=>{if(e.target.id==='dq'){S.dq=e.target.value;cancelAnimationFrame(dqRaf);dqRaf=requestAnimationFrame(()=>{if($('#dlist'))$('#dlist').innerHTML=dlist()})}});
 $('#app').addEventListener('click',e=>{const b=e.target.closest('[data-dk]');if(!b)return;const[a,i,j]=b.dataset.dk.split(':');
  if(a==='manage'){S.dcur=S.tab;S.tab='D';render()}
  else if(a==='cur'){S.dcur=i;render()}else if(a==='st'){S.ds=i;render()}
@@ -428,7 +429,7 @@ $('#ca').onclick=()=>{const n=$('#cn').value.trim();
  if(CT.some(x=>!x.del&&x.n.toLowerCase()===n.toLowerCase())){$('#ce').textContent='That category already exists.';return}
  const rv=CT.find(x=>x.del&&x.n.toLowerCase()===n.toLowerCase());if(rv){rv.del=0;rv.t=NT}else CT.push({n,t:NT,a:1});saveC();$('#cn').value='';$('#ce').textContent='';renderCm();paint();toast('Category added')};
 $('#app').addEventListener('change',e=>{const i=e.target.id;if(i==='mo')S.mo=e.target.value;else if(i==='ft')S.f=e.target.value;else if(i==='pp')S.pp=+e.target.value;else if(i==='rf')S.rf=e.target.value;else if(i==='rt')S.rt=e.target.value;else return;if(S.rf>S.rt){const z=S.rf;S.rf=S.rt;S.rt=z}S.pg=1;render()});
-$('#app').addEventListener('input',e=>{if(e.target.id==='q'){S.q=e.target.value;S.pg=1;$('#tbl').innerHTML=tbl(S.tab);const lc=$('.lcnt');if(lc)lc.textContent=fCntTxt(S.tab)}});
+$('#app').addEventListener('input',e=>{if(e.target.id==='q'){S.q=e.target.value;S.pg=1;cancelAnimationFrame(qRaf);qRaf=requestAnimationFrame(()=>{if($('#tbl'))$('#tbl').innerHTML=tbl(S.tab);const lc=$('.lcnt');if(lc)lc.textContent=fCntTxt(S.tab)})}});
 $('#app').addEventListener('click',e=>{const o=e.target.closest('.ddo'),h=e.target.closest('.ddb');
  if(o){const id=o.closest('.dd').dataset.dd,v=o.dataset.v;closeDd();if(id==='mo')S.mo=v;else if(id==='ft')S.f=v;else if(id==='pp')S.pp=+v;S.pg=1;render();return}
  if(h){const p=h.parentNode,was=p.classList.contains('open');closeDd();if(!was){p.classList.add('open');h.setAttribute('aria-expanded','true')}return}
@@ -587,28 +588,40 @@ function dayLedgerSummary(dt){
 function renderDiarySidebar(){
  if(!$('#dr-list'))return;
  const q=($('#dr-q')&&$('#dr-q').value||'').trim().toLowerCase();
- const allDates=Array.from(new Set([...drDates,drDate])).sort().reverse();
+ const allDates=Array.from(new Set([...drDates,drDate])).sort();
  const matched=q?allDates.filter(dt=>{const n=DIARY_CACHE[dt]||{title:'',body:''};return dt.includes(q)||(n.title||'').toLowerCase().includes(q)||(n.body||'').toLowerCase().includes(q)}):allDates;
- const slice=(!q&&!drShowAll&&matched.length>60)?matched.slice(0,60):matched;
+ const slice=(!q&&!drShowAll&&matched.length>60)?matched.slice(-60):matched;
  if(slice.length<matched.length&&!slice.includes(drDate))slice.unshift(drDate);
- $('#dr-list').innerHTML=slice.map(dt=>{
+ $('#dr-list').innerHTML=(slice.length<matched.length?`<button type="button" class="ghost" data-dr-more="1" style="font-size:12px;padding:7px;flex:none">Show all ${matched.length} dates</button>`:'')+slice.map(dt=>{
   const n=DIARY_CACHE[dt]||{title:'',body:''},saved=hasDiary(dt);
   const sm=dayLedgerSummary(dt),fp=[];
   if(sm.AED.out||sm.AED.in)fp.push('AED −'+sm.AED.out);
   if(sm.INR.out||sm.INR.in)fp.push('₹ −'+sm.INR.out);
   const dtStr=new Date(dt+'T00:00').toLocaleDateString('en',{day:'2-digit',month:'short',year:'numeric'});
   return `<button type="button" class="dr-item${dt===drDate?' on':''}" data-dr-item="${dt}"><div class="dr-item-top"><span>${dtStr}</span><span>${saved?'🔒 AES':'New'}</span></div><b>${esc(n.title||(saved?'Saved note':'No note yet'))}</b><small>${esc(fp.join(' · ')||'No ledger entries')}</small></button>`;
- }).join('')+(slice.length<matched.length?`<button type="button" class="ghost" data-dr-more="1" style="font-size:12px;padding:7px">Show all ${matched.length} dates</button>`:'')||'<div class="hint" style="padding:8px">No matching diary notes.</div>';
+ }).join('')||'<div class="hint" style="padding:8px">No matching diary notes.</div>';
+ requestAnimationFrame(()=>{
+  const list=$('#dr-list'),act=list&&list.querySelector('.dr-item.on');
+  if(list&&act){
+   if(list.scrollWidth>list.clientWidth){
+    const left=act.offsetLeft-(list.clientWidth/2)+(act.offsetWidth/2);
+    list.scrollTo({left:Math.max(0,left),behavior:'smooth'});
+   }else if(list.scrollHeight>list.clientHeight){
+    const top=act.offsetTop-(list.clientHeight/2)+(act.offsetHeight/2);
+    list.scrollTo({top:Math.max(0,top),behavior:'smooth'});
+   }
+  }
+ });
 }
 async function renderDiaryDate(keepInputs){
  if($('#dr-dt'))$('#dr-dt').value=drDate;
  const sm=dayLedgerSummary(drDate);
  const dtLabel=new Date(drDate+'T00:00').toLocaleDateString('en',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
  if($('#dr-sum')){
-  $('#dr-sum').innerHTML=`<div class="dr-sum-hd"><span>Auto-linked spending · ${esc(dtLabel)}</span><span>${sm.list.length} ${sm.list.length===1?'entry':'entries'}</span></div>
+  $('#dr-sum').innerHTML=`<div class="dr-sum-hd"><span>Spending · ${esc(dtLabel)}</span><span class="dr-cnt-pill">${sm.list.length} ${sm.list.length===1?'entry':'entries'}</span></div>
    <div class="dr-sum-grid">
-    <div class="dr-sum-box"><span class="code" style="--acc:var(--aed)">AED</span><div class="num" style="text-align:right"><div style="color:var(--out)">Spent: ${fmt('AED',sm.AED.out)}</div><div style="color:var(--in)">In: +${fmt('AED',sm.AED.in)}</div></div></div>
-    <div class="dr-sum-box"><span class="code" style="--acc:var(--inr)">INR</span><div class="num" style="text-align:right"><div style="color:var(--out)">Spent: ${fmt('INR',sm.INR.out)}</div><div style="color:var(--in)">In: +${fmt('INR',sm.INR.in)}</div></div></div>
+    <div class="dr-sum-box"><div class="dr-sum-top"><span class="code" style="--acc:var(--aed)">AED</span><span class="hint" style="font-size:11px">Dirham</span></div><div class="dr-sum-kv"><span>Spent</span><b style="color:var(--out)">${fmt('AED',sm.AED.out)}</b></div><div class="dr-sum-kv"><span>In</span><b style="color:var(--in)">+${fmt('AED',sm.AED.in)}</b></div></div>
+    <div class="dr-sum-box"><div class="dr-sum-top"><span class="code" style="--acc:var(--inr)">INR</span><span class="hint" style="font-size:11px">Rupee</span></div><div class="dr-sum-kv"><span>Spent</span><b style="color:var(--out)">${fmt('INR',sm.INR.out)}</b></div><div class="dr-sum-kv"><span>In</span><b style="color:var(--in)">+${fmt('INR',sm.INR.in)}</b></div></div>
    </div>
    ${sm.list.length?`<div class="dr-sum-tx">${sm.list.map(x=>`<div class="dr-sum-r"><span><b>${esc(x.cat)}</b>${x.note?' · '+esc(x.note):''}</span><span class="num amt ${x.type}">${x.type==='out'?'−':'+'}${fmt(x.cur,x.amt)}</span></div>`).join('')}</div>`:`<div class="hint" style="font-size:12px">No AED or INR transactions recorded on ${esc(drDate)}.</div>`}`;
  }
@@ -976,7 +989,7 @@ if($('#dr-prev'))$('#dr-prev').onclick=()=>shiftDiaryDate(-1);
 if($('#dr-next'))$('#dr-next').onclick=()=>shiftDiaryDate(1);
 if($('#dr-td'))$('#dr-td').onclick=async()=>{await autoSaveDiaryIfDirty();drDate=iso(0);drEditMode=false;renderDiarySidebar();renderDiaryDate(false)};
 if($('#dr-dt'))$('#dr-dt').onchange=async e=>{if(e.target.value){await autoSaveDiaryIfDirty();drDate=fixDate(e.target.value);drEditMode=false;renderDiarySidebar();renderDiaryDate(false)}};
-if($('#dr-q'))$('#dr-q').oninput=()=>renderDiarySidebar();
+if($('#dr-q'))$('#dr-q').oninput=()=>{cancelAnimationFrame(drqRaf);drqRaf=requestAnimationFrame(renderDiarySidebar)};
 if($('#dr-list'))$('#dr-list').onclick=async e=>{if(e.target.closest('[data-dr-more]')){drShowAll=true;renderDiarySidebar();return}const b=e.target.closest('[data-dr-item]');if(!b)return;await autoSaveDiaryIfDirty();drDate=b.dataset.drItem;drEditMode=false;renderDiarySidebar();renderDiaryDate(false)};
 if($('#dr-ins'))$('#dr-ins').onclick=()=>{
  if(!drEditMode){drEditMode=true;renderDiaryDate(true)}
@@ -1014,8 +1027,9 @@ if($('#dr-sv'))$('#dr-sv').onclick=async()=>{
  }else DR.push({id,date:drDate,cipher,del:0,upd:ts});
  DIARY_CACHE[drDate]=plain;
  drEditMode=false;
- drsave();render();renderDiarySidebar();renderDiaryDate(false);
+ drsave();renderDiarySidebar();renderDiaryDate(false);
  toast(syncOn()?'✓ Encrypted & saved · syncing ciphertext…':'✓ Encrypted & saved on this device');
+ requestAnimationFrame(()=>render());
 };
 const deleteCurrentDiaryNote=()=>{
  const rec=DR.find(x=>!x.del&&x.date===drDate);
@@ -1023,12 +1037,14 @@ const deleteCurrentDiaryNote=()=>{
  const backupCipher=rec.cipher,backupCache=DIARY_CACHE[drDate],dt=drDate;
  rec.del=1;rec.upd=now();delete DIARY_CACHE[dt];
  drEditMode=false;
- drsave();render();renderDiarySidebar();renderDiaryDate(false);
+ drsave();renderDiarySidebar();renderDiaryDate(false);
+ requestAnimationFrame(()=>render());
  toast('Diary note deleted. Tap to undo or restore in Settings → History.',()=>{
   rec.del=0;rec.cipher=backupCipher;rec.upd=now();
   if(backupCache&&DIARY_KEY)DIARY_CACHE[dt]=backupCache;
   drEditMode=false;
-  drsave();render();if($('#drd').open){renderDiarySidebar();renderDiaryDate(false)}
+  drsave();if($('#drd').open){renderDiarySidebar();renderDiaryDate(false)}
+  requestAnimationFrame(()=>render());
  });
 };
 if($('#dr-del'))$('#dr-del').onclick=deleteCurrentDiaryNote;
