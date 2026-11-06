@@ -122,10 +122,12 @@ const paid=d=>r2(d.pays.filter(p=>!p.del).reduce((a,p)=>a+p.amt,0)),rem=d=>r2(d.
 const LD='ledger.debts.v2';let DB=null;try{DB=JSON.parse(STORE.getItem(LD))}catch(e){}
 if(!DB)DB=[];
 const dsave=()=>{try{STORE.setItem(LD,JSON.stringify(DB))}catch(e){}stamp();schedSync()};
-const LDR='ledger.diary.v1',LDRV='ledger.diary.verifier',LH='ledger.hist.v1';
+const LDR='ledger.diary.v1',LDRV='ledger.diary.verifier',LDRF='ledger.diary.drafts.v1',LH='ledger.hist.v1';
 let DR=null;try{DR=JSON.parse(STORE.getItem(LDR))}catch(e){}
 if(!Array.isArray(DR))DR=[];
 let DRV={v:'',q:'',r:'',t:'',hint:'',upd:'1970-01-01T00:00:00.000Z'};try{const v=JSON.parse(STORE.getItem(LDRV));if(v&&typeof v==='object')DRV=Object.assign(DRV,v)}catch(e){}
+let DR_DRAFTS={};try{const df=JSON.parse(STORE.getItem(LDRF));if(df&&typeof df==='object'&&!Array.isArray(df))DR_DRAFTS=df}catch(e){}
+const saveDrDrafts=()=>{try{STORE.setItem(LDRF,JSON.stringify(DR_DRAFTS))}catch(e){}};
 let HIST=[];try{const h=JSON.parse(STORE.getItem(LH));if(Array.isArray(h))HIST=h}catch(e){}
 const saveHist=()=>{if(HIST.length>150)HIST=HIST.slice(0,150);try{STORE.setItem(LH,JSON.stringify(HIST))}catch(e){}};
 const logHist=item=>{HIST.unshift(Object.assign({hid:uid(),ts:new Date().toISOString()},item));saveHist()};
@@ -147,7 +149,7 @@ function mcards(c,rows,all,av,bfrCard){
  return `<div class="mfeed">${groups.map(g=>{
   const day=all.filter(r=>r.date===g.date),net=r2(day.reduce((a,r)=>a+(r.type==='in'?r.amt:-r.amt),0));
   const dtStr=new Date(g.date+'T00:00').toLocaleDateString('en',{day:'2-digit',month:'short',year:'numeric'});
-  return `<div class="mday"><div class="mday-h"><b>${dtStr}${dryBadge(g.date)}</b><span>${day.length} ${day.length===1?'entry':'entries'} · <em class="num ${net<0?'out':'in'}" style="font-style:normal;font-weight:600">${net<0?'−':'+'}${fmt(c,Math.abs(net))}</em></span></div>${g.items.map(x=>`<div class="mrow"><div class="mrow-l"><b>${esc(x.cat)}</b><span>${esc(x.note||'No notes')}</span></div><div class="mrow-r"><div class="mrow-amt"><b class="amt ${x.type}">${x.type==='in'?'+':'−'}${fmt(c,x.amt)}</b>${av?`<small>Avail: ${fmt(c,av[x.id])}</small>`:''}</div><div class="mrow-ac"><button class="ib" data-e="${x.id}" aria-label="Edit entry">${IC.e}</button><button class="ib d" data-d="${x.id}" aria-label="Delete entry">${IC.d}</button></div></div></div>`).join('')}</div>`;
+  return `<div class="mday"><div class="mday-h"><b>${dtStr}${dryBadge(g.date)}</b><span>${day.length} ${day.length===1?'entry':'entries'} · <em class="num ${net<0?'out':'in'}" style="font-style:normal;font-weight:600">${net<0?'−':'+'}${fmt(c,Math.abs(net))}</em></span></div>${g.items.map(x=>`<div class="mrow tx-row" data-mrow="${x.id}" tabindex="0" role="button" aria-expanded="false" aria-label="Tap to show edit and delete options"><div class="mrow-l"><b>${esc(x.cat)}</b><span>${esc(x.note||'No notes')}</span></div><div class="mrow-r"><div class="mrow-amt"><b class="amt ${x.type}">${x.type==='in'?'+':'−'}${fmt(c,x.amt)}</b>${av?`<small>Avail: ${fmt(c,av[x.id])}</small>`:''}</div><div class="mrow-ac"><button class="ib" data-e="${x.id}" aria-label="Edit entry" title="Edit">${IC.e}</button><button class="ib d" data-d="${x.id}" aria-label="Delete entry" title="Delete">${IC.d}</button></div></div></div>`).join('')}</div>`;
  }).join('')}${bfrCard||''}</div>`;
 }
 
@@ -230,12 +232,41 @@ function widget(c){
  <div id="tbl">${tbl(c)}</div></section>`;
 }
 
+let lastTab='',lastAppHtml='';
+function renderStatus(){
+ const p=pendingCount(),on=online();
+ if($('#st'))$('#st').className='pill '+(S.busy?'sy':(on&&!S.err&&syncOn())||(!syncOn()&&on)?'':'off');
+ if($('#stx'))$('#stx').textContent=statusText(p,on);
+}
 function render(){
  closeDd();
- const p=pendingCount(),on=online();
- $('#st').className='pill '+(S.busy?'sy':(on&&!S.err&&syncOn())||(!syncOn()&&on)?'':'off');
- $('#stx').textContent=statusText(p,on);
- $('#app').innerHTML=S.tab==='D'?debtsTab():widget(S.tab);
+ renderStatus();
+ const appEl=$('#app');
+ const openMrow=appEl&&appEl.querySelector('.mrow.tx-row.ro');
+ const openMrowId=openMrow?openMrow.dataset.mrow:'';
+ const activeEl=document.activeElement;
+ const activeId=(activeEl&&(activeEl.id==='q'||activeEl.id==='dq'))?activeEl.id:'';
+ const selStart=activeId?activeEl.selectionStart:null,selEnd=activeId?activeEl.selectionEnd:null;
+ const nextHtml=S.tab==='D'?debtsTab():widget(S.tab);
+ const tabChanged=lastTab!==''&&lastTab!==S.tab;
+ lastTab=S.tab;
+ if(appEl&&(lastAppHtml!==nextHtml||!appEl.firstChild)){
+  lastAppHtml=nextHtml;
+  appEl.innerHTML=nextHtml;
+  if(tabChanged&&appEl.firstElementChild){
+   const cardEl=appEl.firstElementChild;
+   cardEl.classList.add('tab-in');
+   cardEl.addEventListener('animationend',()=>cardEl.classList.remove('tab-in'),{once:true});
+  }
+  if(openMrowId){
+   const row=appEl.querySelector(`.mrow.tx-row[data-mrow="${CSS.escape(openMrowId)}"]`);
+   if(row){row.classList.add('ro');row.setAttribute('aria-expanded','true')}
+  }
+  if(activeId){
+   const inp=$('#'+activeId);
+   if(inp){inp.focus();try{if(selStart!==null)inp.setSelectionRange(selStart,selEnd)}catch(e){}}
+  }
+ }
  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===S.tab));
  document.querySelectorAll('#vms [data-vm]').forEach(b=>b.classList.toggle('on',b.dataset.vm===S.vm));
  const lbl=S.tab==='D'?'Add debt':'Add entry',atx=$('#add-tx');if(atx){atx.textContent='Add';$('#add').setAttribute('aria-label',lbl);$('#add').setAttribute('title',lbl)}else $('#add').textContent='+ '+lbl;
@@ -433,7 +464,7 @@ $('#app').addEventListener('input',e=>{if(e.target.id==='q'){S.q=e.target.value;
 $('#app').addEventListener('click',e=>{const o=e.target.closest('.ddo'),h=e.target.closest('.ddb');
  if(o){const id=o.closest('.dd').dataset.dd,v=o.dataset.v;closeDd();if(id==='mo')S.mo=v;else if(id==='ft')S.f=v;else if(id==='pp')S.pp=+v;S.pg=1;render();return}
  if(h){const p=h.parentNode,was=p.classList.contains('open');closeDd();if(!was){p.classList.add('open');h.setAttribute('aria-expanded','true')}return}
- const b=e.target.closest&&e.target.closest('[data-m],[data-p],[data-e],[data-d],[data-ob],[data-pm],[data-mn],[data-ra],[data-fl],[data-vm],[data-cf],[data-drd]');if(!b)return;const d=b.dataset;
+ const b=e.target.closest&&e.target.closest('[data-m],[data-p],[data-e],[data-d],[data-ob],[data-pm],[data-mn],[data-ra],[data-fl],[data-vm],[data-cf],[data-drd],[data-mrow]');if(!b)return;const d=b.dataset;
  if(d.drd){openDiary(d.drd);return}
  if(d.m){S.mo=d.m;S.pm='month';S.pg=1;render()}
  else if(d.pm){S.pm=d.pm;S.pg=1;render()}
@@ -445,7 +476,8 @@ $('#app').addEventListener('click',e=>{const o=e.target.closest('.ddo'),h=e.targ
  else if(d.p){S.pg+=+d.p;$('#tbl').innerHTML=tbl(S.tab)}
  else if(d.e)openEdit(d.e)
  else if(d.d)del(d.d)
- else if(d.ob!==undefined)openOb()});
+ else if(d.ob!==undefined)openOb()
+ else if(d.mrow){document.querySelectorAll('#tbl .mrow.tx-row.ro').forEach(r=>{if(r!==b){r.classList.remove('ro');r.setAttribute('aria-expanded','false')}});const o=b.classList.toggle('ro');b.setAttribute('aria-expanded',o)}});
 IC.pl=SV+'<path d="M15 6l-6 6 6 6"/></svg>';IC.nx=SV+'<path d="M9 6l6 6-6 6"/></svg>';
 const cal=document.createElement('div');cal.className='cal';cal.hidden=true;document.body.appendChild(cal);
 let CI=null,CY=0,CM=0;
@@ -455,22 +487,25 @@ function calDraw(){const first=new Date(CY,CM,1),lead=(first.getDay()+6)%7,days=
  cal.innerHTML=h+`</div><div class="cf"><button type="button" class="ghost" data-cd="${today}">Today</button></div>`}
 function calOpen(inp){CI=inp;const [y,m]=(inp.value||iso(0)).split('-').map(Number);CY=y;CM=m-1;(inp.closest('dialog')||document.body).appendChild(cal);cal.hidden=false;calDraw();
  const r=inp.getBoundingClientRect(),h=cal.offsetHeight;let t=r.bottom+6;if(t+h>innerHeight-8)t=Math.max(8,r.top-h-6);cal.style.left=Math.min(Math.max(8,r.left),innerWidth-298)+'px';cal.style.top=t+'px'}
-document.addEventListener('click',e=>{const dp=e.target.closest('[data-dp]');if(dp){calOpen(dp);return}
+document.addEventListener('click',e=>{
+ if(!e.target.closest('.mrow.tx-row'))document.querySelectorAll('#tbl .mrow.tx-row.ro').forEach(r=>{r.classList.remove('ro');r.setAttribute('aria-expanded','false')});
+ const dp=e.target.closest('[data-dp]');if(dp){calOpen(dp);return}
  if(e.target.closest('.cal')){const n=e.target.closest('[data-cn]'),d=e.target.closest('[data-cd]');
   if(n){CM+=+n.dataset.cn;if(CM<0){CM=11;CY--}if(CM>11){CM=0;CY++}calDraw()}
   else if(d){CI.value=d.dataset.cd;cal.hidden=true;CI.dispatchEvent(new Event('change',{bubbles:true}))}
   return}
  cal.hidden=true});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!cal.hidden){e.preventDefault();cal.hidden=true}
+ if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('[data-mrow]')){e.preventDefault();e.target.click();return}
  if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('[data-dp]')){e.preventDefault();calOpen(e.target)}});
-addEventListener('online',()=>{render();sync()});addEventListener('offline',render);
+addEventListener('online',()=>{renderStatus();sync()});addEventListener('offline',renderStatus);
 
 // ---- Zero-Knowledge AES-256-GCM Daily Diary Vault (Wrapped 256-bit Master DEK + Security Question Recovery) ----
 const tEnc=new TextEncoder(),tDec=new TextDecoder();
 const b64e=buf=>{let s='';const u=new Uint8Array(buf);for(let i=0;i<u.length;i++)s+=String.fromCharCode(u[i]);return btoa(s)};
 const b64d=str=>{const b=atob(str),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u};
 const normAns=s=>String(s||'').trim().toLowerCase().replace(/\s+/g,' ');
-let DIARY_KEY=null,DIARY_DEK_B64='',DIARY_CACHE={},drDate=iso(0),drEditMode=false,drChPw=false,drRec=false,drLockTm=null,drBgJob=0;
+let DIARY_KEY=null,DIARY_DEK_B64='',DIARY_CACHE={},DIARY_DRAFTS={},drLastDraftDate='',drDraftJob=0,drExplicitDate=false,drDate=iso(0),drEditMode=false,drChPw=false,drRec=false,drLockTm=null,drBgJob=0;
 async function deriveDiaryKey(secret,saltBytes){
  const bk=await crypto.subtle.importKey('raw',tEnc.encode(secret),'PBKDF2',false,['deriveKey']);
  return crypto.subtle.deriveKey({name:'PBKDF2',salt:saltBytes,iterations:100000,hash:'SHA-256'},bk,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
@@ -508,10 +543,31 @@ async function unwrapDekWithSecret(secret,wrappedStr){
  }
  return {key:kek,dekB64:'',legacy:true};
 }
-// Instant first-paint decryption (<2ms for current date + top 20 sidebar dates), followed by non-blocking background chunks for multi-year scale
+// Instant first-paint decryption (<2ms for drafts + current date + top 20 sidebar dates), followed by non-blocking background chunks for multi-year scale
 async function decryptDiaryFast(){
  if(!DIARY_KEY)return;
  const job=++drBgJob,key=DIARY_KEY;
+ let latestDraftDt='',latestDraftTs='';
+ for(const [dt,cipher] of Object.entries(DR_DRAFTS)){
+  if(job!==drBgJob||!DIARY_KEY)return;
+  if(!DIARY_DRAFTS[dt]&&cipher){
+   try{
+    const d=await decDiaryObj(key,cipher);
+    if(d&&(d.title||d.body)){
+     DIARY_DRAFTS[dt]=d;
+     const ts=d.ts||dt;
+     if(!latestDraftTs||ts>=latestDraftTs){latestDraftTs=ts;latestDraftDt=dt}
+    }
+   }catch(e){}
+  }else if(DIARY_DRAFTS[dt]){
+   const ts=DIARY_DRAFTS[dt].ts||dt;
+   if(!latestDraftTs||ts>=latestDraftTs){latestDraftTs=ts;latestDraftDt=dt}
+  }
+ }
+ if(latestDraftDt){
+  drLastDraftDate=latestDraftDt;
+  if(!drExplicitDate)drDate=latestDraftDt;
+ }
  const active=DR.filter(r=>!r.del&&r.cipher).sort((a,b)=>b.date.localeCompare(a.date));
  const urgent=active.filter(r=>r.date===drDate).concat(active.filter(r=>r.date!==drDate).slice(0,20));
  for(const r of urgent){
@@ -540,27 +596,67 @@ function syncDiaryDot(){
  if($('#dr-st')){$('#dr-st').className='dr-st '+(un?'un':'lk');$('#dr-st').textContent=un?'UNLOCKED':'LOCKED'}
  if($('#dr-lk-btn'))$('#dr-lk-btn').hidden=!un;
 }
-async function autoSaveDiaryIfDirty(){
- if(!DIARY_KEY||!drEditMode||!$('#dr-ttl')||!$('#dr-bdy'))return false;
- const title=$('#dr-ttl').value.trim(),body=$('#dr-bdy').value.trim();
+function updateDraftUiMeta(){
+ const hasDraft=!!DIARY_DRAFTS[drDate],rec=DR.find(x=>!x.del&&x.date===drDate&&x.cipher);
+ if($('#dr-meta')){
+  $('#dr-meta').className='dr-meta'+(hasDraft?' draft':'');
+  $('#dr-meta').title=hasDraft?'Unsaved draft in memory':'';
+  $('#dr-meta').setAttribute('aria-label',hasDraft?'Unsaved draft in memory':'');
+  $('#dr-meta').textContent=hasDraft?'📝':(rec?`Encrypted AES-256-GCM · Updated ${new Date(rec.upd).toLocaleTimeString('en',{hour:'numeric',minute:'2-digit'})}`:'AES-256-GCM · New note');
+ }
+ if($('#dr-cancel-edit')){
+  $('#dr-cancel-edit').hidden=!(rec||hasDraft);
+  $('#dr-cancel-edit').textContent=hasDraft?'Discard draft':'Cancel';
+ }
+}
+async function persistDiaryDraftDate(dt){
+ if(!DIARY_KEY)return false;
+ const d=DIARY_DRAFTS[dt];
+ if(!d){
+  if(DR_DRAFTS[dt]){delete DR_DRAFTS[dt];saveDrDrafts()}
+  return false;
+ }
+ try{
+  DR_DRAFTS[dt]=await encDiaryObj(DIARY_KEY,d);
+  saveDrDrafts();
+  return true;
+ }catch(e){return false}
+}
+function captureDiaryDraft(){
+ if(!DIARY_KEY||!$('#dr-form')||$('#dr-form').hidden||!$('#dr-ttl')||!$('#dr-bdy'))return false;
+ const title=$('#dr-ttl').value,body=$('#dr-bdy').value;
  const cur=DIARY_CACHE[drDate]||{title:'',body:''};
- if(title===(cur.title||'')&&body===(cur.body||''))return false;
- if(!title&&!body&&!hasDiary(drDate))return false;
- const plain={title:title||'Daily note',body};
- const cipher=await encDiaryObj(DIARY_KEY,plain);
- const id='dry_'+drDate,ts=now();
- let rec=DR.find(x=>x.id===id);
- if(rec){
-  if(!rec.del&&rec.cipher)logHist({kind:'diary',targetId:rec.id,date:drDate,label:`Diary Note · ${drDate}`,sub:`Previous encrypted version saved`,prevCipher:rec.cipher});
-  Object.assign(rec,{date:drDate,cipher,del:0,upd:ts});
- }else DR.push({id,date:drDate,cipher,del:0,upd:ts});
- DIARY_CACHE[drDate]=plain;
- drEditMode=false;
- drsave();render();
+ const isSame=title.trim()===(cur.title||'').trim()&&body.trim()===(cur.body||'').trim();
+ const isEmpty=!title.trim()&&!body.trim()&&!hasDiary(drDate);
+ const hadDraft=!!DIARY_DRAFTS[drDate];
+ if(isSame||isEmpty){
+  if(hadDraft){
+   delete DIARY_DRAFTS[drDate];
+   delete DR_DRAFTS[drDate];
+   saveDrDrafts();
+   updateDraftUiMeta();
+   renderDiarySidebar();
+  }
+  return false;
+ }
+ DIARY_DRAFTS[drDate]={title,body,ts:now()};
+ drLastDraftDate=drDate;
+ updateDraftUiMeta();
+ if(!hadDraft)renderDiarySidebar();
+ const dt=drDate,job=++drDraftJob;
+ setTimeout(()=>{if(job===drDraftJob)persistDiaryDraftDate(dt)},120);
  return true;
 }
+async function flushDiaryDraft(){
+ captureDiaryDraft();
+ if(DIARY_DRAFTS[drDate]){
+  await persistDiaryDraftDate(drDate);
+  return true;
+ }
+ return false;
+}
 function lockDiary(){
- drBgJob++;DIARY_KEY=null;DIARY_DEK_B64='';DIARY_CACHE={};drEditMode=false;drChPw=false;drRec=false;
+ drBgJob++;DIARY_KEY=null;DIARY_DEK_B64='';DIARY_CACHE={};DIARY_DRAFTS={};drEditMode=false;drChPw=false;drRec=false;
  if($('#dr-ttl'))$('#dr-ttl').value='';
  if($('#dr-bdy'))$('#dr-bdy').value='';
  if($('#dr-vttl'))$('#dr-vttl').textContent='';
@@ -588,17 +684,19 @@ function dayLedgerSummary(dt){
 function renderDiarySidebar(){
  if(!$('#dr-list'))return;
  const q=($('#dr-q')&&$('#dr-q').value||'').trim().toLowerCase();
- const allDates=Array.from(new Set([...drDates,drDate])).sort();
- const matched=q?allDates.filter(dt=>{const n=DIARY_CACHE[dt]||{title:'',body:''};return dt.includes(q)||(n.title||'').toLowerCase().includes(q)||(n.body||'').toLowerCase().includes(q)}):allDates;
+ const allDates=Array.from(new Set([...drDates,...Object.keys(DIARY_DRAFTS),drDate])).sort();
+ const matched=q?allDates.filter(dt=>{const n=DIARY_DRAFTS[dt]||DIARY_CACHE[dt]||{title:'',body:''};return dt.includes(q)||(n.title||'').toLowerCase().includes(q)||(n.body||'').toLowerCase().includes(q)}):allDates;
  const slice=(!q&&!drShowAll&&matched.length>60)?matched.slice(-60):matched;
  if(slice.length<matched.length&&!slice.includes(drDate))slice.unshift(drDate);
  $('#dr-list').innerHTML=(slice.length<matched.length?`<button type="button" class="ghost" data-dr-more="1" style="font-size:12px;padding:7px;flex:none">Show all ${matched.length} dates</button>`:'')+slice.map(dt=>{
-  const n=DIARY_CACHE[dt]||{title:'',body:''},saved=hasDiary(dt);
+  const draft=DIARY_DRAFTS[dt],n=draft||DIARY_CACHE[dt]||{title:'',body:''},saved=hasDiary(dt);
   const sm=dayLedgerSummary(dt),fp=[];
   if(sm.AED.out||sm.AED.in)fp.push('AED −'+sm.AED.out);
   if(sm.INR.out||sm.INR.in)fp.push('₹ −'+sm.INR.out);
   const dtStr=new Date(dt+'T00:00').toLocaleDateString('en',{day:'2-digit',month:'short',year:'numeric'});
-  return `<button type="button" class="dr-item${dt===drDate?' on':''}" data-dr-item="${dt}"><div class="dr-item-top"><span>${dtStr}</span><span>${saved?'🔒 AES':'New'}</span></div><b>${esc(n.title||(saved?'Saved note':'No note yet'))}</b><small>${esc(fp.join(' · ')||'No ledger entries')}</small></button>`;
+  const topTag=draft?'📝':(saved?'🔒 AES':'New');
+  const ttlTxt=(n.title||'').trim()||(draft?(n.body||'').trim().slice(0,28)||'Draft…':(saved?'Saved note':'No note yet'));
+  return `<button type="button" class="dr-item${dt===drDate?' on':''}" data-dr-item="${dt}"><div class="dr-item-top"><span>${dtStr}</span><span>${topTag}</span></div><b>${esc(ttlTxt)}</b><small>${esc(fp.join(' · ')||'No ledger entries')}</small></button>`;
  }).join('')||'<div class="hint" style="padding:8px">No matching diary notes.</div>';
  requestAnimationFrame(()=>{
   const list=$('#dr-list'),act=list&&list.querySelector('.dr-item.on');
@@ -629,23 +727,24 @@ async function renderDiaryDate(keepInputs){
  if(rec&&DIARY_KEY&&!DIARY_CACHE[drDate]){
   try{DIARY_CACHE[drDate]=await decDiaryObj(DIARY_KEY,rec.cipher)}catch(e){}
  }
- const n=DIARY_CACHE[drDate]||{title:'',body:''};
- const showEdit=!rec||drEditMode;
+ const draft=DIARY_DRAFTS[drDate];
+ const savedNote=DIARY_CACHE[drDate]||{title:'',body:''};
+ const n=draft||savedNote;
+ const showEdit=!rec||drEditMode||!!draft;
  if($('#dr-view'))$('#dr-view').hidden=showEdit;
  if($('#dr-form'))$('#dr-form').hidden=!showEdit;
  if(!showEdit&&rec){
   const tStr=new Date(rec.upd).toLocaleTimeString('en',{hour:'numeric',minute:'2-digit'});
   if($('#dr-vmeta'))$('#dr-vmeta').textContent=`AES-256-GCM · Saved ${tStr}`;
-  if($('#dr-vttl'))$('#dr-vttl').textContent=n.title||'Daily note';
-  if($('#dr-vbdy'))$('#dr-vbdy').textContent=n.body||'No additional details written for this date.';
+  if($('#dr-vttl'))$('#dr-vttl').textContent=savedNote.title||'Daily note';
+  if($('#dr-vbdy'))$('#dr-vbdy').textContent=savedNote.body||'No additional details written for this date.';
  }
  if(!keepInputs){
   if($('#dr-ttl'))$('#dr-ttl').value=n.title||'';
   if($('#dr-bdy'))$('#dr-bdy').value=n.body||'';
  }
- if($('#dr-cancel-edit'))$('#dr-cancel-edit').hidden=!rec;
  if($('#dr-del'))$('#dr-del').hidden=!rec;
- if($('#dr-meta'))$('#dr-meta').textContent=rec?`Encrypted AES-256-GCM · Updated ${new Date(rec.upd).toLocaleTimeString('en',{hour:'numeric',minute:'2-digit'})}`:'AES-256-GCM · New note';
+ updateDraftUiMeta();
 }
 function syncQuestionSelect(selId,inpId,val){
  const sel=$(selId),inp=$(inpId);
@@ -798,22 +897,30 @@ function renderDiaryModal(){
  }
 }
 function openDiary(dt){
- if(dt)drDate=fixDate(dt);
- else if(!drDate)drDate=iso(0);
+ if(dt){drDate=fixDate(dt);drExplicitDate=true}
+ else{
+  drExplicitDate=false;
+  if(DIARY_KEY&&drLastDraftDate&&DIARY_DRAFTS[drLastDraftDate])drDate=drLastDraftDate;
+  else if(!drDate)drDate=iso(0);
+ }
  drEditMode=false;
  renderDiaryModal();
  if($('#drd')&&!$('#drd').open)$('#drd').showModal();
  if(!DIARY_KEY&&$('#dr-upw')){$('#dr-upw').value='';$('#dr-upw').focus()}
 }
 if($('#drb'))$('#drb').onclick=()=>openDiary();
-if($('#dr-cx'))$('#dr-cx').onclick=async()=>{await autoSaveDiaryIfDirty();$('#drd').close()};
+if($('#drd'))$('#drd').addEventListener('close',()=>{if(DIARY_KEY)flushDiaryDraft()});
+if($('#dr-cx'))$('#dr-cx').onclick=async()=>{
+ await flushDiaryDraft();
+ $('#drd').close();
+};
 if($('#dr-lk-btn'))$('#dr-lk-btn').onclick=async()=>{
- const saved=await autoSaveDiaryIfDirty();
+ await flushDiaryDraft();
  lockDiary();renderDiaryModal();
  if($('#dr-upw'))$('#dr-upw').focus();
- toast(saved?'Draft encrypted & diary locked':'Diary vault locked');
+ toast('Diary vault locked');
 };
-if($('#dr-to-st'))$('#dr-to-st').onclick=async()=>{await autoSaveDiaryIfDirty();if($('#drd'))$('#drd').close();openSettings('diary')};
+if($('#dr-to-st'))$('#dr-to-st').onclick=async()=>{await flushDiaryDraft();if($('#drd'))$('#drd').close();openSettings('diary')};
 
 async function tryUnlockDiary(){
  const pw=$('#dr-upw').value;
@@ -845,6 +952,10 @@ async function tryUnlockDiary(){
     const plain=DIARY_CACHE[r.date]||await decDiaryObj(DIARY_KEY,r.cipher);
     r.cipher=await encDiaryObj(newKey,plain);r.upd=ts;
    }
+   for(const [dt,d] of Object.entries(DIARY_DRAFTS)){
+    DR_DRAFTS[dt]=await encDiaryObj(newKey,d);
+   }
+   saveDrDrafts();
    DRV.v=await wrapDekWithSecret(pw,dekB64);
    if(tok)DRV.t=await wrapDekWithSecret(tok,dekB64);
    DRV.upd=ts;DIARY_KEY=newKey;DIARY_DEK_B64=dekB64;drsave();
@@ -954,7 +1065,7 @@ if($('#dr-rtbtn'))$('#dr-rtbtn').onclick=async()=>{
    const dekB64=b64e(rawDek),key=await importRawDek(dekB64),ts=now();
    DR.forEach(r=>{if(!r.del){r.del=1;r.upd=ts}});
    DRV={v:await wrapDekWithSecret(np,dekB64),q:DRV.q||'',r:'',t:await wrapDekWithSecret(tok,dekB64),hint:'',upd:ts};
-   DIARY_KEY=key;DIARY_DEK_B64=dekB64;DIARY_CACHE={};
+   DIARY_KEY=key;DIARY_DEK_B64=dekB64;DIARY_CACHE={};DIARY_DRAFTS={};DR_DRAFTS={};saveDrDrafts();
    $('#dr-rtok').value='';$('#dr-rtp').value='';$('#dr-rter').textContent='';
    drsave();render();renderSettingsTab();
    toast('Sync Token verified · New vault password set');
@@ -971,26 +1082,30 @@ if($('#dr-rwbtn'))$('#dr-rwbtn').onclick=()=>{
  const ts=now();
  DR.forEach(r=>{if(!r.del){r.del=1;r.upd=ts}});
  DRV={v:'',q:'',r:'',t:'',hint:'',upd:ts};
+ DR_DRAFTS={};saveDrDrafts();
  lockDiary();
  if($('#dr-rwipe'))$('#dr-rwipe').value='';
  drsave();render();renderSettingsTab();
  toast('Diary vault reset. Set a new password above.');
 };
+if($('#dr-ttl'))$('#dr-ttl').addEventListener('input',captureDiaryDraft);
+if($('#dr-bdy'))$('#dr-bdy').addEventListener('input',captureDiaryDraft);
 const shiftDiaryDate=async delta=>{
- await autoSaveDiaryIfDirty();
+ await flushDiaryDraft();
  const d=new Date(drDate+'T00:00:00');
  d.setDate(d.getDate()+delta);
  drDate=ymd(d);
+ drExplicitDate=true;
  drEditMode=false;
  renderDiarySidebar();
  renderDiaryDate(false);
 };
 if($('#dr-prev'))$('#dr-prev').onclick=()=>shiftDiaryDate(-1);
 if($('#dr-next'))$('#dr-next').onclick=()=>shiftDiaryDate(1);
-if($('#dr-td'))$('#dr-td').onclick=async()=>{await autoSaveDiaryIfDirty();drDate=iso(0);drEditMode=false;renderDiarySidebar();renderDiaryDate(false)};
-if($('#dr-dt'))$('#dr-dt').onchange=async e=>{if(e.target.value){await autoSaveDiaryIfDirty();drDate=fixDate(e.target.value);drEditMode=false;renderDiarySidebar();renderDiaryDate(false)}};
+if($('#dr-td'))$('#dr-td').onclick=async()=>{await flushDiaryDraft();drDate=iso(0);drExplicitDate=true;drEditMode=false;renderDiarySidebar();renderDiaryDate(false)};
+if($('#dr-dt'))$('#dr-dt').onchange=async e=>{if(e.target.value){await flushDiaryDraft();drDate=fixDate(e.target.value);drExplicitDate=true;drEditMode=false;renderDiarySidebar();renderDiaryDate(false)}};
 if($('#dr-q'))$('#dr-q').oninput=()=>{cancelAnimationFrame(drqRaf);drqRaf=requestAnimationFrame(renderDiarySidebar)};
-if($('#dr-list'))$('#dr-list').onclick=async e=>{if(e.target.closest('[data-dr-more]')){drShowAll=true;renderDiarySidebar();return}const b=e.target.closest('[data-dr-item]');if(!b)return;await autoSaveDiaryIfDirty();drDate=b.dataset.drItem;drEditMode=false;renderDiarySidebar();renderDiaryDate(false)};
+if($('#dr-list'))$('#dr-list').onclick=async e=>{if(e.target.closest('[data-dr-more]')){drShowAll=true;renderDiarySidebar();return}const b=e.target.closest('[data-dr-item]');if(!b)return;await flushDiaryDraft();drDate=b.dataset.drItem;drExplicitDate=true;drEditMode=false;renderDiarySidebar();renderDiaryDate(false)};
 if($('#dr-ins'))$('#dr-ins').onclick=()=>{
  if(!drEditMode){drEditMode=true;renderDiaryDate(true)}
  const sm=dayLedgerSummary(drDate);
@@ -1000,6 +1115,7 @@ if($('#dr-ins'))$('#dr-ins').onclick=()=>{
  sm.list.forEach(x=>lines.push(`• ${x.cat}${x.note?' ('+x.note+')':''}: ${x.type==='out'?'−':'+'}${fmt(x.cur,x.amt)}`));
  const b=$('#dr-bdy');
  b.value=(b.value.trim()?b.value.trim()+'\n\n':'')+lines.join('\n');
+ captureDiaryDraft();
  b.focus();
 };
 if($('#dr-edit'))$('#dr-edit').onclick=()=>{
@@ -1008,8 +1124,14 @@ if($('#dr-edit'))$('#dr-edit').onclick=()=>{
  if($('#dr-bdy'))$('#dr-bdy').focus();
 };
 if($('#dr-cancel-edit'))$('#dr-cancel-edit').onclick=()=>{
+ const hadDraft=!!DIARY_DRAFTS[drDate];
+ delete DIARY_DRAFTS[drDate];
+ delete DR_DRAFTS[drDate];
+ saveDrDrafts();
  drEditMode=false;
+ renderDiarySidebar();
  renderDiaryDate(false);
+ if(hadDraft)toast('Draft discarded');
 };
 if($('#dr-sv'))$('#dr-sv').onclick=async()=>{
  if(!DIARY_KEY)return;
@@ -1026,6 +1148,9 @@ if($('#dr-sv'))$('#dr-sv').onclick=async()=>{
   Object.assign(rec,{date:drDate,cipher,del:0,upd:ts});
  }else DR.push({id,date:drDate,cipher,del:0,upd:ts});
  DIARY_CACHE[drDate]=plain;
+ delete DIARY_DRAFTS[drDate];
+ delete DR_DRAFTS[drDate];
+ saveDrDrafts();
  drEditMode=false;
  drsave();renderDiarySidebar();renderDiaryDate(false);
  toast(syncOn()?'✓ Encrypted & saved · syncing ciphertext…':'✓ Encrypted & saved on this device');
@@ -1036,6 +1161,7 @@ const deleteCurrentDiaryNote=()=>{
  if(!rec)return;
  const backupCipher=rec.cipher,backupCache=DIARY_CACHE[drDate],dt=drDate;
  rec.del=1;rec.upd=now();delete DIARY_CACHE[dt];
+ delete DIARY_DRAFTS[dt];delete DR_DRAFTS[dt];saveDrDrafts();
  drEditMode=false;
  drsave();renderDiarySidebar();renderDiaryDate(false);
  requestAnimationFrame(()=>render());
@@ -1108,9 +1234,11 @@ function stamp(init){
 }
 function dirty(){
  const o=[];
- Object.keys(TB).forEach(t=>TB[t].all().forEach(r=>{const h=cf(t,r);if((SNAP[t]||{})[r.id]!==h)o.push({t,r,h})}));
- if((SNAP.Settings||{}).opening_INR!==obHash()&&OB.upd>EPOCH)o.push({t:'Settings',id:'opening_INR',h:obHash()});
- if(DRV.v&&(SNAP.Settings||{}).diary_verifier!==drvHash()&&DRV.upd>EPOCH)o.push({t:'Settings',id:'diary_verifier',h:drvHash()});
+ Object.keys(TB).forEach(t=>TB[t].all().forEach(r=>{const k=t+r.id,h=LAST[k]!==undefined?LAST[k]:cf(t,r);if((SNAP[t]||{})[r.id]!==h)o.push({t,r,h})}));
+ const obH=LAST.OB!==undefined?LAST.OB:obHash();
+ if((SNAP.Settings||{}).opening_INR!==obH&&OB.upd>EPOCH)o.push({t:'Settings',id:'opening_INR',h:obH});
+ const drH=LAST.DRV!==undefined?LAST.DRV:drvHash();
+ if(DRV.v&&(SNAP.Settings||{}).diary_verifier!==drH&&DRV.upd>EPOCH)o.push({t:'Settings',id:'diary_verifier',h:drH});
  return o;
 }
 const pendingCount=()=>dirty().length;
@@ -1119,45 +1247,72 @@ const saveSnap=()=>STORE.setItem('ledger.snap',JSON.stringify(SNAP));
 const persist=()=>{STORE.setItem(LS,JSON.stringify(S.tx));STORE.setItem(LC,JSON.stringify(CT));STORE.setItem(LD,JSON.stringify(DB));STORE.setItem(LDR,JSON.stringify(DR));STORE.setItem(LDRV,JSON.stringify(DRV));STORE.setItem(LO,JSON.stringify(OB));saveSnap()};
 let ORPHAN_PAYS=[];
 function applyRemote(data){
+ let changed=false,diaryChanged=false;
  ['Categories','Transactions','Debts','DebtPayments','Diary'].forEach(t=>{
   const K=TB[t];
   (data[t]||[]).forEach(r=>{
    const inc=K.inn(r);Object.keys(inc).forEach(k=>{if(inc[k]===undefined)delete inc[k]});const loc=K.all().find(x=>x.id===inc.id);
    if(loc){
-    const localEdited=(SNAP[t]||{})[loc.id]!==cf(t,loc);
+    const prevH=LAST[t+loc.id]||cf(t,loc);
+    const localEdited=(SNAP[t]||{})[loc.id]!==prevH;
     if(localEdited&&String(loc.upd)>inc.upd)return;
     if(t==='Categories'&&loc.n&&inc.n&&loc.n!==inc.n){
      const oldName=loc.n;
      S.tx.forEach(x=>{if(x.cat===oldName)x.cat=inc.n});
+     changed=true;
     }
+    const prevCipher=t==='Diary'?loc.cipher:'';
     Object.assign(loc,inc);
-   }else if(K.add(inc)===false){
-    if(t==='DebtPayments'&&!ORPHAN_PAYS.some(p=>p.id===r.id))ORPHAN_PAYS.push(r);
-    return;
+    const h=cf(t,loc);
+    if(prevH!==h){
+     changed=true;
+     if(t==='Diary'&&prevCipher!==loc.cipher){delete DIARY_CACHE[loc.date];diaryChanged=true}
+    }
+    snapSet(t,inc.id,h);LAST[t+inc.id]=h;
+   }else{
+    if(K.add(inc)===false){
+     if(t==='DebtPayments'&&!ORPHAN_PAYS.some(p=>p.id===r.id))ORPHAN_PAYS.push(r);
+     return;
+    }
+    changed=true;
+    if(t==='Diary')diaryChanged=true;
+    const cur=K.all().find(x=>x.id===inc.id),h=cf(t,cur);
+    snapSet(t,inc.id,h);LAST[t+inc.id]=h;
    }
-   const cur=K.all().find(x=>x.id===inc.id),h=cf(t,cur);
-   snapSet(t,inc.id,h);LAST[t+inc.id]=h;
   });
   if(t==='Debts'&&ORPHAN_PAYS.length){
    const PK=TB.DebtPayments;
    ORPHAN_PAYS=ORPHAN_PAYS.filter(r=>{
     const inc=PK.inn(r);Object.keys(inc).forEach(k=>{if(inc[k]===undefined)delete inc[k]});
     const loc=PK.all().find(x=>x.id===inc.id);
-    if(loc)Object.assign(loc,inc);
-    else if(PK.add(inc)===false)return true;
-    const cur=PK.all().find(x=>x.id===inc.id),h=cf('DebtPayments',cur);
-    snapSet('DebtPayments',inc.id,h);LAST['DebtPayments'+inc.id]=h;
+    if(loc){
+     const prevH=LAST['DebtPayments'+loc.id]||cf('DebtPayments',loc);
+     Object.assign(loc,inc);
+     const h=cf('DebtPayments',loc);
+     if(prevH!==h)changed=true;
+     snapSet('DebtPayments',inc.id,h);LAST['DebtPayments'+inc.id]=h;
+    }else if(PK.add(inc)===false){
+     return true;
+    }else{
+     changed=true;
+     const cur=PK.all().find(x=>x.id===inc.id),h=cf('DebtPayments',cur);
+     snapSet('DebtPayments',inc.id,h);LAST['DebtPayments'+inc.id]=h;
+    }
     return false;
    });
   }
  });
  (data.Settings||[]).forEach(r=>{
   if(r.id==='opening_INR'){
-   const edited=(SNAP.Settings||{}).opening_INR!==obHash()&&OB.upd>EPOCH;
+   const prevOb=obHash();
+   const edited=(SNAP.Settings||{}).opening_INR!==prevOb&&OB.upd>EPOCH;
    if(edited&&OB.upd>String(r.updated_at))return;
-   OB.INR=Number(r.value)/100;OB.upd=String(r.updated_at);snapSet('Settings','opening_INR',obHash());LAST.OB=obHash();
+   const nextInr=Number(r.value)/100;
+   if(r2(OB.INR||0)!==r2(nextInr))changed=true;
+   OB.INR=nextInr;OB.upd=String(r.updated_at);snapSet('Settings','opening_INR',obHash());LAST.OB=obHash();
   }else if(r.id==='diary_verifier'){
-   const edited=DRV.v&&(SNAP.Settings||{}).diary_verifier!==drvHash()&&DRV.upd>EPOCH;
+   const prevDrv=drvHash();
+   const edited=DRV.v&&(SNAP.Settings||{}).diary_verifier!==prevDrv&&DRV.upd>EPOCH;
    if(edited&&DRV.upd>String(r.updated_at))return;
    try{
     const parsed=JSON.parse(r.value);
@@ -1168,9 +1323,12 @@ function applyRemote(data){
    snapSet('Settings','diary_verifier',drvHash());LAST.DRV=drvHash();
   }
  });
- rebuildDrDates();
- if(DIARY_KEY&&(data.Diary||[]).length)decryptDiaryFast().then(()=>{if($('#drd')&&$('#drd').open)renderDiaryModal()});
- bumpCalc();
+ if(changed){
+  rebuildDrDates();
+  bumpCalc();
+ }
+ if(DIARY_KEY&&diaryChanged)decryptDiaryFast().then(()=>{if($('#drd')&&$('#drd').open){renderDiarySidebar();renderDiaryDate(true)}});
+ return changed;
 }
 async function call(body){
  const a=API();
@@ -1185,9 +1343,11 @@ const friendly=e=>e.message==='outdated'?'your Apps Script is an old version. In
 let st=null,again=false;
 const schedSync=()=>{clearTimeout(st);st=setTimeout(()=>sync(),1200)};
 async function sync(){
+ clearTimeout(st);
  if(!syncOn()||!online())return;
  if(S.busy){again=true;return}
- S.busy=true;S.err='';render();
+ S.busy=true;S.err='';renderStatus();
+ let remoteChanged=false;
  try{
   stamp();
   const ds=dirty(),ops=ds.map(opOf);
@@ -1199,7 +1359,7 @@ async function sync(){
   let guard=0;
   while(guard++<20){
    const j=await call({action:'pull',since,limit:2500});
-   applyRemote(j.data||{});
+   if(applyRemote(j.data||{}))remoteChanged=true;
    since=Number(j.next_since||j.rev)||since;
    STORE.setItem('ledger.rev',String(since));
    if(!j.has_more)break;
@@ -1207,7 +1367,9 @@ async function sync(){
   STORE.setItem('ledger.last',now());
   persist();
  }catch(e){S.err=friendly(e);try{saveSnap()}catch(x){}}
- S.busy=false;render();
+ S.busy=false;
+ if(remoteChanged)render();
+ else renderStatus();
  if(again){again=false;setTimeout(()=>sync(),300)}
 }
 function statusText(p,on){
@@ -1235,8 +1397,9 @@ $('#syx').onclick=async()=>{const {u,t}=syIn();$('#sye').style.color='';if(!syOk
  catch(e){$('#sye').textContent='Cannot reach the server. Check the link and your internet.'}};
 document.addEventListener('visibilitychange',()=>{
  if(document.hidden){
+  if(DIARY_KEY)flushDiaryDraft();
   clearTimeout(drLockTm);
-  drLockTm=setTimeout(()=>{if(document.hidden&&DIARY_KEY){lockDiary();if($('#drd')&&$('#drd').open)renderDiaryModal()}},60000);
+  drLockTm=setTimeout(async()=>{if(document.hidden&&DIARY_KEY){await flushDiaryDraft();lockDiary();if($('#drd')&&$('#drd').open)renderDiaryModal()}},60000);
  }else{
   clearTimeout(drLockTm);
   sync();
