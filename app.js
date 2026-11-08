@@ -103,11 +103,51 @@ document.querySelectorAll('dialog').forEach(dlg=>{
  dlg.addEventListener('close',syncThemeIcon);
 });
 syncThemeIcon();
-if($('#thb'))$('#thb').onclick=()=>{
- const next=isDark()?'light':'dark';
- document.documentElement.setAttribute('data-theme',next);
- STORE.setItem('ledger.theme',next);
- syncThemeIcon();
+if($('#thb'))$('#thb').onclick=e=>{
+ const btn=$('#thb'),next=isDark()?'light':'dark';
+ const r=btn.getBoundingClientRect();
+ const x=(e&&e.clientX)?e.clientX:(r.left+r.width/2);
+ const y=(e&&e.clientY)?e.clientY:(r.top+r.height/2);
+ const maxR=Math.hypot(Math.max(x,innerWidth-x),Math.max(y,innerHeight-y));
+ const apply=()=>{
+  document.documentElement.setAttribute('data-theme',next);
+  STORE.setItem('ledger.theme',next);
+  syncThemeIcon();
+ };
+ btn.classList.remove('spin');
+ void btn.offsetWidth;
+ btn.classList.add('spin');
+ setTimeout(()=>btn.classList.remove('spin'),380);
+ if(!matchMedia('(prefers-reduced-motion:reduce)').matches){
+  const rip=document.createElement('div');
+  rip.className='theme-ripple';
+  const sz=Math.ceil(maxR*2);
+  rip.style.width=sz+'px';
+  rip.style.height=sz+'px';
+  rip.style.left=x+'px';
+  rip.style.top=y+'px';
+  rip.style.background=next==='dark'?'radial-gradient(circle, rgba(45,212,191,.22) 0%, rgba(11,16,27,.42) 65%, transparent 100%)':'radial-gradient(circle, rgba(11,122,117,.18) 0%, rgba(233,238,245,.44) 65%, transparent 100%)';
+  rip.style.boxShadow=next==='dark'?'inset 0 0 0 2px rgba(45,212,191,.45)':'inset 0 0 0 2px rgba(11,122,117,.38)';
+  document.body.appendChild(rip);
+  requestAnimationFrame(()=>{
+   rip.style.transform='translate3d(-50%,-50%,0) scale3d(1,1,1)';
+   rip.style.opacity='0';
+  });
+  setTimeout(()=>rip.remove(),500);
+  if(document.startViewTransition){
+   try{
+    const vt=document.startViewTransition(apply);
+    vt.ready.then(()=>{
+     document.documentElement.animate(
+      {clipPath:[`circle(0px at ${x}px ${y}px)`,`circle(${maxR}px at ${x}px ${y}px)`]},
+      {duration:420,easing:'cubic-bezier(0.22, 1, 0.36, 1)',pseudoElement:'::view-transition-new(root)'}
+     );
+    }).catch(()=>{});
+    return;
+   }catch(err){}
+  }
+ }
+ apply();
 };
 
 const CH='<svg viewBox="0 0 12 8" width="12" height="8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 1l5 5 5-5"/></svg>';
@@ -151,8 +191,16 @@ const isVaultRec=r=>String((r&&r.id)||'').startsWith('vlt_');
 const vaultRecs=()=>DR.filter(r=>!r.del&&r.cipher&&isVaultRec(r)).sort((a,b)=>b.date.localeCompare(a.date)||String(b.upd||'').localeCompare(String(a.upd||'')));
 const syncVaultBadge=()=>{
  const vCnt=vaultRecs().length,totCnt=(drDates?drDates.size:0)+vCnt;
- if($('#vl-cnt')){$('#vl-cnt').hidden=!totCnt;$('#vl-cnt').textContent=String(totCnt)}
- if($('#vl-tab-cnt'))$('#vl-tab-cnt').textContent=String(vCnt);
+ const cntEl=$('#vl-cnt'),tabCntEl=$('#vl-tab-cnt');
+ if(cntEl){
+  const hide=!totCnt,txt=String(totCnt);
+  if(cntEl.hidden!==hide)cntEl.hidden=hide;
+  if(cntEl.textContent!==txt)cntEl.textContent=txt;
+ }
+ if(tabCntEl){
+  const vTxt=String(vCnt);
+  if(tabCntEl.textContent!==vTxt)tabCntEl.textContent=vTxt;
+ }
 };
 let drDates=new Set();
 const rebuildDrDates=()=>{
@@ -281,11 +329,12 @@ function render(){
  if(appEl&&(lastAppHtml!==nextHtml||!appEl.firstChild)){
   lastAppHtml=nextHtml;
   const curCard=appEl.firstElementChild;
-  if(!tabChanged&&curCard&&curCard.tagName==='SECTION'){
+  if(curCard&&curCard.tagName==='SECTION'){
    const tmp=document.createElement('div');
    tmp.innerHTML=nextHtml;
    const nextCard=tmp.firstElementChild;
-   if(nextCard){
+   const sameKind=nextCard&&(!!curCard.querySelector('#tbl')===!!nextCard.querySelector('#tbl'))&&(!!curCard.querySelector('#dlist')===!!nextCard.querySelector('#dlist'));
+   if(nextCard&&sameKind){
     if(curCard.className!==nextCard.className)curCard.className=nextCard.className;
     const cHead=curCard.querySelector('.head'),nHead=nextCard.querySelector('.head');
     if(cHead&&nHead&&cHead.innerHTML!==nHead.innerHTML)cHead.innerHTML=nHead.innerHTML;
@@ -303,14 +352,11 @@ function render(){
     if(cTbl&&nTbl&&cTbl.innerHTML!==nTbl.innerHTML)cTbl.innerHTML=nTbl.innerHTML;
     const cDl=curCard.querySelector('#dlist'),nDl=nextCard.querySelector('#dlist');
     if(cDl&&nDl&&cDl.innerHTML!==nDl.innerHTML)cDl.innerHTML=nDl.innerHTML;
+   }else{
+    appEl.innerHTML=nextHtml;
    }
   }else{
    appEl.innerHTML=nextHtml;
-   if(tabChanged&&appEl.firstElementChild){
-    const cardEl=appEl.firstElementChild;
-    cardEl.classList.add('tab-in');
-    cardEl.addEventListener('animationend',()=>cardEl.classList.remove('tab-in'),{once:true});
-   }
   }
   if(openMrowId){
    const row=appEl.querySelector(`.mrow.tx-row[data-mrow="${CSS.escape(openMrowId)}"]`);
@@ -702,9 +748,14 @@ async function decryptDiaryFast(){
 }
 function syncDiaryDot(){
  const un=!!DIARY_KEY;
- if($('#dr-dot'))$('#dr-dot').classList.toggle('on',un);
- if($('#dr-st')){$('#dr-st').className='dr-st '+(un?'un':'lk');$('#dr-st').textContent=un?'UNLOCKED':'LOCKED'}
- if($('#dr-lk-btn'))$('#dr-lk-btn').hidden=!un;
+ const dot=$('#dr-dot'),stEl=$('#dr-st'),lkBtn=$('#dr-lk-btn');
+ if(dot&&dot.classList.contains('on')!==un)dot.classList.toggle('on',un);
+ if(stEl){
+  const cls='dr-st '+(un?'un':'lk'),txt=un?'UNLOCKED':'LOCKED';
+  if(stEl.className!==cls)stEl.className=cls;
+  if(stEl.textContent!==txt)stEl.textContent=txt;
+ }
+ if(lkBtn&&lkBtn.hidden!==!un)lkBtn.hidden=!un;
 }
 function updateDraftUiMeta(){
  const hasDraft=!!DIARY_DRAFTS[drDate],rec=DR.find(x=>!x.del&&!isVaultRec(x)&&x.date===drDate&&x.cipher);
@@ -803,23 +854,41 @@ async function persistVaultDraft(){
   return true;
  }catch(e){return false}
 }
+function updateVaultDraftUiMeta(){
+ const vList=vaultRecs();
+ const rec=(vlId&&vlId!=='__new__')?vList.find(x=>x.id===vlId):null;
+ const hasDraft=!!(VAULT_DRAFT&&VAULT_DRAFT.targetId===(rec?rec.id:'__new__'));
+ if($('#vl-meta')){
+  $('#vl-meta').className='dr-meta'+(hasDraft?' draft':'');
+  $('#vl-meta').title=hasDraft?'Unsaved draft in memory':'';
+  $('#vl-meta').setAttribute('aria-label',hasDraft?'Unsaved draft in memory':'');
+  $('#vl-meta').textContent=hasDraft?'📝':(rec?'AES-256-GCM · Editing record':'AES-256-GCM · New encrypted record');
+ }
+ if($('#vl-cancel')){
+  $('#vl-cancel').hidden=!(rec||hasDraft||vList.length>0);
+  $('#vl-cancel').textContent=hasDraft?'Discard draft':'Cancel';
+ }
+}
 function captureVaultDraft(){
  if(!DIARY_KEY||!$('#vl-form')||$('#vl-form').hidden||!$('#vl-ttl')||!$('#vl-bdy'))return false;
  const title=$('#vl-ttl').value,body=$('#vl-bdy').value,date=fixDate(($('#vl-dt')&&$('#vl-dt').value)||iso(0)),cat=normVaultCat(vlCat);
  const cur=(vlId&&vlId!=='__new__'&&VAULT_CACHE[vlId])?VAULT_CACHE[vlId]:{title:'',body:'',cat:'folder',date:iso(0)};
  const isSame=title.trim()===(cur.title||'').trim()&&body.trim()===(cur.body||'').trim()&&cat===normVaultCat(cur.cat)&&date===(cur.date||iso(0));
  const isEmpty=!title.trim()&&!body.trim();
+ const hadDraft=!!VAULT_DRAFT;
  if(isSame||isEmpty){
   if(VAULT_DRAFT){
    VAULT_DRAFT=null;
    delete DR_DRAFTS.__vault__;
    saveDrDrafts();
-   if($('#vl-meta')){$('#vl-meta').className='dr-meta';$('#vl-meta').textContent='AES-256-GCM · Zero-knowledge'}
+   updateVaultDraftUiMeta();
+   renderVaultSidebar();
   }
   return false;
  }
  VAULT_DRAFT={targetId:vlId||'__new__',date,cat,title,body,ts:now()};
- if($('#vl-meta')){$('#vl-meta').className='dr-meta draft';$('#vl-meta').textContent='📝 Draft in memory · AES-256-GCM'}
+ updateVaultDraftUiMeta();
+ if(!hadDraft)renderVaultSidebar();
  const job=++vlDraftJob;
  setTimeout(()=>{if(job===vlDraftJob)persistVaultDraft()},120);
  return true;
@@ -1122,15 +1191,22 @@ function renderDiaryModal(){
  syncDiaryDot();
  syncVaultBadge();
  const hasV=!!(DRV&&DRV.v),un=!!DIARY_KEY;
- if($('#drd'))$('#drd').classList.toggle('un',un);
- if($('#dr-hd-ttl'))$('#dr-hd-ttl').textContent=drMode==='vault'?'Encrypted Info Vault':'Daily Diary & Vault';
- if($('#dr-mbar')){
-  $('#dr-mbar').hidden=!un;
-  document.querySelectorAll('#dr-mbar [data-drm]').forEach(b=>b.classList.toggle('on',b.dataset.drm===drMode));
+ const dlg=$('#drd');
+ if(dlg&&dlg.classList.contains('un')!==un)dlg.classList.toggle('un',un);
+ const mbar=$('#dr-mbar');
+ if(mbar){
+  if(mbar.hidden!==!un)mbar.hidden=!un;
+  document.querySelectorAll('#dr-mbar [data-drm]').forEach(b=>{
+   const isOn=b.dataset.drm===drMode;
+   if(b.classList.contains('on')!==isOn)b.classList.toggle('on',isOn);
+  });
  }
- if($('#dr-lock'))$('#dr-lock').hidden=un;
- if($('#dr-work'))$('#dr-work').hidden=!un||drMode!=='diary';
- if($('#dr-vault'))$('#dr-vault').hidden=!un||drMode!=='vault';
+ const lockEl=$('#dr-lock'),workEl=$('#dr-work'),vaultEl=$('#dr-vault');
+ if(lockEl&&lockEl.hidden!==un)lockEl.hidden=un;
+ const hideWork=!un||drMode!=='diary';
+ if(workEl&&workEl.hidden!==hideWork)workEl.hidden=hideWork;
+ const hideVault=!un||drMode!=='vault';
+ if(vaultEl&&vaultEl.hidden!==hideVault)vaultEl.hidden=hideVault;
  if(!un){
   if($('#dr-uer'))$('#dr-uer').textContent='';
   if($('#dr-upw'))$('#dr-upw').placeholder=hasV?'Enter vault password':'Create a password to start';
@@ -1177,10 +1253,13 @@ function openDiary(dt,mode){
  if(!DIARY_KEY&&$('#dr-upw')){$('#dr-upw').value='';$('#dr-upw').focus()}
 }
 if($('#drb'))$('#drb').onclick=()=>openDiary(null,drMode);
-if($('#dr-mbar'))$('#dr-mbar').onclick=async e=>{
+if($('#dr-mbar'))$('#dr-mbar').onclick=e=>{
  const b=e.target.closest('[data-drm]');
  if(!b||b.dataset.drm===drMode)return;
- await flushDiaryDraft();
+ captureDiaryDraft();
+ captureVaultDraft();
+ if(DIARY_DRAFTS[drDate])persistDiaryDraftDate(drDate);
+ if(VAULT_DRAFT)persistVaultDraft();
  drMode=b.dataset.drm;
  renderDiaryModal();
 };
@@ -1430,8 +1509,10 @@ if($('#dr-vtasks'))$('#dr-vtasks').addEventListener('click',async e=>{
  const rec=DR.find(x=>!x.del&&!isVaultRec(x)&&x.date===drDate);
  if(rec){rec.cipher=cipher;rec.upd=now();drsave()}
 });
-const shiftDiaryDate=async delta=>{
- await flushDiaryDraft();
+const shiftDiaryDate=delta=>{
+ const prevDt=drDate;
+ captureDiaryDraft();
+ if(DIARY_DRAFTS[prevDt])persistDiaryDraftDate(prevDt);
  const d=new Date(drDate+'T00:00:00');
  d.setDate(d.getDate()+delta);
  drDate=ymd(d);
@@ -1442,10 +1523,10 @@ const shiftDiaryDate=async delta=>{
 };
 if($('#dr-prev'))$('#dr-prev').onclick=()=>shiftDiaryDate(-1);
 if($('#dr-next'))$('#dr-next').onclick=()=>shiftDiaryDate(1);
-if($('#dr-td'))$('#dr-td').onclick=async()=>{await flushDiaryDraft();drDate=iso(0);drExplicitDate=true;drEditMode=false;renderDiarySidebar();renderDiaryDate(false)};
-if($('#dr-dt'))$('#dr-dt').onchange=async e=>{if(e.target.value){await flushDiaryDraft();drDate=fixDate(e.target.value);drExplicitDate=true;drEditMode=false;renderDiarySidebar();renderDiaryDate(false)}};
+if($('#dr-td'))$('#dr-td').onclick=()=>{const prevDt=drDate;captureDiaryDraft();if(DIARY_DRAFTS[prevDt])persistDiaryDraftDate(prevDt);drDate=iso(0);drExplicitDate=true;drEditMode=false;renderDiarySidebar();renderDiaryDate(false)};
+if($('#dr-dt'))$('#dr-dt').onchange=e=>{if(e.target.value){const prevDt=drDate;captureDiaryDraft();if(DIARY_DRAFTS[prevDt])persistDiaryDraftDate(prevDt);drDate=fixDate(e.target.value);drExplicitDate=true;drEditMode=false;renderDiarySidebar();renderDiaryDate(false)}};
 if($('#dr-q'))$('#dr-q').oninput=()=>{cancelAnimationFrame(drqRaf);drqRaf=requestAnimationFrame(renderDiarySidebar)};
-if($('#dr-list'))$('#dr-list').onclick=async e=>{if(e.target.closest('[data-dr-more]')){drShowAll=true;renderDiarySidebar();return}const b=e.target.closest('[data-dr-item]');if(!b)return;await flushDiaryDraft();drDate=b.dataset.drItem;drExplicitDate=true;drEditMode=false;renderDiarySidebar();renderDiaryDate(false)};
+if($('#dr-list'))$('#dr-list').onclick=e=>{if(e.target.closest('[data-dr-more]')){drShowAll=true;renderDiarySidebar();return}const b=e.target.closest('[data-dr-item]');if(!b)return;const prevDt=drDate;captureDiaryDraft();if(DIARY_DRAFTS[prevDt])persistDiaryDraftDate(prevDt);drDate=b.dataset.drItem;drExplicitDate=true;drEditMode=false;renderDiarySidebar();renderDiaryDate(false)};
 if($('#dr-ins'))$('#dr-ins').onclick=()=>{
  if(!drEditMode){drEditMode=true;renderDiaryDate(true)}
  const sm=dayLedgerSummary(drDate);
@@ -1578,7 +1659,8 @@ function renderVaultSidebar(){
  let html='';
  if(VAULT_DRAFT&&VAULT_DRAFT.targetId==='__new__'){
   const dCat=normVaultCat(VAULT_DRAFT.cat);
-  html+=`<button type="button" class="dr-item${vlId==='__new__'?' on':''}" data-vl-item="__new__"><div class="dr-item-top"><span>${esc(fmtTaskDate(VAULT_DRAFT.date||iso(0)))}</span><span>📝 Draft</span></div><b>${esc((VAULT_DRAFT.title||'').trim()||'Unsaved encrypted info')}</b><small>${esc(vaultCatShort(dCat))} · Draft in memory</small></button>`;
+  const dPreview=String(VAULT_DRAFT.body||'').replace(/\s+/g,' ').trim().slice(0,36);
+  html+=`<button type="button" class="dr-item${vlId==='__new__'?' on':''}" data-vl-item="__new__"><div class="dr-item-top"><span>${esc(fmtTaskDate(VAULT_DRAFT.date||iso(0)))}</span><span>📝</span></div><b>${esc((VAULT_DRAFT.title||'').trim()||'Unsaved encrypted info')}</b><small>${esc(vaultCatShort(dCat))}${dPreview?' · '+esc(dPreview):''}</small></button>`;
  }
  html+=rows.map(r=>{
   const hasDraft=VAULT_DRAFT&&VAULT_DRAFT.targetId===r.id;
@@ -1623,14 +1705,7 @@ async function renderVaultMain(keepInputs){
    syncVaultCatUi();
   }
   if($('#vl-del'))$('#vl-del').hidden=!rec;
-  if($('#vl-cancel')){
-   $('#vl-cancel').hidden=!(rec||hasDraft||vList.length>0);
-   $('#vl-cancel').textContent=hasDraft?'Discard draft':'Cancel';
-  }
-  if($('#vl-meta')){
-   $('#vl-meta').className='dr-meta'+(hasDraft?' draft':'');
-   $('#vl-meta').textContent=hasDraft?'📝':(rec?'AES-256-GCM · Editing record':'AES-256-GCM · New encrypted record');
-  }
+  updateVaultDraftUiMeta();
  }
 }
 if($('#vl-view')){
@@ -1650,14 +1725,15 @@ if($('#vl-view')){
   }
  });
 }
-if($('#vl-new'))$('#vl-new').onclick=async()=>{
- await persistVaultDraft();
+if($('#vl-new'))$('#vl-new').onclick=()=>{
+ captureVaultDraft();
+ if(VAULT_DRAFT)persistVaultDraft();
  vlId='__new__';
  vlEditMode=true;
  vlCat=vlFCat!=='all'?vlFCat:'folder';
  if(VAULT_DRAFT&&VAULT_DRAFT.targetId!=='__new__')VAULT_DRAFT=null;
  renderVaultSidebar();
- await renderVaultMain(false);
+ renderVaultMain(false);
  if($('#vl-ttl'))$('#vl-ttl').focus();
 };
 if($('#vl-fcat'))$('#vl-fcat').onclick=e=>{
@@ -1674,16 +1750,16 @@ if($('#vl-q'))$('#vl-q').oninput=e=>{
  cancelAnimationFrame(vlqRaf);
  vlqRaf=requestAnimationFrame(renderVaultSidebar);
 };
-if($('#vl-list'))$('#vl-list').onclick=async e=>{
+if($('#vl-list'))$('#vl-list').onclick=e=>{
  const b=e.target.closest('[data-vl-item]');if(!b)return;
  const nextId=b.dataset.vlItem;
  captureVaultDraft();
- await persistVaultDraft();
+ if(VAULT_DRAFT)persistVaultDraft();
  vlId=nextId;
  vlEditMode=(vlId==='__new__');
  vlMasked=false;
  renderVaultSidebar();
- await renderVaultMain(false);
+ renderVaultMain(false);
 };
 if($('#vl-cat-seg'))$('#vl-cat-seg').onclick=e=>{
  const b=e.target.closest('[data-vlc]');if(!b)return;
