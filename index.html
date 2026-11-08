@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" id="theme-meta" content="#e9eef5">
-<link rel="manifest" href="manifest.webmanifest?v=38">
-<link rel="icon" type="image/svg+xml" href="icon.svg?v=38">
-<link rel="alternate icon" type="image/png" href="icon-192.png?v=38">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=38">
+<link rel="manifest" href="manifest.webmanifest?v=40">
+<link rel="icon" type="image/svg+xml" href="icon.svg?v=40">
+<link rel="alternate icon" type="image/png" href="icon-192.png?v=40">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=40">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Daily ledger · AED &amp; INR</title>
 <meta name="description" content="Personal daily financial ledger and debt tracker for AED and INR with offline storage, category management, and Google Sheets sync.">
@@ -42,29 +42,32 @@ button,input,textarea,select,summary,label{font:inherit;color:inherit;touch-acti
 button{cursor:pointer;user-select:none}
 :focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 .num,.amt,.bal,.io b,.av,.ds b,.ddo em{font-family:var(--font-mono);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
-.wrap{max-width:1040px;margin:0 auto;padding:18px 16px 110px;transform-origin:50% 18vh;transition:transform .22s cubic-bezier(.22,1,.36,1),opacity .22s cubic-bezier(.22,1,.36,1)}
+.wrap{max-width:1040px;margin:0 auto;padding:18px 16px 110px}
 @keyframes viewIn{from{opacity:.35;transform:translate3d(0,5px,0)}to{opacity:1;transform:translate3d(0,0,0)}}
 @keyframes dlgIn{from{opacity:0;transform:scale3d(.96,.96,1) translate3d(0,8px,0)}to{opacity:1;transform:scale3d(1,1,1) translate3d(0,0,0)}}
 @keyframes sheetIn{from{opacity:.4;transform:translate3d(0,32px,0)}to{opacity:1;transform:translate3d(0,0,0)}}
 
 /* Header: Title on top, Status pill + Action buttons stacked neatly below */
-.top{display:flex;flex-direction:column;align-items:flex-start;gap:12px;margin-bottom:18px}
+.top{display:flex;flex-direction:column;align-items:flex-start;gap:12px;margin-bottom:18px;contain:layout style}
 .brand{display:inline-flex;align-items:center;gap:10px}
 .brand-ic{width:32px;height:32px;border-radius:9px;display:block;flex-shrink:0;box-shadow:0 3px 10px rgba(11,21,40,.18)}
 h1{font:800 26px/1.1 var(--font-display);margin:0;letter-spacing:-.03em}
 .stat{display:flex;flex-direction:column;gap:8px;align-items:flex-start;width:100%}
-.stat-r{display:flex;gap:8px;align-items:center;width:100%}
-.pill{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:99px;background:var(--card);border:1px solid var(--line);font-size:13px;font-weight:500;min-width:0;max-width:100%}
+.stat-r{display:flex;gap:6px;align-items:center;width:100%;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:99px;background:var(--card);border:1px solid var(--line);font-size:13px;font-weight:500;min-width:0;max-width:100%;flex:1 1 130px}
 #stx{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.dot{width:9px;height:9px;border-radius:50%;background:var(--in);flex-shrink:0}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--in);flex-shrink:0;transition:background-color .2s ease,opacity .2s ease}
 .stat-r button{flex-shrink:0}
 .pill.off .dot{background:var(--out)}
-.pill.sy .dot{background:var(--warn);animation:pu 1s infinite}
-@keyframes pu{50%{opacity:.3}}
-.ghost{background:transparent;border:1px solid var(--line);border-radius:99px;padding:7px 13px;font-size:13px;font-weight:550;transition:background .15s,border-color .15s}
+.pill.sy .dot{background:var(--warn);opacity:.65}
+.ghost{background:transparent;border:1px solid var(--line);border-radius:99px;padding:7px 12px;font-size:13px;font-weight:550;transition:background .15s,border-color .15s}
 .ghost:hover:not(:disabled){border-color:var(--acc);background:color-mix(in srgb,var(--acc) 10%,transparent)}
-.dry-btn{display:inline-flex;align-items:center;gap:6px;border-color:color-mix(in srgb,var(--dry) 36%,var(--line));background:color-mix(in srgb,var(--dry) 10%,var(--card));color:var(--dry);font-weight:650}
+.dry-btn{display:inline-flex;align-items:center;gap:6px;border-color:color-mix(in srgb,var(--dry) 36%,var(--line));background:color-mix(in srgb,var(--dry) 10%,var(--card));color:var(--dry);font-weight:650;transition:border-color .15s,background .15s,transform .12s cubic-bezier(.22,1,.36,1)}
 .dry-btn:hover:not(:disabled){border-color:var(--dry);background:color-mix(in srgb,var(--dry) 18%,var(--card))}
+.dry-btn:active{transform:scale3d(.96,.96,1)}
+.vlt-cnt{font:700 10.5px/1 var(--font-mono);padding:2.5px 5.5px;border-radius:99px;background:var(--dry);color:#fff;font-style:normal}
+:root[data-theme="dark"] .vlt-cnt{color:#0b101b}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .vlt-cnt{color:#0b101b}}
 .dry-dot{width:7px;height:7px;border-radius:50%;background:var(--out);flex-shrink:0;transition:background .2s,box-shadow .2s}
 .dry-dot.on{background:var(--in);box-shadow:0 0 6px var(--in)}
 .icon-btn{display:inline-grid;place-items:center;width:34px;height:34px;padding:0;border-radius:50%;background:var(--card);border:1px solid var(--line);color:var(--ink);transition:border-color .15s,background .15s}
@@ -78,7 +81,7 @@ body.dlg-open .bbar{opacity:0;pointer-events:none;transform:translateY(12px)}
 .tabs button{width:100%;min-width:0;height:40px;border:0;background:var(--bg);padding:0 6px;border-radius:14px;color:var(--mut);font:700 13.5px/1 var(--font-display);display:inline-flex;align-items:center;justify-content:center;transition:background .15s,color .15s;white-space:nowrap}
 .tabs button.on{background:var(--ink);color:var(--card)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:24px;overflow:hidden;box-shadow:0 6px 24px rgba(10,20,40,.05)}
-.card.tab-in{animation:viewIn .16s cubic-bezier(.22,1,.36,1)}
+.card.tab-in{animation:viewIn .14s cubic-bezier(.22,1,.36,1)}
 .aed{--acc:var(--aed)}.inr{--acc:var(--inr)}.dbt{--acc:var(--dbt)}
 #app>.card:not(.doc){max-width:1040px}
 .tabs button[data-t=AED].on{background:var(--aed);color:#fff}
@@ -93,7 +96,7 @@ body.dlg-open .bbar{opacity:0;pointer-events:none;transform:translateY(12px)}
  :root:not([data-theme="light"]) .tabs button[data-t=D].on{color:#170d33}
 }
 
-.head{padding:20px;background:linear-gradient(135deg,color-mix(in srgb,var(--acc) 15%,var(--card)),color-mix(in srgb,var(--acc) 5%,var(--card)));border-bottom:1px solid color-mix(in srgb,var(--acc) 18%,var(--line))}
+.head{padding:20px;background:linear-gradient(135deg,color-mix(in srgb,var(--acc) 15%,var(--card)),color-mix(in srgb,var(--acc) 5%,var(--card)));background-color:var(--card);border-bottom:1px solid color-mix(in srgb,var(--acc) 18%,var(--line));backface-visibility:hidden;-webkit-backface-visibility:hidden}
 .cur{display:flex;justify-content:space-between;align-items:center;color:var(--mut);font-size:13px;font-weight:500}
 .code{font:700 12.5px var(--font-mono);color:var(--acc);background:color-mix(in srgb,var(--acc) 12%,var(--card));border:1px solid color-mix(in srgb,var(--acc) 28%,var(--line));padding:3px 10px;border-radius:99px}
 .bal{font:800 38px/1.1 var(--font-mono);letter-spacing:-.03em;margin:10px 0 12px;color:var(--ink)}
@@ -189,6 +192,10 @@ tr.k td:not(.dt){border-bottom:1px dashed var(--line)}
 .mrow.tx-row .mrow-ac{max-width:0;opacity:0;overflow:hidden;pointer-events:none;transform:translateX(8px);transition:max-width .24s cubic-bezier(.22,1,.36,1),opacity .18s ease,transform .24s cubic-bezier(.22,1,.36,1)}
 .mrow.tx-row.ro .mrow-ac{max-width:80px;opacity:1;pointer-events:auto;transform:translateX(0)}
 .mrow.tx-row .mrow-ac .ib{margin:0;flex-shrink:0}
+.mday.dbt-card{cursor:pointer;user-select:none;transition:border-color .15s ease}
+.mday.dbt-card.ro{border-color:color-mix(in srgb,var(--dbt) 50%,var(--line))}
+.mday.dbt-card .dbt-ed-ac{display:inline-flex;gap:4px;align-items:center;max-width:0;opacity:0;overflow:hidden;pointer-events:none;transform:translate3d(8px,0,0);transition:max-width .22s cubic-bezier(.22,1,.36,1),opacity .16s ease,transform .22s cubic-bezier(.22,1,.36,1)}
+.mday.dbt-card.ro .dbt-ed-ac{max-width:80px;opacity:1;pointer-events:auto;transform:translate3d(0,0,0)}
 .mbf{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-radius:16px;border:1px solid var(--line);background:color-mix(in srgb,var(--acc) 7%,var(--card));font-size:13px}
 .vm-cards .tw.tx-tw{display:none}
 .vm-cards .mfeed{display:grid}
@@ -249,11 +256,10 @@ td b{font-weight:600;display:block}td span.n{display:block;font-size:12.5px;colo
 .fab{width:100%;min-width:0;background:var(--ink);color:var(--card);border:0;border-radius:14px;padding:0 6px;height:40px;font:700 13.5px/1 var(--font-display);display:inline-flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap;transition:transform .12s}
 .fab:active{transform:scale(.97)}
 .fab svg{display:block;flex-shrink:0}
-dialog{border:0;border-radius:24px;padding:0;margin:auto;width:min(440px,calc(100vw - 24px));max-height:min(90vh,780px);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;background:var(--card);color:var(--ink);box-shadow:0 24px 60px rgba(0,0,0,.38);will-change:transform,opacity}
-dialog[open]{animation:dlgIn .18s cubic-bezier(.22,1,.36,1)}
-dialog::backdrop{background:rgba(8,12,20,.64)}
+dialog{border:0;border-radius:24px;padding:0;margin:auto;width:min(440px,calc(100vw - 24px));max-height:min(90vh,780px);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;background:var(--card);color:var(--ink);box-shadow:0 24px 60px rgba(0,0,0,.38)}
+dialog[open]{animation:dlgIn .16s cubic-bezier(.22,1,.36,1)}
+dialog::backdrop{background:rgba(8,12,20,.62)}
 body.dlg-open{overflow:hidden}
-body.dlg-open .wrap{transform:scale3d(.985,.985,1);opacity:.42;pointer-events:none;user-select:none}
 [hidden]{display:none!important}
 .sh{padding:20px;display:grid;gap:14px}
 .sh h2{margin:0;font:700 20px var(--font-display)}
@@ -316,9 +322,38 @@ dialog#cm{width:min(500px,calc(100vw - 24px));max-width:500px}
 /* Daily Diary Vault Modal & Date Note Badge */
 .dry-tag{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:2px 7px;border-radius:99px;font:600 11px var(--font-display);background:color-mix(in srgb,var(--dry) 14%,var(--card));color:var(--dry);border:1px solid color-mix(in srgb,var(--dry) 32%,var(--line));vertical-align:middle}
 .dry-tag:hover{background:color-mix(in srgb,var(--dry) 24%,var(--card));border-color:var(--dry)}
-dialog.dr-dlg{--acc:var(--dry);width:min(400px,calc(100vw - 24px));max-width:400px;overflow:hidden}
+dialog.dr-dlg{--acc:var(--dry);width:min(400px,calc(100vw - 24px));max-width:400px}
 dialog.dr-dlg.un{width:min(880px,calc(100vw - 32px));max-width:880px}
-.dr-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 20px;border-bottom:1px solid var(--line);background:linear-gradient(135deg,color-mix(in srgb,var(--dry) 14%,var(--card)),color-mix(in srgb,var(--dry) 4%,var(--card)));background-color:var(--card);border-radius:24px 24px 0 0;position:sticky;top:0;z-index:5;flex-wrap:wrap}
+.dr-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 18px;border-bottom:1px solid var(--line);background:linear-gradient(135deg,color-mix(in srgb,var(--dry) 14%,var(--card)),color-mix(in srgb,var(--dry) 4%,var(--card)));background-color:var(--card);border-radius:24px 24px 0 0;position:sticky;top:0;z-index:5;flex-wrap:wrap;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.dr-mbar{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:8px 18px;background:color-mix(in srgb,var(--bg) 60%,var(--card));border-bottom:1px solid var(--line)}
+.dr-mbar button{border:1px solid transparent;background:transparent;padding:7px 10px;border-radius:10px;font:650 13px/1.1 var(--font-display);color:var(--mut);display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:background .15s,color .15s,border-color .15s,transform .1s cubic-bezier(.22,1,.36,1)}
+.dr-mbar button:active{transform:scale3d(.97,.97,1)}
+.dr-mbar button.on[data-drm="diary"]{background:var(--card);color:var(--dry);border-color:color-mix(in srgb,var(--dry) 34%,var(--line));box-shadow:0 2px 6px rgba(10,20,40,.06)}
+.dr-mbar button.on[data-drm="vault"]{background:var(--card);color:var(--dbt);border-color:color-mix(in srgb,var(--dbt) 34%,var(--line));box-shadow:0 2px 6px rgba(10,20,40,.06)}
+.vl-new-btn{width:100%;padding:8px 10px;border-radius:11px;border:1px dashed color-mix(in srgb,var(--dbt) 50%,var(--line));background:color-mix(in srgb,var(--dbt) 10%,var(--card));color:var(--dbt);font:650 12.5px var(--font-display);display:inline-flex;align-items:center;justify-content:center;gap:5px;transition:background .15s,border-color .15s,transform .1s}
+.vl-new-btn:hover{background:color-mix(in srgb,var(--dbt) 18%,var(--card));border-color:var(--dbt)}
+.vl-new-btn:active{transform:scale3d(.98,.98,1)}
+.vl-fcat{display:flex;gap:4px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.vl-fcat::-webkit-scrollbar{display:none}
+.vl-fcat button{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:4px 8px;font:600 11px var(--font-display);color:var(--mut);white-space:nowrap;flex:none;transition:background .15s,color .15s,border-color .15s}
+.vl-fcat button.on{background:color-mix(in srgb,var(--dbt) 15%,var(--card));color:var(--dbt);border-color:color-mix(in srgb,var(--dbt) 40%,var(--line))}
+.vl-top-row{display:grid;grid-template-columns:150px minmax(0,1fr);gap:8px;align-items:center}
+@media(max-width:520px){.vl-top-row{grid-template-columns:1fr}}
+.vl-cat-seg{display:grid;grid-template-columns:repeat(4,1fr);gap:3px;background:var(--bg);border:1px solid var(--line);padding:2.5px;border-radius:10px}
+@media(max-width:380px){.vl-cat-seg{grid-template-columns:repeat(2,1fr)}}
+.vl-cat-seg button{border:0;background:none;padding:6px 5px;border-radius:7.5px;font:600 11.5px var(--font-display);color:var(--mut);white-space:nowrap;transition:background .15s,color .15s,transform .1s}
+.vl-cat-seg button:active{transform:scale3d(.96,.96,1)}
+.vl-cat-seg button.on{background:var(--card);color:var(--dbt);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.vl-tpl-bar{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.vl-tpl-btn{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:4px 8px;font:600 11px var(--font-mono);color:var(--mut);transition:border-color .15s,color .15s,background .15s,transform .1s}
+.vl-tpl-btn:hover{border-color:var(--dbt);color:var(--dbt);background:color-mix(in srgb,var(--dbt) 8%,var(--card))}
+.vl-tpl-btn:active{transform:scale3d(.96,.96,1)}
+textarea.vl-bdy{font:500 13px/1.55 var(--font-mono);min-height:175px;white-space:pre;overflow-x:auto;tab-size:2}
+.vl-cat-pill{font:700 11px var(--font-display);padding:3px 9px;border-radius:99px;background:color-mix(in srgb,var(--dbt) 14%,var(--card));color:var(--dbt);border:1px solid color-mix(in srgb,var(--dbt) 30%,var(--line))}
+.vl-vbar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.vl-act-btn{padding:4px 10px;font-size:11.5px;border-radius:9px}
+pre.vl-pre{margin:0;padding:12px 14px;border-radius:13px;background:var(--card);border:1px solid var(--line);font:500 13px/1.58 var(--font-mono);color:var(--ink);white-space:pre-wrap;word-break:break-word;overflow-x:auto;flex:1;min-height:80px;transition:filter .18s ease}
+pre.vl-pre.masked{filter:blur(6px);user-select:none}
 .dr-hl{display:flex;align-items:center;gap:10px}
 .dr-ic{width:34px;height:34px;border-radius:10px;background:var(--dry);color:#fff;display:grid;place-items:center;flex-shrink:0}
 .dr-hl h2{margin:0;font:700 17px/1.15 var(--font-display)}
@@ -334,7 +369,7 @@ details.dr-acc{border:1px solid var(--line);border-radius:14px;background:color-
 details.dr-acc.sub{background:var(--card);border-style:dashed}
 details.dr-acc>summary{list-style:none;cursor:pointer;padding:10px 13px;font:600 13px var(--font-display);color:var(--ink);display:flex;align-items:center;justify-content:space-between;gap:8px;user-select:none}
 details.dr-acc>summary::-webkit-details-marker{display:none}
-details.dr-acc>summary::after{content:'▾';font-size:13px;color:var(--mut);transition:transform .2s}
+details.dr-acc>summary::after{content:'▾';font-size:13px;color:var(--mut);transition:transform .2s cubic-bezier(.22,1,.36,1)}
 details.dr-acc[open]>summary{border-bottom:1px solid var(--line);color:var(--dry)}
 details.dr-acc[open]>summary::after{transform:rotate(180deg);color:var(--dry)}
 .dr-acc-b{padding:12px;display:grid;gap:10px}
@@ -373,15 +408,26 @@ details.dr-acc[open]>summary::after{transform:rotate(180deg);color:var(--dry)}
 .dr-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:auto;padding-top:4px;flex-shrink:0}
 .dr-meta{font:500 11.5px var(--font-mono);color:var(--mut)}
 .dr-meta.draft{display:inline-grid;place-items:center;width:30px;height:30px;padding:0;border-radius:10px;font-size:15px;line-height:1;background:color-mix(in srgb,var(--warn) 14%,var(--card));border:1px solid color-mix(in srgb,var(--warn) 35%,var(--line));color:var(--warn)}
-.dr-view{background:color-mix(in srgb,var(--dry) 5%,var(--bg));border:1px solid color-mix(in srgb,var(--dry) 28%,var(--line));border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px;flex:1;animation:viewIn .15s cubic-bezier(.22,1,.36,1)}
+.dr-view{background:color-mix(in srgb,var(--dry) 5%,var(--bg));border:1px solid color-mix(in srgb,var(--dry) 28%,var(--line));border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px;flex:1;cursor:pointer;user-select:none;transition:border-color .15s ease,background-color .15s ease;animation:viewIn .15s cubic-bezier(.22,1,.36,1)}
+.dr-view:hover{border-color:color-mix(in srgb,var(--dry) 46%,var(--line))}
+.dr-view.ro{background:color-mix(in srgb,var(--dry) 8%,var(--bg));border-color:color-mix(in srgb,var(--dry) 55%,var(--line))}
 .dr-view-hd{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding-bottom:10px;border-bottom:1px dashed var(--line)}
 .dr-saved-pill{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:99px;font:700 11px var(--font-mono);background:color-mix(in srgb,var(--in) 15%,var(--card));color:var(--in);border:1px solid color-mix(in srgb,var(--in) 32%,var(--line))}
 .dr-vttl{margin:0;font:700 17px/1.3 var(--font-display);color:var(--ink);word-break:break-word}
 .dr-vbdy{font-size:14.5px;line-height:1.6;color:var(--ink);white-space:pre-wrap;word-break:break-word;flex:1;min-height:48px}
-.dr-view-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding-top:10px;border-top:1px solid var(--line)}
-.dr-btn-ico{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:12px;font:600 13px var(--font-display)}
-.dr-tbox{background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:10px 12px;display:grid;gap:8px;flex-shrink:0}
-.dr-thd{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.dr-view-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding-top:10px;border-top:1px solid var(--line);min-height:42px}
+.dr-view-ac{display:flex;gap:8px;align-items:center;max-width:0;opacity:0;overflow:hidden;pointer-events:none;transform:translate3d(8px,0,0);transition:max-width .22s cubic-bezier(.22,1,.36,1),opacity .16s ease,transform .22s cubic-bezier(.22,1,.36,1)}
+.dr-view.ro .dr-view-ac{max-width:210px;opacity:1;pointer-events:auto;transform:translate3d(0,0,0)}
+.dr-btn-ico{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:11px;font:600 12.5px var(--font-display);white-space:nowrap;flex-shrink:0}
+details.dr-tbox{background:var(--bg);border:1px solid var(--line);border-radius:14px;flex-shrink:0;overflow:hidden;transition:border-color .15s}
+details.dr-tbox[open]{border-color:color-mix(in srgb,var(--dry) 38%,var(--line))}
+details.dr-tbox>summary.dr-thd{padding:9px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;list-style:none;user-select:none}
+details.dr-tbox>summary.dr-thd::-webkit-details-marker{display:none}
+details.dr-tbox>summary.dr-thd::after{content:'▾';font-size:13px;color:var(--mut);transition:transform .2s cubic-bezier(.22,1,.36,1)}
+details.dr-tbox[open]>summary.dr-thd{border-bottom:1px solid var(--line)}
+details.dr-tbox[open]>summary.dr-thd::after{transform:rotate(180deg);color:var(--dry)}
+.dr-tbox-b{padding:10px 12px;display:grid;gap:8px;background:color-mix(in srgb,var(--card) 50%,var(--bg))}
+.dr-tbox-bar{display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap}
 .dr-thl{display:inline-flex;align-items:center;gap:6px;font:700 11.5px var(--font-display);text-transform:uppercase;letter-spacing:.04em;color:var(--mut)}
 .dr-thl svg{color:var(--dry);flex-shrink:0}
 .dr-cnt-pill.ok{background:color-mix(in srgb,var(--in) 15%,var(--card));color:var(--in);border-color:color-mix(in srgb,var(--in) 35%,var(--line))}
@@ -398,8 +444,13 @@ details.dr-acc[open]>summary::after{transform:rotate(180deg);color:var(--dry)}
 .dr-ttxt.done{text-decoration:line-through;color:var(--mut)}
 .dr-tdel{width:24px;height:24px;border-radius:7px;border:0;background:transparent;color:var(--mut);display:inline-grid;place-items:center;padding:0;font-size:16px;line-height:1;transition:color .15s,background .15s}
 .dr-tdel:hover{color:var(--out);background:color-mix(in srgb,var(--out) 12%,transparent)}
-.dr-vtasks{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:11px 13px;display:grid;gap:8px}
-.dr-vthd{display:flex;align-items:center;justify-content:space-between;gap:8px;font:700 11.5px var(--font-display);text-transform:uppercase;letter-spacing:.04em;color:var(--mut)}
+details.dr-vtasks{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+details.dr-vtasks>summary.dr-vthd{padding:9px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;font:700 11.5px var(--font-display);text-transform:uppercase;letter-spacing:.04em;color:var(--mut);cursor:pointer;list-style:none;user-select:none}
+details.dr-vtasks>summary.dr-vthd::-webkit-details-marker{display:none}
+details.dr-vtasks>summary.dr-vthd::after{content:'▾';font-size:13px;color:var(--mut);transition:transform .2s cubic-bezier(.22,1,.36,1)}
+details.dr-vtasks[open]>summary.dr-vthd{border-bottom:1px solid var(--line)}
+details.dr-vtasks[open]>summary.dr-vthd::after{transform:rotate(180deg);color:var(--dry)}
+.dr-vtasks-b{padding:10px 12px;display:grid;gap:8px}
 .dr-tpbar{height:4px;border-radius:99px;background:var(--line);overflow:hidden}
 .dr-tpbar i{display:block;height:100%;background:var(--in);border-radius:99px;transition:width .24s cubic-bezier(.22,1,.36,1)}
 .dr-vtlist{display:grid;gap:5px}
@@ -418,7 +469,7 @@ details.dr-acc[open]>summary::after{transform:rotate(180deg);color:var(--dry)}
 :root[data-theme="dark"] .tk-cnt{color:#06201e}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .tk-cnt{color:#06201e}}
 dialog.tk-dlg{--acc:var(--aed);width:min(540px,calc(100vw - 24px));max-width:540px}
-.tk-hd{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 16px;border-bottom:1px solid var(--line);background:linear-gradient(135deg,color-mix(in srgb,var(--aed) 13%,var(--card)),color-mix(in srgb,var(--aed) 3%,var(--card)));background-color:var(--card);border-radius:24px 24px 0 0;position:sticky;top:0;z-index:5}
+.tk-hd{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 16px;border-bottom:1px solid var(--line);background:linear-gradient(135deg,color-mix(in srgb,var(--aed) 13%,var(--card)),color-mix(in srgb,var(--aed) 3%,var(--card)));background-color:var(--card);border-radius:24px 24px 0 0;position:sticky;top:0;z-index:5;backface-visibility:hidden;-webkit-backface-visibility:hidden}
 .tk-hd .dr-hr{flex-wrap:nowrap;flex-shrink:0}
 .tk-hl{display:flex;align-items:center;gap:9px;min-width:0;flex:1}
 .tk-hl>div:last-child{min-width:0;flex:1}
@@ -507,7 +558,7 @@ dialog.tk-dlg{--acc:var(--aed);width:min(540px,calc(100vw - 24px));max-width:540
 <div class="wrap">
  <div class="top">
   <div class="brand">
-   <img src="icon.svg?v=38" class="brand-ic" width="32" height="32" alt="">
+   <img src="icon.svg?v=40" class="brand-ic" width="32" height="32" alt="">
    <h1>Daily ledger</h1>
   </div>
   <div class="stat">
@@ -518,10 +569,11 @@ dialog.tk-dlg{--acc:var(--aed);width:min(540px,calc(100vw - 24px));max-width:540
      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
      <span>Settings</span>
     </button>
-    <button class="ghost dry-btn" id="drb" type="button" title="Open Encrypted Daily Diary">
+    <button class="ghost dry-btn" id="drb" type="button" title="Open Encrypted Daily Diary &amp; Info Vault">
      <i class="dry-dot" id="dr-dot"></i>
-     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/><path d="M12 11V7"/><circle cx="12" cy="14" r="1"/></svg>
-     <span>Diary</span>
+     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4"/><circle cx="12" cy="15" r="1"/></svg>
+     <span>Diary &amp; Vault</span>
+     <em class="vlt-cnt" id="vl-cnt" hidden>0</em>
     </button>
    </div>
    <div class="stat-r">
@@ -732,12 +784,12 @@ dialog.tk-dlg{--acc:var(--aed);width:min(540px,calc(100vw - 24px));max-width:540
 <dialog id="drd" class="dr-dlg">
  <div class="dr-hd">
   <div class="dr-hl">
-   <div class="dr-ic">
+   <div class="dr-ic" id="dr-hd-ic">
     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
    </div>
    <div>
-    <h2>Daily Diary</h2>
-    <p>AES-256 encrypted journal</p>
+    <h2 id="dr-hd-ttl">Daily Diary &amp; Vault</h2>
+    <p id="dr-hd-sub">AES-256 zero-knowledge encryption</p>
    </div>
   </div>
   <div class="dr-hr">
@@ -747,16 +799,29 @@ dialog.tk-dlg{--acc:var(--aed);width:min(540px,calc(100vw - 24px));max-width:540
   </div>
  </div>
 
- <!-- Password-Only Gate: Enter password -> Immediately loads diary data -->
+ <!-- 120Hz Mode Switcher (Shown when unlocked: Daily Diary vs Encrypted Info Vault) -->
+ <div class="dr-mbar" id="dr-mbar" hidden role="tablist" aria-label="Encrypted workspace mode">
+  <button type="button" data-drm="diary" class="on">
+   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+   <span>Daily Diary</span>
+  </button>
+  <button type="button" data-drm="vault">
+   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+   <span>Info Vault</span>
+   <span class="dr-cnt-pill" id="vl-tab-cnt">0</span>
+  </button>
+ </div>
+
+ <!-- Password-Only Gate: Enter password -> Immediately loads diary & vault data -->
  <div class="dr-gate" id="dr-lock" hidden>
   <label id="dr-upw-lbl">Vault password<input id="dr-upw" type="text" class="masked-inp" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-form-type="other" placeholder="Enter password"></label>
   <p class="hint" id="dr-uhint" hidden></p>
   <div class="err" id="dr-uer"></div>
-  <button class="prim" id="dr-ubtn" type="button">Unlock diary</button>
+  <button class="prim" id="dr-ubtn" type="button">Unlock vault</button>
   <button class="dr-link" id="dr-to-st" type="button">Manage encryption, recovery or reset in Settings →</button>
  </div>
 
- <!-- State 4: Unlocked Diary Workspace -->
+ <!-- State 4A: Unlocked Daily Diary Workspace -->
  <div class="dr-work" id="dr-work" hidden>
   <aside class="dr-side">
    <input id="dr-q" type="search" placeholder="Search decrypted notes…" aria-label="Search diary notes">
@@ -779,8 +844,8 @@ dialog.tk-dlg{--acc:var(--aed);width:min(540px,calc(100vw - 24px));max-width:540
 
    <div class="dr-sum" id="dr-sum"></div>
 
-   <!-- Saved Note Reading View (shown once saved; displays Edit & Delete buttons) -->
-   <div class="dr-view" id="dr-view" hidden>
+   <!-- Saved Note Reading View (tap card to reveal Edit & Delete buttons) -->
+   <div class="dr-view" id="dr-view" hidden tabindex="0" role="button" aria-expanded="false" aria-label="Tap card to show edit and delete options">
     <div class="dr-view-hd">
      <span class="dr-saved-pill">
       <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
@@ -789,11 +854,11 @@ dialog.tk-dlg{--acc:var(--aed);width:min(540px,calc(100vw - 24px));max-width:540
      <span class="dr-meta" id="dr-vmeta">AES-256-GCM</span>
     </div>
     <h3 class="dr-vttl" id="dr-vttl"></h3>
-    <div class="dr-vtasks" id="dr-vtasks" hidden></div>
+    <details class="dr-acc dr-vtasks" id="dr-vtasks" hidden open></details>
     <div class="dr-vbdy" id="dr-vbdy"></div>
     <div class="dr-view-foot">
-     <span class="hint" style="font-size:12px">Protected with your vault key</span>
-     <div style="display:flex;gap:8px;align-items:center">
+     <span class="hint" style="font-size:12px">Tap card to edit or delete</span>
+     <div class="dr-view-ac">
       <button class="ghost dr-btn-ico" id="dr-edit" type="button" style="border-color:var(--dry);color:var(--dry)">
        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
        <span>Edit</span>
@@ -809,35 +874,133 @@ dialog.tk-dlg{--acc:var(--aed);width:min(540px,calc(100vw - 24px));max-width:540
    <!-- Compose / Edit Form (shown for new dates or when clicking Edit) -->
    <div class="dr-form" id="dr-form">
     <input id="dr-ttl" class="dr-ttl" type="text" maxlength="80" placeholder="Headline for the day (e.g. Client lunch &amp; family remittance)…">
-    <div class="dr-tbox" id="dr-tbox">
-     <div class="dr-thd">
+    <details class="dr-acc dr-tbox" id="dr-tbox">
+     <summary class="dr-thd">
       <div class="dr-thl">
        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
        <span>Daily Tasks</span>
        <span class="dr-cnt-pill" id="dr-tprog">0 tasks</span>
       </div>
-      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+     </summary>
+     <div class="dr-tbox-b">
+      <div class="dr-tbox-bar">
        <div class="seg" id="dr-tcat" style="padding:2px;border-radius:9px;background:var(--card);border:1px solid var(--line)">
         <button type="button" data-dtc="personal" class="on" style="padding:3px 8px;font-size:11px;border-radius:7px">1. Personal</button>
         <button type="button" data-dtc="work" style="padding:3px 8px;font-size:11px;border-radius:7px">2. Work</button>
        </div>
        <button class="ghost" id="dr-tcarry" type="button" hidden style="padding:3px 9px;font-size:11.5px;border-color:var(--dry);color:var(--dry)" title="Copy unfinished tasks from earlier dates">+ Carry over</button>
       </div>
+      <div class="dr-tadd">
+       <input id="dr-tinp" type="text" maxlength="140" placeholder="Add a Personal or Work task…" aria-label="New daily task">
+       <button class="ghost" id="dr-tbtn" type="button" style="padding:7px 12px;font-size:12.5px;border-color:var(--dry);color:var(--dry)">+ Add</button>
+      </div>
+      <div class="dr-tlist" id="dr-tlist" hidden></div>
      </div>
-     <div class="dr-tadd">
-      <input id="dr-tinp" type="text" maxlength="140" placeholder="Add a Personal or Work task…" aria-label="New daily task">
-      <button class="ghost" id="dr-tbtn" type="button" style="padding:7px 12px;font-size:12.5px;border-color:var(--dry);color:var(--dry)">+ Add</button>
-     </div>
-     <div class="dr-tlist" id="dr-tlist" hidden></div>
-    </div>
+    </details>
     <textarea id="dr-bdy" class="dr-bdy" placeholder="Write your private daily reflections, meeting takeaways, or financial context for this date…"></textarea>
 
-    <div class="dr-foot">
+     <div class="dr-foot">
      <span class="dr-meta" id="dr-meta">AES-256-GCM</span>
      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <button class="ghost" id="dr-cancel-edit" type="button" hidden style="padding:8px 12px">Cancel</button>
       <button class="ghost" id="dr-del" type="button" hidden style="padding:8px 12px;color:var(--out);border-color:color-mix(in srgb,var(--out) 35%,var(--line))">Delete</button>
       <button class="prim" id="dr-sv" type="button" style="padding:9px 18px">Encrypt &amp; save</button>
+     </div>
+    </div>
+   </div>
+  </div>
+ </div>
+
+ <!-- State 4B: Unlocked Encrypted Info Vault (Folder Structure, Platform Info, User ID/PIN, Web App IPs) -->
+ <div class="dr-work" id="dr-vault" hidden>
+  <aside class="dr-side">
+   <button type="button" class="vl-new-btn" id="vl-new">+ New Encrypted Info</button>
+   <input id="vl-q" type="search" placeholder="Search title, IP, folder, PIN, date…" aria-label="Search encrypted info vault">
+   <div class="vl-fcat" id="vl-fcat" role="group" aria-label="Filter vault by category">
+    <button type="button" data-vlf="all" class="on">All</button>
+    <button type="button" data-vlf="folder">📂 Folder</button>
+    <button type="button" data-vlf="ip">🌐 IP / Web</button>
+    <button type="button" data-vlf="pin">🔑 ID &amp; PIN</button>
+    <button type="button" data-vlf="other">📌 Other</button>
+   </div>
+   <div class="dr-list" id="vl-list"></div>
+  </aside>
+
+  <div class="dr-main">
+   <!-- Saved Encrypted Record Reading View (tap card to reveal Edit & Delete buttons) -->
+   <div class="dr-view" id="vl-view" hidden style="--dry:var(--dbt)" tabindex="0" role="button" aria-expanded="false" aria-label="Tap card to show edit and delete options">
+    <div class="dr-view-hd">
+     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+      <span class="dr-saved-pill">
+       <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+       <span>ENCRYPTED</span>
+      </span>
+      <span class="vl-cat-pill" id="vl-vcat">📂 Folder</span>
+     </div>
+     <span class="dr-meta" id="vl-vdt"></span>
+    </div>
+
+    <h3 class="dr-vttl" id="vl-vttl"></h3>
+
+    <div class="vl-vbar">
+     <span class="dr-meta" id="vl-vmeta">AES-256-GCM</span>
+     <div style="display:flex;gap:6px;align-items:center">
+      <button class="ghost vl-act-btn" id="vl-mask-btn" type="button" title="Mask or reveal sensitive details">👁️ Mask</button>
+      <button class="ghost vl-act-btn" id="vl-copy-btn" type="button" style="border-color:var(--dbt);color:var(--dbt)" title="Copy details to clipboard">📋 Copy</button>
+     </div>
+    </div>
+
+    <pre class="vl-pre" id="vl-vbdy"></pre>
+
+    <div class="dr-view-foot">
+     <span class="hint" style="font-size:12px">Tap card to edit or delete</span>
+     <div class="dr-view-ac">
+      <button class="ghost dr-btn-ico" id="vl-edit" type="button" style="border-color:var(--dbt);color:var(--dbt)">
+       <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+       <span>Edit</span>
+      </button>
+      <button class="ghost dr-btn-ico" id="vl-vdel" type="button" style="color:var(--out);border-color:color-mix(in srgb,var(--out) 35%,var(--line))">
+       <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+       <span>Delete</span>
+      </button>
+     </div>
+    </div>
+   </div>
+
+   <!-- Compose / Edit Encrypted Info Form (Date, Category, Title, Details) -->
+   <div class="dr-form" id="vl-form">
+    <div class="vl-top-row">
+     <label class="tk-dlbl">
+      <span>Date</span>
+      <input id="vl-dt" type="text" readonly data-dp aria-label="Record date">
+     </label>
+     <div class="vl-cat-seg" id="vl-cat-seg" role="group" aria-label="Information category">
+      <button type="button" data-vlc="folder" class="on">📂 Folder</button>
+      <button type="button" data-vlc="ip">🌐 IP / Web</button>
+      <button type="button" data-vlc="pin">🔑 ID &amp; PIN</button>
+      <button type="button" data-vlc="other">📌 Other</button>
+     </div>
+    </div>
+
+    <input id="vl-ttl" class="dr-ttl" type="text" maxlength="100" placeholder="Title (e.g. Project Folder Structure, Web App IPs, Portal User ID &amp; PIN)…" aria-label="Record title">
+
+    <div class="vl-tpl-bar" id="vl-tpl-bar">
+     <button type="button" class="vl-tpl-btn" data-vtpl="folder">+ Folder Tree</button>
+     <button type="button" class="vl-tpl-btn" data-vtpl="ip">+ Platform / IP</button>
+     <button type="button" class="vl-tpl-btn" data-vtpl="pin">+ User ID &amp; PIN</button>
+     <button type="button" class="vl-tpl-btn" data-vins="├── " title="Insert branch">├──</button>
+     <button type="button" class="vl-tpl-btn" data-vins="└── " title="Insert last branch">└──</button>
+     <button type="button" class="vl-tpl-btn" data-vins="│   " title="Insert vertical line">│</button>
+    </div>
+
+    <textarea id="vl-bdy" class="dr-bdy vl-bdy" spellcheck="false" placeholder="Enter confidential details (project folder structure, platform info, web app IPs, user ID &amp; PIN)…"></textarea>
+
+    <div class="dr-foot">
+     <span class="dr-meta" id="vl-meta">AES-256-GCM</span>
+     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button class="ghost" id="vl-cancel" type="button" hidden style="padding:8px 12px">Cancel</button>
+      <button class="ghost" id="vl-del" type="button" hidden style="padding:8px 12px;color:var(--out);border-color:color-mix(in srgb,var(--out) 35%,var(--line))">Delete</button>
+      <button class="prim" id="vl-sv" type="button" style="padding:9px 18px;background:var(--dbt)">Encrypt &amp; save</button>
      </div>
     </div>
    </div>
@@ -920,8 +1083,8 @@ dialog.tk-dlg{--acc:var(--aed);width:min(540px,calc(100vw - 24px));max-width:540
  </div>
 </dialog>
 <script>
-try{if('caches' in window){caches.keys().then(ks=>ks.forEach(k=>{if(k.startsWith('ledger-')&&k!=='ledger-v38')caches.delete(k)}))}if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>{if(r.waiting)r.waiting.postMessage('skip');r.update()}))}}catch(e){}
+try{if('caches' in window){caches.keys().then(ks=>ks.forEach(k=>{if(k.startsWith('ledger-')&&k!=='ledger-v40')caches.delete(k)}))}if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>{if(r.waiting)r.waiting.postMessage('skip');r.update()}))}}catch(e){}
 </script>
-<script src="app.js?v=38"></script>
+<script src="app.js?v=40"></script>
 </body>
 </html>

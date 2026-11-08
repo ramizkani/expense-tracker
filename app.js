@@ -86,7 +86,8 @@ const isDark=()=>{
 const syncThemeIcon=()=>{
  const d=isDark(),openDlg=document.querySelector('dialog[open]'),dlgOpen=!!openDlg;
  document.body.classList.toggle('dlg-open',dlgOpen);
- if($('#theme-meta'))$('#theme-meta').setAttribute('content',dlgOpen?(d?'#060910':'#64686e'):(d?'#0b101b':'#e9eef5'));
+ const metaCol=d?'#0b101b':'#e9eef5';
+ if($('#theme-meta')&&$('#theme-meta').getAttribute('content')!==metaCol)$('#theme-meta').setAttribute('content',metaCol);
  const tst=$('#toast');
  if(tst){const host=openDlg||document.body;if(tst.parentNode!==host)host.appendChild(tst)}
  if(!$('#thb'))return;
@@ -146,8 +147,18 @@ const syncTaskBadge=()=>{
  }
 };
 const tksave=()=>{syncTaskBadge();try{STORE.setItem(LTK,JSON.stringify(TK))}catch(e){}stamp();schedSync()};
+const isVaultRec=r=>String((r&&r.id)||'').startsWith('vlt_');
+const vaultRecs=()=>DR.filter(r=>!r.del&&r.cipher&&isVaultRec(r)).sort((a,b)=>b.date.localeCompare(a.date)||String(b.upd||'').localeCompare(String(a.upd||'')));
+const syncVaultBadge=()=>{
+ const vCnt=vaultRecs().length,totCnt=(drDates?drDates.size:0)+vCnt;
+ if($('#vl-cnt')){$('#vl-cnt').hidden=!totCnt;$('#vl-cnt').textContent=String(totCnt)}
+ if($('#vl-tab-cnt'))$('#vl-tab-cnt').textContent=String(vCnt);
+};
 let drDates=new Set();
-const rebuildDrDates=()=>{drDates=new Set(DR.filter(x=>!x.del&&x.cipher).map(x=>x.date))};
+const rebuildDrDates=()=>{
+ drDates=new Set(DR.filter(x=>!x.del&&x.cipher&&!isVaultRec(x)).map(x=>x.date));
+ syncVaultBadge();
+};
 rebuildDrDates();
 const drsave=()=>{rebuildDrDates();try{STORE.setItem(LDR,JSON.stringify(DR));STORE.setItem(LDRV,JSON.stringify(DRV))}catch(e){}stamp();schedSync()};
 const hasDiary=dt=>drDates.has(dt);
@@ -212,7 +223,7 @@ function dlist(){
  const dc= rows.map((d)=>{
   const r=rem(d),p=paid(d),pc=d.amt?Math.min(100,Math.round(p/d.amt*100)):0,[sl,sc]=dlab(d),op=S.xp[d.id];
   const pays=d.pays.filter(p=>!p.del).sort((a,b)=>b.date.localeCompare(a.date));
-  return `<div class="mday"><div class="mday-h"><b>${esc(d.who)}</b><span class="st ${sc}">${sl} · ${pc}%</span></div><div class="mrow"><div class="mrow-l"><b><span class="tp ${d.dir==='lent'?'lent':'out'}">${d.dir==='lent'?'They owe me':'I owe them'}</span></b><span style="margin-top:4px">${dt(d.date)} · ${esc(d.note||'No notes')}</span></div><div class="mrow-r"><div class="mrow-amt"><b class="num">${fmt(c,r)} left</b><small>of ${fmt(c,d.amt)} (Paid ${fmt(c,p)})</small></div></div></div><div class="mrow" style="background:var(--bg);padding:8px 14px"><span class="hint">${pays.length} ${pays.length===1?'payment':'payments'}</span><div class="mrow-ac">${r>0?`<button class="ghost pay" data-dk="pay:${d.id}">Pay</button>`:''}<button class="ib tg" data-dk="xp:${d.id}" aria-expanded="${!!op}">${IC.dn}</button><button class="ib" data-dk="edit:${d.id}">${IC.e}</button><button class="ib d" data-dk="del:${d.id}">${IC.d}</button></div></div>${op?`<div style="padding:8px 14px;border-top:1px dashed var(--line);font-size:13px">${pays.map(y=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0"><span>${dt(y.date)} · ${esc(y.note||'Payment')}</span><span style="display:flex;align-items:center;gap:6px"><b class="num">${fmt(c,y.amt)}</b><button class="ib d" style="width:26px;height:26px" data-dk="dp:${d.id}:${y.id}">${IC.d}</button></span></div>`).join('')||'<div class="hint">No payments yet.</div>'}</div>`:''}</div>`;
+  return `<div class="mday dbt-card" data-dcard="${esc(d.id)}" tabindex="0" role="button" aria-expanded="false" aria-label="Tap to show edit and delete options"><div class="mday-h"><b>${esc(d.who)}</b><span class="st ${sc}">${sl} · ${pc}%</span></div><div class="mrow"><div class="mrow-l"><b><span class="tp ${d.dir==='lent'?'lent':'out'}">${d.dir==='lent'?'They owe me':'I owe them'}</span></b><span style="margin-top:4px">${dt(d.date)} · ${esc(d.note||'No notes')}</span></div><div class="mrow-r"><div class="mrow-amt"><b class="num">${fmt(c,r)} left</b><small>of ${fmt(c,d.amt)} (Paid ${fmt(c,p)})</small></div></div></div><div class="mrow" style="background:var(--bg);padding:8px 14px"><span class="hint">${pays.length} ${pays.length===1?'payment':'payments'} · tap card to edit</span><div class="mrow-ac">${r>0?`<button class="ghost pay" data-dk="pay:${d.id}">Pay</button>`:''}<button class="ib tg" data-dk="xp:${d.id}" aria-expanded="${!!op}">${IC.dn}</button><span class="dbt-ed-ac"><button class="ib" data-dk="edit:${d.id}" aria-label="Edit debt" title="Edit">${IC.e}</button><button class="ib d" data-dk="del:${d.id}" aria-label="Delete debt" title="Delete">${IC.d}</button></span></div></div>${op?`<div style="padding:8px 14px;border-top:1px dashed var(--line);font-size:13px">${pays.map(y=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0"><span>${dt(y.date)} · ${esc(y.note||'Payment')}</span><span style="display:flex;align-items:center;gap:6px"><b class="num">${fmt(c,y.amt)}</b><button class="ib d" style="width:26px;height:26px" data-dk="dp:${d.id}:${y.id}">${IC.d}</button></span></div>`).join('')||'<div class="hint">No payments yet.</div>'}</div>`:''}</div>`;
  }).join('');
  const body=rows.map((d,i)=>{const r=rem(d),p=paid(d),pc=d.amt?Math.min(100,Math.round(p/d.amt*100)):0,[sl,sc]=dlab(d),op=S.xp[d.id];
   const sub=`<tr class="sub"><td></td><td colspan="8"><div class="ph"><div class="pht"><b>Payment history</b><span class="n">${d.pays.filter(p=>!p.del).length} ${d.pays.filter(p=>!p.del).length===1?'payment':'payments'}</span></div>${d.pays.filter(p=>!p.del).sort((a,b)=>b.date.localeCompare(a.date)).map(y=>`<div class="pr"><span>${dt(y.date)}</span><span class="n">${esc(y.note||'Payment')}</span><b class="num">${fmt(c,y.amt)}</b><button class="ib d" data-dk="dp:${d.id}:${y.id}" aria-label="Delete payment" title="Delete payment">${IC.d}</button></div>`).join('')||'<div class="n">No payments yet.</div>'}</div></td></tr>`;
@@ -259,6 +270,8 @@ function render(){
  const appEl=$('#app');
  const openMrow=appEl&&appEl.querySelector('.mrow.tx-row.ro');
  const openMrowId=openMrow?openMrow.dataset.mrow:'';
+ const openDcard=appEl&&appEl.querySelector('.mday.dbt-card.ro');
+ const openDcardId=openDcard?openDcard.dataset.dcard:'';
  const activeEl=document.activeElement;
  const activeId=(activeEl&&(activeEl.id==='q'||activeEl.id==='dq'))?activeEl.id:'';
  const selStart=activeId?activeEl.selectionStart:null,selEnd=activeId?activeEl.selectionEnd:null;
@@ -267,19 +280,49 @@ function render(){
  lastTab=S.tab;
  if(appEl&&(lastAppHtml!==nextHtml||!appEl.firstChild)){
   lastAppHtml=nextHtml;
-  appEl.innerHTML=nextHtml;
-  if(tabChanged&&appEl.firstElementChild){
-   const cardEl=appEl.firstElementChild;
-   cardEl.classList.add('tab-in');
-   cardEl.addEventListener('animationend',()=>cardEl.classList.remove('tab-in'),{once:true});
+  const curCard=appEl.firstElementChild;
+  if(!tabChanged&&curCard&&curCard.tagName==='SECTION'){
+   const tmp=document.createElement('div');
+   tmp.innerHTML=nextHtml;
+   const nextCard=tmp.firstElementChild;
+   if(nextCard){
+    if(curCard.className!==nextCard.className)curCard.className=nextCard.className;
+    const cHead=curCard.querySelector('.head'),nHead=nextCard.querySelector('.head');
+    if(cHead&&nHead&&cHead.innerHTML!==nHead.innerHTML)cHead.innerHTML=nHead.innerHTML;
+    const cLh=curCard.querySelector('.lh'),nLh=nextCard.querySelector('.lh');
+    if(cLh&&nLh){
+     if(cLh.className!==nLh.className)cLh.className=nLh.className;
+     if(cLh.innerHTML!==nLh.innerHTML)cLh.innerHTML=nLh.innerHTML;
+    }
+    const cTb=curCard.querySelector('.tb'),nTb=nextCard.querySelector('.tb');
+    if(cTb&&nTb){
+     if(cTb.className!==nTb.className)cTb.className=nTb.className;
+     if(!activeId&&cTb.innerHTML!==nTb.innerHTML)cTb.innerHTML=nTb.innerHTML;
+    }
+    const cTbl=curCard.querySelector('#tbl'),nTbl=nextCard.querySelector('#tbl');
+    if(cTbl&&nTbl&&cTbl.innerHTML!==nTbl.innerHTML)cTbl.innerHTML=nTbl.innerHTML;
+    const cDl=curCard.querySelector('#dlist'),nDl=nextCard.querySelector('#dlist');
+    if(cDl&&nDl&&cDl.innerHTML!==nDl.innerHTML)cDl.innerHTML=nDl.innerHTML;
+   }
+  }else{
+   appEl.innerHTML=nextHtml;
+   if(tabChanged&&appEl.firstElementChild){
+    const cardEl=appEl.firstElementChild;
+    cardEl.classList.add('tab-in');
+    cardEl.addEventListener('animationend',()=>cardEl.classList.remove('tab-in'),{once:true});
+   }
   }
   if(openMrowId){
    const row=appEl.querySelector(`.mrow.tx-row[data-mrow="${CSS.escape(openMrowId)}"]`);
    if(row){row.classList.add('ro');row.setAttribute('aria-expanded','true')}
   }
+  if(openDcardId){
+   const dcard=appEl.querySelector(`.mday.dbt-card[data-dcard="${CSS.escape(openDcardId)}"]`);
+   if(dcard){dcard.classList.add('ro');dcard.setAttribute('aria-expanded','true')}
+  }
   if(activeId){
    const inp=$('#'+activeId);
-   if(inp){inp.focus();try{if(selStart!==null)inp.setSelectionRange(selStart,selEnd)}catch(e){}}
+   if(inp&&document.activeElement!==inp){inp.focus();try{if(selStart!==null)inp.setSelectionRange(selStart,selEnd)}catch(e){}}
   }
  }
  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===S.tab));
@@ -458,7 +501,17 @@ if($('#bk-file'))$('#bk-file').onchange=async e=>{
 
 let dqRaf=0,qRaf=0,drqRaf=0;
 $('#app').addEventListener('input',e=>{if(e.target.id==='dq'){S.dq=e.target.value;cancelAnimationFrame(dqRaf);dqRaf=requestAnimationFrame(()=>{if($('#dlist'))$('#dlist').innerHTML=dlist()})}});
-$('#app').addEventListener('click',e=>{const b=e.target.closest('[data-dk]');if(!b)return;const[a,i,j]=b.dataset.dk.split(':');
+$('#app').addEventListener('click',e=>{const b=e.target.closest('[data-dk]');
+ if(!b){
+  const dc=e.target.closest('[data-dcard]');
+  if(dc){
+   document.querySelectorAll('#dlist .mday.dbt-card.ro').forEach(r=>{if(r!==dc){r.classList.remove('ro');r.setAttribute('aria-expanded','false')}});
+   const o=dc.classList.toggle('ro');
+   dc.setAttribute('aria-expanded',o);
+  }
+  return;
+ }
+ const[a,i,j]=b.dataset.dk.split(':');
  if(a==='manage'){S.dcur=S.tab;S.tab='D';render()}
  else if(a==='cur'){S.dcur=i;render()}else if(a==='st'){S.ds=i;render()}
  else if(a==='add')openDb();else if(a==='edit')openDb(i);else if(a==='pay')openPay(i);
@@ -512,6 +565,7 @@ function calOpen(inp){CI=inp;const [y,m]=(inp.value||iso(0)).split('-').map(Numb
  cal.style.left=Math.min(Math.max(8,r.left-hr.left),Math.max(8,maxW-298))+'px';cal.style.top=t+'px'}
 document.addEventListener('click',e=>{
  if(!e.target.closest('.mrow.tx-row'))document.querySelectorAll('#tbl .mrow.tx-row.ro').forEach(r=>{r.classList.remove('ro');r.setAttribute('aria-expanded','false')});
+ if(!e.target.closest('.mday.dbt-card'))document.querySelectorAll('#dlist .mday.dbt-card.ro').forEach(r=>{r.classList.remove('ro');r.setAttribute('aria-expanded','false')});
  if(!e.target.closest('.tk-card'))document.querySelectorAll('#tk-list .tk-card.ro').forEach(r=>{r.classList.remove('ro');r.setAttribute('aria-expanded','false')});
  const dp=e.target.closest('[data-dp]');if(dp){calOpen(dp);return}
  if(e.target.closest('.cal')){const n=e.target.closest('[data-cn]'),d=e.target.closest('[data-cd]');
@@ -520,7 +574,7 @@ document.addEventListener('click',e=>{
   return}
  cal.hidden=true});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!cal.hidden){e.preventDefault();cal.hidden=true}
- if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('[data-mrow],[data-tk-card]')){e.preventDefault();e.target.click();return}
+ if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('[data-mrow],[data-dcard],[data-tk-card]')){e.preventDefault();e.target.click();return}
  if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('[data-dp]')){e.preventDefault();calOpen(e.target)}});
 addEventListener('online',()=>{renderStatus();sync()});addEventListener('offline',renderStatus);
 
@@ -537,7 +591,10 @@ const normTasks=(arr,defDt)=>Array.isArray(arr)?arr.map(t=>{
  return {id:String(t.id||uid()),text:String(t.text||'').trim(),cat:normTaskCat(t.cat),done,initDate,doneDate:done?fixDate(t.doneDate||defDt||iso(0)):''};
 }).filter(t=>t.text):[];
 const tasksEqual=(a,b)=>{const x=normTasks(a),y=normTasks(b);if(x.length!==y.length)return false;for(let i=0;i<x.length;i++){if(x[i].text!==y[i].text||x[i].done!==y[i].done||x[i].cat!==y[i].cat||x[i].initDate!==y[i].initDate||x[i].doneDate!==y[i].doneDate)return false}return true};
-let DIARY_KEY=null,DIARY_DEK_B64='',DIARY_CACHE={},DIARY_DRAFTS={},drTasks=[],drTaskCat='personal',drLastDraftDate='',drDraftJob=0,drExplicitDate=false,drDate=iso(0),drEditMode=false,drChPw=false,drRec=false,drLockTm=null,drBgJob=0;
+const normVaultCat=c=>['folder','ip','pin','other'].includes(c)?c:'other';
+const vaultCatLabel=c=>({folder:'📂 Folder Tree',ip:'🌐 Platform / IP',pin:'🔑 User ID & PIN',other:'📌 Info Note'}[normVaultCat(c)]);
+const vaultCatShort=c=>({folder:'📂 Folder',ip:'🌐 IP / Web',pin:'🔑 ID & PIN',other:'📌 Other'}[normVaultCat(c)]);
+let DIARY_KEY=null,DIARY_DEK_B64='',DIARY_CACHE={},DIARY_DRAFTS={},VAULT_CACHE={},VAULT_DRAFT=null,drMode='diary',vlId='',vlEditMode=false,vlCat='folder',vlFCat='all',vlQ='',vlMasked=false,vlqRaf=0,vlDraftJob=0,drTasks=[],drTaskCat='personal',drLastDraftDate='',drDraftJob=0,drExplicitDate=false,drDate=iso(0),drEditMode=false,drChPw=false,drRec=false,drLockTm=null,drBgJob=0;
 async function deriveDiaryKey(secret,saltBytes){
  const bk=await crypto.subtle.importKey('raw',tEnc.encode(secret),'PBKDF2',false,['deriveKey']);
  return crypto.subtle.deriveKey({name:'PBKDF2',salt:saltBytes,iterations:100000,hash:'SHA-256'},bk,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
@@ -582,6 +639,15 @@ async function decryptDiaryFast(){
  let latestDraftDt='',latestDraftTs='';
  for(const [dt,cipher] of Object.entries(DR_DRAFTS)){
   if(job!==drBgJob||!DIARY_KEY)return;
+  if(dt==='__vault__'){
+   if(!VAULT_DRAFT&&cipher){
+    try{
+     const vd=await decDiaryObj(key,cipher);
+     if(vd&&(vd.title||vd.body))VAULT_DRAFT=vd;
+    }catch(e){}
+   }
+   continue;
+  }
   if(!DIARY_DRAFTS[dt]&&cipher){
    try{
     const d=await decDiaryObj(key,cipher);
@@ -600,13 +666,18 @@ async function decryptDiaryFast(){
   drLastDraftDate=latestDraftDt;
   if(!drExplicitDate)drDate=latestDraftDt;
  }
- const active=DR.filter(r=>!r.del&&r.cipher).sort((a,b)=>b.date.localeCompare(a.date));
+ const vList=vaultRecs();
+ for(const vr of vList.slice(0,30)){
+  if(job!==drBgJob||!DIARY_KEY)return;
+  if(!VAULT_CACHE[vr.id]){try{VAULT_CACHE[vr.id]=await decDiaryObj(key,vr.cipher)}catch(e){}}
+ }
+ const active=DR.filter(r=>!r.del&&r.cipher&&!isVaultRec(r)).sort((a,b)=>b.date.localeCompare(a.date));
  const urgent=active.filter(r=>r.date===drDate).concat(active.filter(r=>r.date!==drDate).slice(0,20));
  for(const r of urgent){
   if(job!==drBgJob||!DIARY_KEY)return;
   if(!DIARY_CACHE[r.date]){try{DIARY_CACHE[r.date]=await decDiaryObj(key,r.cipher)}catch(e){}}
  }
- const rest=active.slice(20);
+ const rest=vList.slice(30).concat(active.slice(20));
  if(!rest.length)return;
  let i=0;
  const step=async()=>{
@@ -614,10 +685,17 @@ async function decryptDiaryFast(){
   const end=Math.min(i+50,rest.length);
   for(;i<end;i++){
    const r=rest[i];
-   if(!DIARY_CACHE[r.date]){try{DIARY_CACHE[r.date]=await decDiaryObj(key,r.cipher)}catch(e){}}
+   if(isVaultRec(r)){
+    if(!VAULT_CACHE[r.id]){try{VAULT_CACHE[r.id]=await decDiaryObj(key,r.cipher)}catch(e){}}
+   }else{
+    if(!DIARY_CACHE[r.date]){try{DIARY_CACHE[r.date]=await decDiaryObj(key,r.cipher)}catch(e){}}
+   }
   }
   if(job!==drBgJob||!DIARY_KEY)return;
-  if($('#drd')&&$('#drd').open&&!drChPw&&!drRec)renderDiarySidebar();
+  if($('#drd')&&$('#drd').open&&!drChPw&&!drRec){
+   if(drMode==='vault')renderVaultSidebar();
+   else renderDiarySidebar();
+  }
   if(i<rest.length)setTimeout(step,0);
  };
  setTimeout(step,10);
@@ -629,7 +707,7 @@ function syncDiaryDot(){
  if($('#dr-lk-btn'))$('#dr-lk-btn').hidden=!un;
 }
 function updateDraftUiMeta(){
- const hasDraft=!!DIARY_DRAFTS[drDate],rec=DR.find(x=>!x.del&&x.date===drDate&&x.cipher);
+ const hasDraft=!!DIARY_DRAFTS[drDate],rec=DR.find(x=>!x.del&&!isVaultRec(x)&&x.date===drDate&&x.cipher);
  if($('#dr-meta')){
   $('#dr-meta').className='dr-meta'+(hasDraft?' draft':'');
   $('#dr-meta').title=hasDraft?'Unsaved draft in memory':'';
@@ -713,16 +791,55 @@ function captureDiaryDraft(){
  setTimeout(()=>{if(job===drDraftJob)persistDiaryDraftDate(dt)},120);
  return true;
 }
+async function persistVaultDraft(){
+ if(!DIARY_KEY)return false;
+ if(!VAULT_DRAFT){
+  if(DR_DRAFTS.__vault__){delete DR_DRAFTS.__vault__;saveDrDrafts()}
+  return false;
+ }
+ try{
+  DR_DRAFTS.__vault__=await encDiaryObj(DIARY_KEY,VAULT_DRAFT);
+  saveDrDrafts();
+  return true;
+ }catch(e){return false}
+}
+function captureVaultDraft(){
+ if(!DIARY_KEY||!$('#vl-form')||$('#vl-form').hidden||!$('#vl-ttl')||!$('#vl-bdy'))return false;
+ const title=$('#vl-ttl').value,body=$('#vl-bdy').value,date=fixDate(($('#vl-dt')&&$('#vl-dt').value)||iso(0)),cat=normVaultCat(vlCat);
+ const cur=(vlId&&vlId!=='__new__'&&VAULT_CACHE[vlId])?VAULT_CACHE[vlId]:{title:'',body:'',cat:'folder',date:iso(0)};
+ const isSame=title.trim()===(cur.title||'').trim()&&body.trim()===(cur.body||'').trim()&&cat===normVaultCat(cur.cat)&&date===(cur.date||iso(0));
+ const isEmpty=!title.trim()&&!body.trim();
+ if(isSame||isEmpty){
+  if(VAULT_DRAFT){
+   VAULT_DRAFT=null;
+   delete DR_DRAFTS.__vault__;
+   saveDrDrafts();
+   if($('#vl-meta')){$('#vl-meta').className='dr-meta';$('#vl-meta').textContent='AES-256-GCM · Zero-knowledge'}
+  }
+  return false;
+ }
+ VAULT_DRAFT={targetId:vlId||'__new__',date,cat,title,body,ts:now()};
+ if($('#vl-meta')){$('#vl-meta').className='dr-meta draft';$('#vl-meta').textContent='📝 Draft in memory · AES-256-GCM'}
+ const job=++vlDraftJob;
+ setTimeout(()=>{if(job===vlDraftJob)persistVaultDraft()},120);
+ return true;
+}
 async function flushDiaryDraft(){
  captureDiaryDraft();
+ captureVaultDraft();
+ let did=false;
  if(DIARY_DRAFTS[drDate]){
   await persistDiaryDraftDate(drDate);
-  return true;
+  did=true;
  }
- return false;
+ if(VAULT_DRAFT){
+  await persistVaultDraft();
+  did=true;
+ }
+ return did;
 }
 function lockDiary(){
- drBgJob++;DIARY_KEY=null;DIARY_DEK_B64='';DIARY_CACHE={};DIARY_DRAFTS={};drTasks=[];drEditMode=false;drChPw=false;drRec=false;
+ drBgJob++;DIARY_KEY=null;DIARY_DEK_B64='';DIARY_CACHE={};DIARY_DRAFTS={};VAULT_CACHE={};VAULT_DRAFT=null;vlEditMode=false;vlMasked=false;drTasks=[];drEditMode=false;drChPw=false;drRec=false;
  if($('#dr-ttl'))$('#dr-ttl').value='';
  if($('#dr-bdy'))$('#dr-bdy').value='';
  if($('#dr-tinp'))$('#dr-tinp').value='';
@@ -732,6 +849,11 @@ function lockDiary(){
  if($('#dr-vbdy'))$('#dr-vbdy').textContent='';
  if($('#dr-list'))$('#dr-list').innerHTML='';
  if($('#dr-sum'))$('#dr-sum').innerHTML='';
+ if($('#vl-ttl'))$('#vl-ttl').value='';
+ if($('#vl-bdy'))$('#vl-bdy').value='';
+ if($('#vl-vttl'))$('#vl-vttl').textContent='';
+ if($('#vl-vbdy')){$('#vl-vbdy').textContent='';$('#vl-vbdy').classList.remove('masked')}
+ if($('#vl-list'))$('#vl-list').innerHTML='';
  if($('#dr-upw'))$('#dr-upw').value='';
  syncDiaryDot();
 }
@@ -794,7 +916,7 @@ async function renderDiaryDate(keepInputs){
    </div>
    ${sm.list.length?`<div class="dr-sum-tx">${sm.list.map(x=>`<div class="dr-sum-r"><span><b>${esc(x.cat)}</b>${x.note?' · '+esc(x.note):''}</span><span class="num amt ${x.type}">${x.type==='out'?'−':'+'}${fmt(x.cur,x.amt)}</span></div>`).join('')}</div>`:`<div class="hint" style="font-size:12px">No AED or INR transactions recorded on ${esc(drDate)}.</div>`}`;
  }
- const rec=DR.find(x=>!x.del&&x.date===drDate&&x.cipher);
+ const rec=DR.find(x=>!x.del&&!isVaultRec(x)&&x.date===drDate&&x.cipher);
  if(rec&&DIARY_KEY&&!DIARY_CACHE[drDate]){
   try{DIARY_CACHE[drDate]=await decDiaryObj(DIARY_KEY,rec.cipher)}catch(e){}
  }
@@ -802,18 +924,22 @@ async function renderDiaryDate(keepInputs){
  const savedNote=DIARY_CACHE[drDate]||{title:'',body:'',tasks:[]};
  const n=draft||savedNote;
  const showEdit=!rec||drEditMode||!!draft;
- if($('#dr-view'))$('#dr-view').hidden=showEdit;
+ if($('#dr-view')){
+  $('#dr-view').hidden=showEdit;
+  if(!keepInputs){$('#dr-view').classList.remove('ro');$('#dr-view').setAttribute('aria-expanded','false')}
+ }
  if($('#dr-form'))$('#dr-form').hidden=!showEdit;
  if(!showEdit&&rec){
   const tStr=new Date(rec.upd).toLocaleTimeString('en',{hour:'numeric',minute:'2-digit'});
-  if($('#dr-vmeta'))$('#dr-vmeta').textContent=`AES-256-GCM · Saved ${tStr}`;
+  if($('#dr-vmeta'))$('#dr-vmeta').textContent=`AES-256-GCM · Saved ${tStr} · Tap card for options`;
   if($('#dr-vttl'))$('#dr-vttl').textContent=savedNote.title||'Daily note';
   const vTasks=normTasks(savedNote.tasks,drDate);
   if($('#dr-vtasks')){
    $('#dr-vtasks').hidden=!vTasks.length;
    if(vTasks.length){
     const vDone=vTasks.filter(t=>t.done).length,pct=Math.round(vDone/vTasks.length*100);
-    $('#dr-vtasks').innerHTML=`<div class="dr-vthd"><span>Daily Tasks · Tap to toggle</span><span class="dr-cnt-pill${vDone===vTasks.length?' ok':''}">${vDone}/${vTasks.length} done</span></div><div class="dr-tpbar"><i style="width:${pct}%"></i></div><div class="dr-vtlist">${vTasks.map(t=>{const cat=normTaskCat(t.cat);return `<button type="button" class="dr-vtrow${t.done?' done':''}" data-vt-tog="${esc(t.id)}"><span class="dr-tchk${t.done?' on':''}">✓</span><span><strong class="tk-cat-txt ${cat}" style="margin-right:6px">${taskCatLabel(cat)}</strong>${esc(t.text)}</span></button>`}).join('')}</div>`;
+    $('#dr-vtasks').open=true;
+    $('#dr-vtasks').innerHTML=`<summary class="dr-vthd"><span>Daily Tasks · Tap to toggle</span><span class="dr-cnt-pill${vDone===vTasks.length?' ok':''}">${vDone}/${vTasks.length} done</span></summary><div class="dr-vtasks-b"><div class="dr-tpbar"><i style="width:${pct}%"></i></div><div class="dr-vtlist">${vTasks.map(t=>{const cat=normTaskCat(t.cat);return `<button type="button" class="dr-vtrow${t.done?' done':''}" data-vt-tog="${esc(t.id)}"><span class="dr-tchk${t.done?' on':''}">✓</span><span><strong class="tk-cat-txt ${cat}" style="margin-right:6px">${taskCatLabel(cat)}</strong>${esc(t.text)}</span></button>`}).join('')}</div></div>`;
    }else $('#dr-vtasks').innerHTML='';
   }
   if($('#dr-vbdy')){
@@ -827,6 +953,7 @@ async function renderDiaryDate(keepInputs){
   if($('#dr-bdy'))$('#dr-bdy').value=n.body||'';
   if($('#dr-tinp'))$('#dr-tinp').value='';
   drTasks=normTasks(n.tasks);
+  if($('#dr-tbox'))$('#dr-tbox').open=drTasks.length>0;
   renderDiaryTasksEditor();
  }
  if($('#dr-del'))$('#dr-del').hidden=!rec;
@@ -870,7 +997,10 @@ function buildHistoryItems(){
   if(t.del)items.push({mode:'del',kind:'task',id:t.id,ts:t.upd||new Date(t.ts||Date.now()).toISOString(),tag:'Task',title:`${taskCatLabel(t.cat)} · ${t.text}`,sub:`Init: ${t.initDate}${t.done&&t.doneDate?' · Done: '+t.doneDate:' · Pending'}`});
  });
  DR.forEach(r=>{
-  if(r.del&&r.cipher)items.push({mode:'del',kind:'diary',id:r.id,ts:r.upd||now(),tag:'Diary Note',title:`Encrypted Note · ${r.date}`,sub:`AES-256-GCM record`});
+  if(r.del&&r.cipher){
+   const isV=isVaultRec(r),vc=isV?VAULT_CACHE[r.id]:null;
+   items.push({mode:'del',kind:'diary',id:r.id,ts:r.upd||now(),tag:isV?'Info Vault':'Diary Note',title:isV?(vc&&vc.title?`${vaultCatShort(vc.cat)} · ${vc.title}`:`Encrypted Info · ${r.date}`):`Encrypted Note · ${r.date}`,sub:`AES-256-GCM record · ${r.date}`});
+  }
  });
  HIST.forEach(h=>{
   if(!h.done)items.push({mode:'edit',kind:h.kind,id:h.hid,ts:h.ts||now(),tag:'Edited',title:h.label||'Modified record',sub:h.sub||''});
@@ -913,8 +1043,14 @@ if($('#hi-list'))$('#hi-list').onclick=async e=>{
   }else if(kind==='diary'){
    const r=DR.find(x=>x.id===id);if(!r)return;
    r.del=0;r.upd=ts;
-   if(DIARY_KEY&&r.cipher){try{DIARY_CACHE[r.date]=await decDiaryObj(DIARY_KEY,r.cipher)}catch(err){}}
-   drsave();render();toast('Encrypted diary note restored');
+   if(DIARY_KEY&&r.cipher){
+    try{
+     const dec=await decDiaryObj(DIARY_KEY,r.cipher);
+     if(isVaultRec(r))VAULT_CACHE[r.id]=dec;
+     else DIARY_CACHE[r.date]=dec;
+    }catch(err){}
+   }
+   drsave();render();toast(isVaultRec(r)?'Encrypted vault record restored':'Encrypted diary note restored');
   }
  }else if(mode==='edit'){
   const h=HIST.find(x=>x.hid===id);if(!h)return;
@@ -937,8 +1073,14 @@ if($('#hi-list'))$('#hi-list').onclick=async e=>{
   }else if(h.kind==='diary'&&h.prevCipher){
    const r=DR.find(x=>x.id===h.targetId);if(!r)return;
    r.cipher=h.prevCipher;r.del=0;r.upd=ts;
-   if(DIARY_KEY){try{DIARY_CACHE[r.date]=await decDiaryObj(DIARY_KEY,r.cipher)}catch(err){}}
-   h.done=1;saveHist();drsave();render();toast('Diary note reverted to previous version');
+   if(DIARY_KEY){
+    try{
+     const dec=await decDiaryObj(DIARY_KEY,r.cipher);
+     if(isVaultRec(r))VAULT_CACHE[r.id]=dec;
+     else DIARY_CACHE[r.date]=dec;
+    }catch(err){}
+   }
+   h.done=1;saveHist();drsave();render();toast(isVaultRec(r)?'Vault record reverted to previous version':'Diary note reverted to previous version');
   }
  }
  renderHistoryPane();
@@ -978,33 +1120,70 @@ function renderSettingsTab(){
 
 function renderDiaryModal(){
  syncDiaryDot();
+ syncVaultBadge();
  const hasV=!!(DRV&&DRV.v),un=!!DIARY_KEY;
  if($('#drd'))$('#drd').classList.toggle('un',un);
+ if($('#dr-hd-ttl'))$('#dr-hd-ttl').textContent=drMode==='vault'?'Encrypted Info Vault':'Daily Diary & Vault';
+ if($('#dr-mbar')){
+  $('#dr-mbar').hidden=!un;
+  document.querySelectorAll('#dr-mbar [data-drm]').forEach(b=>b.classList.toggle('on',b.dataset.drm===drMode));
+ }
  if($('#dr-lock'))$('#dr-lock').hidden=un;
- if($('#dr-work'))$('#dr-work').hidden=!un;
+ if($('#dr-work'))$('#dr-work').hidden=!un||drMode!=='diary';
+ if($('#dr-vault'))$('#dr-vault').hidden=!un||drMode!=='vault';
  if(!un){
   if($('#dr-uer'))$('#dr-uer').textContent='';
-  if($('#dr-upw'))$('#dr-upw').placeholder=hasV?'Enter password':'Create a password to start';
-  if($('#dr-ubtn'))$('#dr-ubtn').textContent=hasV?'Unlock diary':'Set password & open diary';
+  if($('#dr-upw'))$('#dr-upw').placeholder=hasV?'Enter vault password':'Create a password to start';
+  if($('#dr-ubtn'))$('#dr-ubtn').textContent=hasV?'Unlock Diary & Vault':'Set password & unlock';
   if($('#dr-uhint')){$('#dr-uhint').hidden=!(hasV&&DRV.hint);$('#dr-uhint').textContent=DRV.hint?'Hint: '+DRV.hint:''}
+ }else if(drMode==='vault'){
+  const vList=vaultRecs();
+  if(VAULT_DRAFT&&!vlId){
+   vlId=VAULT_DRAFT.targetId||'__new__';
+   vlEditMode=true;
+  }else if(!vlId||(vlId!=='__new__'&&!vList.some(x=>x.id===vlId))){
+   if(vList.length){vlId=vList[0].id;vlEditMode=false}
+   else{vlId='__new__';vlEditMode=true}
+  }
+  renderVaultSidebar();
+  renderVaultMain(false);
  }else{
   renderDiarySidebar();
   renderDiaryDate(false);
  }
 }
-function openDiary(dt){
- if(dt){drDate=fixDate(dt);drExplicitDate=true}
- else{
-  drExplicitDate=false;
-  if(DIARY_KEY&&drLastDraftDate&&DIARY_DRAFTS[drLastDraftDate])drDate=drLastDraftDate;
-  else if(!drDate)drDate=iso(0);
+function openDiary(dt,mode){
+ if(dt)drMode='diary';
+ else if(mode)drMode=mode==='vault'?'vault':'diary';
+ else drMode=drMode==='vault'?'vault':'diary';
+ if(drMode==='diary'){
+  if(dt){drDate=fixDate(dt);drExplicitDate=true}
+  else{
+   drExplicitDate=false;
+   if(DIARY_KEY&&drLastDraftDate&&DIARY_DRAFTS[drLastDraftDate])drDate=drLastDraftDate;
+   else if(!drDate)drDate=iso(0);
+  }
+  drEditMode=false;
+ }else{
+  const vList=vaultRecs();
+  if(VAULT_DRAFT){vlId=VAULT_DRAFT.targetId||'__new__';vlEditMode=true}
+  else if(!vlId||(vlId!=='__new__'&&!vList.some(x=>x.id===vlId))){
+   if(vList.length){vlId=vList[0].id;vlEditMode=false}
+   else{vlId='__new__';vlEditMode=true}
+  }
  }
- drEditMode=false;
  renderDiaryModal();
  if($('#drd')&&!$('#drd').open)$('#drd').showModal();
  if(!DIARY_KEY&&$('#dr-upw')){$('#dr-upw').value='';$('#dr-upw').focus()}
 }
-if($('#drb'))$('#drb').onclick=()=>openDiary();
+if($('#drb'))$('#drb').onclick=()=>openDiary(null,drMode);
+if($('#dr-mbar'))$('#dr-mbar').onclick=async e=>{
+ const b=e.target.closest('[data-drm]');
+ if(!b||b.dataset.drm===drMode)return;
+ await flushDiaryDraft();
+ drMode=b.dataset.drm;
+ renderDiaryModal();
+};
 if($('#drd'))$('#drd').addEventListener('close',()=>{if(DIARY_KEY)flushDiaryDraft()});
 if($('#dr-cx'))$('#dr-cx').onclick=async()=>{
  await flushDiaryDraft();
@@ -1014,7 +1193,7 @@ if($('#dr-lk-btn'))$('#dr-lk-btn').onclick=async()=>{
  await flushDiaryDraft();
  lockDiary();renderDiaryModal();
  if($('#dr-upw'))$('#dr-upw').focus();
- toast('Diary vault locked');
+ toast('Vault locked');
 };
 if($('#dr-to-st'))$('#dr-to-st').onclick=async()=>{await flushDiaryDraft();if($('#drd'))$('#drd').close();openSettings('diary')};
 
@@ -1031,7 +1210,7 @@ async function tryUnlockDiary(){
    DRV={v:pwWrap,q:'',r:'',t:tokWrap,hint:'',upd:now()};
    DIARY_KEY=key;DIARY_DEK_B64=dekB64;
    $('#dr-upw').value='';$('#dr-uer').textContent='';
-   drsave();renderDiaryModal();toast('Diary password set & unlocked');
+   drsave();renderDiaryModal();toast('Vault password set & unlocked');
   }catch(e){$('#dr-uer').textContent='Could not initialize Web Crypto vault.'}
   return;
  }
@@ -1045,12 +1224,13 @@ async function tryUnlockDiary(){
    const dekB64=b64e(rawDek),newKey=await importRawDek(dekB64),ts=now();
    for(const r of DR){
     if(r.del||!r.cipher)continue;
-    const plain=DIARY_CACHE[r.date]||await decDiaryObj(DIARY_KEY,r.cipher);
+    const plain=(isVaultRec(r)?VAULT_CACHE[r.id]:DIARY_CACHE[r.date])||await decDiaryObj(DIARY_KEY,r.cipher);
     r.cipher=await encDiaryObj(newKey,plain);r.upd=ts;
    }
    for(const [dt,d] of Object.entries(DIARY_DRAFTS)){
     DR_DRAFTS[dt]=await encDiaryObj(newKey,d);
    }
+   if(VAULT_DRAFT)DR_DRAFTS.__vault__=await encDiaryObj(newKey,VAULT_DRAFT);
    saveDrDrafts();
    DRV.v=await wrapDekWithSecret(pw,dekB64);
    if(tok)DRV.t=await wrapDekWithSecret(tok,dekB64);
@@ -1105,7 +1285,7 @@ if($('#dr-csv'))$('#dr-csv').onclick=async()=>{
    dekB64=b64e(rawDek);key=await importRawDek(dekB64);
    for(const r of DR){
     if(r.del||!r.cipher)continue;
-    const plain=DIARY_CACHE[r.date]||await decDiaryObj(DIARY_KEY,r.cipher);
+    const plain=(isVaultRec(r)?VAULT_CACHE[r.id]:DIARY_CACHE[r.date])||await decDiaryObj(DIARY_KEY,r.cipher);
     r.cipher=await encDiaryObj(key,plain);r.upd=ts;
    }
    DRV.v=await wrapDekWithSecret(effPw,dekB64);
@@ -1196,6 +1376,7 @@ const addDiaryTaskFromInput=()=>{
  const txt=inp.value.trim();if(!txt)return;
  drTasks.push({id:uid(),text:txt,cat:drTaskCat,done:false,initDate:drDate,doneDate:''});
  inp.value='';
+ if($('#dr-tbox'))$('#dr-tbox').open=true;
  renderDiaryTasksEditor();
  captureDiaryDraft();
  renderDiarySidebar();
@@ -1203,10 +1384,12 @@ const addDiaryTaskFromInput=()=>{
 };
 if($('#dr-tbtn'))$('#dr-tbtn').onclick=addDiaryTaskFromInput;
 if($('#dr-tinp'))$('#dr-tinp').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addDiaryTaskFromInput()}});
-if($('#dr-tcarry'))$('#dr-tcarry').onclick=()=>{
+if($('#dr-tcarry'))$('#dr-tcarry').onclick=e=>{
+ e.preventDefault();e.stopPropagation();
  const prev=getUnfinishedPrevTasks();
  if(!prev.length)return;
  drTasks.push(...prev);
+ if($('#dr-tbox'))$('#dr-tbox').open=true;
  renderDiaryTasksEditor();
  captureDiaryDraft();
  renderDiarySidebar();
@@ -1244,7 +1427,7 @@ if($('#dr-vtasks'))$('#dr-vtasks').addEventListener('click',async e=>{
  renderDiaryDate(false);
  renderDiarySidebar();
  const cipher=await encDiaryObj(DIARY_KEY,cur);
- const rec=DR.find(x=>!x.del&&x.date===drDate);
+ const rec=DR.find(x=>!x.del&&!isVaultRec(x)&&x.date===drDate);
  if(rec){rec.cipher=cipher;rec.upd=now();drsave()}
 });
 const shiftDiaryDate=async delta=>{
@@ -1275,7 +1458,25 @@ if($('#dr-ins'))$('#dr-ins').onclick=()=>{
  captureDiaryDraft();
  b.focus();
 };
-if($('#dr-edit'))$('#dr-edit').onclick=()=>{
+if($('#dr-view')){
+ $('#dr-view').addEventListener('click',e=>{
+  if(e.target.closest('summary,[data-vt-tog],#dr-edit,#dr-vdel'))return;
+  const sel=window.getSelection&&window.getSelection();
+  if(sel&&String(sel).trim().length>0)return;
+  const o=$('#dr-view').classList.toggle('ro');
+  $('#dr-view').setAttribute('aria-expanded',o);
+ });
+ $('#dr-view').addEventListener('keydown',e=>{
+  if(e.target!==$('#dr-view'))return;
+  if(e.key==='Enter'||e.key===' '){
+   e.preventDefault();
+   const o=$('#dr-view').classList.toggle('ro');
+   $('#dr-view').setAttribute('aria-expanded',o);
+  }
+ });
+}
+if($('#dr-edit'))$('#dr-edit').onclick=e=>{
+ e.stopPropagation();
  drEditMode=true;
  renderDiaryDate(false);
  if($('#dr-bdy'))$('#dr-bdy').focus();
@@ -1319,7 +1520,7 @@ if($('#dr-sv'))$('#dr-sv').onclick=async()=>{
  requestAnimationFrame(()=>render());
 };
 const deleteCurrentDiaryNote=()=>{
- const rec=DR.find(x=>!x.del&&x.date===drDate);
+ const rec=DR.find(x=>!x.del&&!isVaultRec(x)&&x.date===drDate);
  if(!rec)return;
  const backupCipher=rec.cipher,backupCache=DIARY_CACHE[drDate],dt=drDate;
  rec.del=1;rec.upd=now();delete DIARY_CACHE[dt];
@@ -1337,6 +1538,303 @@ const deleteCurrentDiaryNote=()=>{
 };
 if($('#dr-del'))$('#dr-del').onclick=deleteCurrentDiaryNote;
 if($('#dr-vdel'))$('#dr-vdel').onclick=deleteCurrentDiaryNote;
+
+// ---- Encrypted Info Vault (Folder Structure, Platform/IPs, User ID & PIN, Confidential Details) ----
+const DEFAULT_TPL_TITLES=['Project Folder Structure','Platform & Web App IPs','User ID & PIN Credentials'];
+function syncVaultCatUi(){
+ document.querySelectorAll('#vl-cat-seg button').forEach(b=>b.classList.toggle('on',b.dataset.vlc===vlCat));
+}
+function renderVaultSidebar(){
+ syncVaultBadge();
+ const vList=vaultRecs();
+ const cnts={all:vList.length,folder:0,ip:0,pin:0,other:0};
+ vList.forEach(r=>{
+  const n=VAULT_CACHE[r.id]||{cat:'other'};
+  const c=normVaultCat(n.cat);
+  cnts[c]=(cnts[c]||0)+1;
+ });
+ document.querySelectorAll('#vl-fcat button').forEach(b=>{
+  const fc=b.dataset.vlf||b.dataset.vfc||'all';
+  b.classList.toggle('on',fc===vlFCat);
+  if(fc==='all')b.textContent=cnts.all?`All (${cnts.all})`:'All';
+  else if(fc==='folder')b.textContent=cnts.folder?`📂 Folder (${cnts.folder})`:'📂 Folder';
+  else if(fc==='ip')b.textContent=cnts.ip?`🌐 IP / Web (${cnts.ip})`:'🌐 IP / Web';
+  else if(fc==='pin')b.textContent=cnts.pin?`🔑 ID & PIN (${cnts.pin})`:'🔑 ID & PIN';
+  else if(fc==='other')b.textContent=cnts.other?`📌 Other (${cnts.other})`:'📌 Other';
+ });
+ const listEl=$('#vl-list');
+ if(!listEl)return;
+ const q=vlQ.trim().toLowerCase();
+ const rows=vList.filter(r=>{
+  const n=VAULT_CACHE[r.id]||{title:'',body:'',cat:'other',date:r.date};
+  const cat=normVaultCat(n.cat);
+  if(vlFCat!=='all'&&cat!==vlFCat)return false;
+  if(q){
+   const hay=((n.title||'')+' '+(n.body||'')+' '+r.date+' '+vaultCatLabel(cat)).toLowerCase();
+   if(!hay.includes(q))return false;
+  }
+  return true;
+ });
+ let html='';
+ if(VAULT_DRAFT&&VAULT_DRAFT.targetId==='__new__'){
+  const dCat=normVaultCat(VAULT_DRAFT.cat);
+  html+=`<button type="button" class="dr-item${vlId==='__new__'?' on':''}" data-vl-item="__new__"><div class="dr-item-top"><span>${esc(fmtTaskDate(VAULT_DRAFT.date||iso(0)))}</span><span>📝 Draft</span></div><b>${esc((VAULT_DRAFT.title||'').trim()||'Unsaved encrypted info')}</b><small>${esc(vaultCatShort(dCat))} · Draft in memory</small></button>`;
+ }
+ html+=rows.map(r=>{
+  const hasDraft=VAULT_DRAFT&&VAULT_DRAFT.targetId===r.id;
+  const n=hasDraft?VAULT_DRAFT:(VAULT_CACHE[r.id]||{title:'Encrypted record',body:'',cat:'other',date:r.date});
+  const cat=normVaultCat(n.cat),dtStr=fmtTaskDate(n.date||r.date);
+  const preview=String(n.body||'').replace(/\s+/g,' ').trim().slice(0,42);
+  return `<button type="button" class="dr-item${r.id===vlId?' on':''}" data-vl-item="${esc(r.id)}"><div class="dr-item-top"><span>${esc(dtStr)}</span><span>${hasDraft?'📝':'🔒 AES'}</span></div><b>${esc((n.title||'').trim()||vaultCatLabel(cat))}</b><small>${esc(vaultCatShort(cat))}${preview?' · '+esc(preview):''}</small></button>`;
+ }).join('');
+ listEl.innerHTML=html||`<div class="hint" style="padding:10px;text-align:center">${vList.length?'No vault items match this filter.':'No encrypted records yet. Tap "+ New Encrypted Info" above.'}</div>`;
+}
+async function renderVaultMain(keepInputs){
+ const vList=vaultRecs();
+ const rec=(vlId&&vlId!=='__new__')?vList.find(x=>x.id===vlId):null;
+ if(rec&&DIARY_KEY&&!VAULT_CACHE[rec.id]){
+  try{VAULT_CACHE[rec.id]=await decDiaryObj(DIARY_KEY,rec.cipher)}catch(e){}
+ }
+ const hasDraft=VAULT_DRAFT&&VAULT_DRAFT.targetId===(rec?rec.id:'__new__');
+ const saved=rec?(VAULT_CACHE[rec.id]||{title:'',body:'',cat:'folder',date:rec.date}):{title:'',body:'',cat:vlFCat!=='all'?vlFCat:'folder',date:iso(0)};
+ const cur=hasDraft?VAULT_DRAFT:saved;
+ const showForm=!rec||vlEditMode||!!hasDraft;
+ if($('#vl-view')){
+  $('#vl-view').hidden=showForm;
+  if(!keepInputs){$('#vl-view').classList.remove('ro');$('#vl-view').setAttribute('aria-expanded','false')}
+ }
+ if($('#vl-form'))$('#vl-form').hidden=!showForm;
+ if(!showForm&&rec){
+  const cat=normVaultCat(saved.cat),dtStr=fmtTaskDate(saved.date||rec.date);
+  if($('#vl-vcat')){$('#vl-vcat').className='vl-cat-pill '+cat;$('#vl-vcat').textContent=vaultCatLabel(cat)}
+  if($('#vl-vdt'))$('#vl-vdt').textContent=`${dtStr} · AES-256-GCM · Tap card for options`;
+  if($('#vl-vttl'))$('#vl-vttl').textContent=saved.title||vaultCatLabel(cat);
+  if($('#vl-vbdy')){
+   $('#vl-vbdy').textContent=saved.body||'No details recorded.';
+   $('#vl-vbdy').classList.toggle('masked',vlMasked);
+  }
+  if($('#vl-mask-btn'))$('#vl-mask-btn').textContent=vlMasked?'👁️ Reveal':'👁️ Mask';
+ }else{
+  if(!keepInputs){
+   vlCat=normVaultCat(cur.cat);
+   if($('#vl-dt'))$('#vl-dt').value=fixDate(cur.date||iso(0));
+   if($('#vl-ttl'))$('#vl-ttl').value=cur.title||'';
+   if($('#vl-bdy'))$('#vl-bdy').value=cur.body||'';
+   syncVaultCatUi();
+  }
+  if($('#vl-del'))$('#vl-del').hidden=!rec;
+  if($('#vl-cancel')){
+   $('#vl-cancel').hidden=!(rec||hasDraft||vList.length>0);
+   $('#vl-cancel').textContent=hasDraft?'Discard draft':'Cancel';
+  }
+  if($('#vl-meta')){
+   $('#vl-meta').className='dr-meta'+(hasDraft?' draft':'');
+   $('#vl-meta').textContent=hasDraft?'📝':(rec?'AES-256-GCM · Editing record':'AES-256-GCM · New encrypted record');
+  }
+ }
+}
+if($('#vl-view')){
+ $('#vl-view').addEventListener('click',e=>{
+  if(e.target.closest('#vl-mask-btn,#vl-copy-btn,#vl-edit,#vl-vdel'))return;
+  const sel=window.getSelection&&window.getSelection();
+  if(sel&&String(sel).trim().length>0)return;
+  const o=$('#vl-view').classList.toggle('ro');
+  $('#vl-view').setAttribute('aria-expanded',o);
+ });
+ $('#vl-view').addEventListener('keydown',e=>{
+  if(e.target!==$('#vl-view'))return;
+  if(e.key==='Enter'||e.key===' '){
+   e.preventDefault();
+   const o=$('#vl-view').classList.toggle('ro');
+   $('#vl-view').setAttribute('aria-expanded',o);
+  }
+ });
+}
+if($('#vl-new'))$('#vl-new').onclick=async()=>{
+ await persistVaultDraft();
+ vlId='__new__';
+ vlEditMode=true;
+ vlCat=vlFCat!=='all'?vlFCat:'folder';
+ if(VAULT_DRAFT&&VAULT_DRAFT.targetId!=='__new__')VAULT_DRAFT=null;
+ renderVaultSidebar();
+ await renderVaultMain(false);
+ if($('#vl-ttl'))$('#vl-ttl').focus();
+};
+if($('#vl-fcat'))$('#vl-fcat').onclick=e=>{
+ const b=e.target.closest('[data-vlf],[data-vfc]');if(!b)return;
+ vlFCat=b.dataset.vlf||b.dataset.vfc||'all';
+ if(vlId==='__new__'&&!VAULT_DRAFT&&vlFCat!=='all'){
+  vlCat=normVaultCat(vlFCat);
+  syncVaultCatUi();
+ }
+ renderVaultSidebar();
+};
+if($('#vl-q'))$('#vl-q').oninput=e=>{
+ vlQ=e.target.value||'';
+ cancelAnimationFrame(vlqRaf);
+ vlqRaf=requestAnimationFrame(renderVaultSidebar);
+};
+if($('#vl-list'))$('#vl-list').onclick=async e=>{
+ const b=e.target.closest('[data-vl-item]');if(!b)return;
+ const nextId=b.dataset.vlItem;
+ captureVaultDraft();
+ await persistVaultDraft();
+ vlId=nextId;
+ vlEditMode=(vlId==='__new__');
+ vlMasked=false;
+ renderVaultSidebar();
+ await renderVaultMain(false);
+};
+if($('#vl-cat-seg'))$('#vl-cat-seg').onclick=e=>{
+ const b=e.target.closest('[data-vlc]');if(!b)return;
+ vlCat=normVaultCat(b.dataset.vlc);
+ syncVaultCatUi();
+ captureVaultDraft();
+ renderVaultSidebar();
+};
+if($('#vl-dt'))$('#vl-dt').addEventListener('change',()=>{captureVaultDraft();renderVaultSidebar()});
+if($('#vl-ttl'))$('#vl-ttl').addEventListener('input',()=>{captureVaultDraft();renderVaultSidebar()});
+if($('#vl-bdy'))$('#vl-bdy').addEventListener('input',()=>captureVaultDraft());
+if($('#vl-tpl-bar'))$('#vl-tpl-bar').onclick=e=>{
+ const insBtn=e.target.closest('[data-vins]');
+ const tplBtn=e.target.closest('[data-vtpl]');
+ const ta=$('#vl-bdy'),ttl=$('#vl-ttl');
+ if(!ta)return;
+ const insAtCursor=txt=>{
+  const s=ta.selectionStart||0,end=ta.selectionEnd||0,v=ta.value;
+  ta.value=v.slice(0,s)+txt+v.slice(end);
+  ta.selectionStart=ta.selectionEnd=s+txt.length;
+  ta.focus();
+  captureVaultDraft();
+  renderVaultSidebar();
+ };
+ if(insBtn)return insAtCursor(insBtn.dataset.vins);
+ if(!tplBtn)return;
+ const tp=tplBtn.dataset.vtpl;
+ if(tp==='branch')return insAtCursor('├── ');
+ if(tp==='last')return insAtCursor('└── ');
+ if(tp==='pipe')return insAtCursor('│   ');
+ let snippet='',defTitle='';
+ if(tp==='folder'){
+  vlCat='folder';syncVaultCatUi();
+  defTitle='Project Folder Structure';
+  snippet=`project-root/\n├── src/\n│   ├── components/\n│   ├── services/\n│   └── app.js\n├── public/\n│   └── index.html\n├── .env\n└── README.md`;
+ }else if(tp==='ip'){
+  vlCat='ip';syncVaultCatUi();
+  defTitle='Platform & Web App IPs';
+  snippet=`Platform / Host : \nWeb App URL     : https://\nServer IP       : \nPort / SSH      : \nEnvironment     : Production\nNotes           : `;
+ }else if(tp==='pin'){
+  vlCat='pin';syncVaultCatUi();
+  defTitle='User ID & PIN Credentials';
+  snippet=`Platform / App  : \nUser ID / Login : \nPIN / Passcode  : \nAccount / Ref   : \nRecovery Notes  : `;
+ }
+ if(defTitle&&ttl&&(!ttl.value.trim()||DEFAULT_TPL_TITLES.includes(ttl.value.trim()))){
+  ttl.value=defTitle;
+ }
+ if(snippet){
+  ta.value=(ta.value.trim()?ta.value.replace(/\s+$/,'')+'\n\n':'')+snippet;
+  ta.focus();
+  captureVaultDraft();
+  renderVaultSidebar();
+ }
+};
+if($('#vl-mask-btn'))$('#vl-mask-btn').onclick=e=>{
+ e.stopPropagation();
+ vlMasked=!vlMasked;
+ if($('#vl-vbdy'))$('#vl-vbdy').classList.toggle('masked',vlMasked);
+ $('#vl-mask-btn').textContent=vlMasked?'👁️ Reveal':'👁️ Mask';
+};
+if($('#vl-copy-btn'))$('#vl-copy-btn').onclick=async e=>{
+ e.stopPropagation();
+ const rec=vaultRecs().find(x=>x.id===vlId);
+ const saved=rec&&VAULT_CACHE[rec.id];
+ const txt=saved?(saved.body||saved.title||''):($('#vl-vbdy')&&$('#vl-vbdy').textContent||'');
+ if(!txt)return;
+ try{
+  await navigator.clipboard.writeText(txt);
+  toast('✓ Copied details to clipboard');
+ }catch(e){
+  const ta=document.createElement('textarea');
+  ta.value=txt;document.body.appendChild(ta);ta.select();
+  try{document.execCommand('copy');toast('✓ Copied details to clipboard')}catch(err){}
+  ta.remove();
+ }
+};
+if($('#vl-edit'))$('#vl-edit').onclick=e=>{
+ e.stopPropagation();
+ vlEditMode=true;
+ renderVaultMain(false);
+ if($('#vl-bdy'))$('#vl-bdy').focus();
+};
+if($('#vl-cancel'))$('#vl-cancel').onclick=()=>{
+ const hadDraft=!!(VAULT_DRAFT&&VAULT_DRAFT.targetId===(vlId||'__new__'));
+ if(hadDraft){
+  VAULT_DRAFT=null;
+  delete DR_DRAFTS.__vault__;
+  saveDrDrafts();
+ }
+ const vList=vaultRecs();
+ if(vlId==='__new__'&&vList.length)vlId=vList[0].id;
+ vlEditMode=false;
+ renderVaultSidebar();
+ renderVaultMain(false);
+ if(hadDraft)toast('Vault draft discarded');
+};
+if($('#vl-sv'))$('#vl-sv').onclick=async()=>{
+ if(!DIARY_KEY)return;
+ const date=fixDate(($('#vl-dt')&&$('#vl-dt').value)||iso(0));
+ const cat=normVaultCat(vlCat);
+ const title=($('#vl-ttl')&&$('#vl-ttl').value||'').trim();
+ const body=($('#vl-bdy')&&$('#vl-bdy').value||'').replace(/\s+$/,'');
+ if(!title&&!body){toast('Enter a title or details to encrypt');if($('#vl-ttl'))$('#vl-ttl').focus();return}
+ const plain={kind:'vault',cat,title:title||vaultCatLabel(cat),body,date};
+ const cipher=await encDiaryObj(DIARY_KEY,plain);
+ const ts=now();
+ let rec=(vlId&&vlId!=='__new__')?DR.find(x=>x.id===vlId):null;
+ if(rec){
+  const prevC=VAULT_CACHE[rec.id]||{};
+  if(!rec.del&&rec.cipher&&(plain.title!==prevC.title||plain.body!==prevC.body||plain.cat!==prevC.cat||plain.date!==prevC.date)){
+   logHist({kind:'diary',targetId:rec.id,date,label:`Vault · ${plain.title}`,sub:`${vaultCatShort(cat)} · ${date}`,prevCipher:rec.cipher});
+  }
+  Object.assign(rec,{date,cipher,del:0,upd:ts});
+ }else{
+  const newId='vlt_'+uid();
+  rec={id:newId,date,cipher,del:0,upd:ts};
+  DR.push(rec);
+  vlId=newId;
+ }
+ VAULT_CACHE[rec.id]=plain;
+ if(VAULT_DRAFT){VAULT_DRAFT=null;delete DR_DRAFTS.__vault__;saveDrDrafts()}
+ vlEditMode=false;
+ vlMasked=false;
+ drsave();
+ renderVaultSidebar();
+ await renderVaultMain(false);
+ toast(syncOn()?'✓ Encrypted & saved to Vault · syncing…':'✓ Encrypted & saved to Info Vault');
+};
+const deleteCurrentVaultItem=()=>{
+ const rec=(vlId&&vlId!=='__new__')?DR.find(x=>!x.del&&x.id===vlId):null;
+ if(!rec)return;
+ const backupCipher=rec.cipher,backupCache=VAULT_CACHE[rec.id],delId=rec.id;
+ rec.del=1;rec.upd=now();
+ delete VAULT_CACHE[delId];
+ if(VAULT_DRAFT&&VAULT_DRAFT.targetId===delId){VAULT_DRAFT=null;delete DR_DRAFTS.__vault__;saveDrDrafts()}
+ const remList=vaultRecs();
+ vlId=remList.length?remList[0].id:'__new__';
+ vlEditMode=!remList.length;
+ drsave();
+ renderVaultSidebar();
+ renderVaultMain(false);
+ toast('Vault record deleted. Tap to undo or restore in History.',()=>{
+  rec.del=0;rec.cipher=backupCipher;rec.upd=now();
+  if(backupCache&&DIARY_KEY)VAULT_CACHE[delId]=backupCache;
+  vlId=delId;vlEditMode=false;
+  drsave();
+  if($('#drd')&&$('#drd').open){renderVaultSidebar();renderVaultMain(false)}
+ });
+};
+if($('#vl-del'))$('#vl-del').onclick=deleteCurrentVaultItem;
+if($('#vl-vdel'))$('#vl-vdel').onclick=deleteCurrentVaultItem;
 
 // ---- Home Screen Tasks Manager (1. Personal & 2. Work · Initiated & Completed Dates) ----
 let tkCat='personal',tkSt='open',tkEditId=null,tkFCat='all',tkFSt='all',tkQ='',tkqRaf=0;
@@ -1615,7 +2113,11 @@ function applyRemote(data){
     const h=cf(t,loc);
     if(prevH!==h){
      changed=true;
-     if(t==='Diary'&&prevCipher!==loc.cipher){delete DIARY_CACHE[loc.date];diaryChanged=true}
+     if(t==='Diary'&&prevCipher!==loc.cipher){
+      if(isVaultRec(loc))delete VAULT_CACHE[loc.id];
+      else delete DIARY_CACHE[loc.date];
+      diaryChanged=true;
+     }
     }
     snapSet(t,inc.id,h);LAST[t+inc.id]=h;
    }else{
@@ -1676,7 +2178,12 @@ function applyRemote(data){
   rebuildDrDates();
   bumpCalc();
  }
- if(DIARY_KEY&&diaryChanged)decryptDiaryFast().then(()=>{if($('#drd')&&$('#drd').open){renderDiarySidebar();renderDiaryDate(true)}});
+ if(DIARY_KEY&&diaryChanged)decryptDiaryFast().then(()=>{
+  if($('#drd')&&$('#drd').open){
+   if(drMode==='vault'){renderVaultSidebar();renderVaultMain(true)}
+   else{renderDiarySidebar();renderDiaryDate(true)}
+  }
+ });
  return changed;
 }
 async function call(body){

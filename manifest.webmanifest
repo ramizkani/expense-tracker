@@ -2,7 +2,7 @@
   "name": "Daily ledger",
   "short_name": "Ledger",
   "description": "AED and INR expense tracker that works offline",
-  "id": "./?v=38",
+  "id": "./?v=40",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
