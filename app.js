@@ -122,15 +122,30 @@ const paid=d=>r2(d.pays.filter(p=>!p.del).reduce((a,p)=>a+p.amt,0)),rem=d=>r2(d.
 const LD='ledger.debts.v2';let DB=null;try{DB=JSON.parse(STORE.getItem(LD))}catch(e){}
 if(!DB)DB=[];
 const dsave=()=>{try{STORE.setItem(LD,JSON.stringify(DB))}catch(e){}stamp();schedSync()};
-const LDR='ledger.diary.v1',LDRV='ledger.diary.verifier',LDRF='ledger.diary.drafts.v1',LH='ledger.hist.v1';
+const LDR='ledger.diary.v1',LDRV='ledger.diary.verifier',LDRF='ledger.diary.drafts.v1',LH='ledger.hist.v1',LTK='ledger.tasks.v1';
 let DR=null;try{DR=JSON.parse(STORE.getItem(LDR))}catch(e){}
 if(!Array.isArray(DR))DR=[];
+let TK=null;try{TK=JSON.parse(STORE.getItem(LTK))}catch(e){}
+if(!Array.isArray(TK))TK=[];
 let DRV={v:'',q:'',r:'',t:'',hint:'',upd:'1970-01-01T00:00:00.000Z'};try{const v=JSON.parse(STORE.getItem(LDRV));if(v&&typeof v==='object')DRV=Object.assign(DRV,v)}catch(e){}
 let DR_DRAFTS={};try{const df=JSON.parse(STORE.getItem(LDRF));if(df&&typeof df==='object'&&!Array.isArray(df))DR_DRAFTS=df}catch(e){}
 const saveDrDrafts=()=>{try{STORE.setItem(LDRF,JSON.stringify(DR_DRAFTS))}catch(e){}};
 let HIST=[];try{const h=JSON.parse(STORE.getItem(LH));if(Array.isArray(h))HIST=h}catch(e){}
 const saveHist=()=>{if(HIST.length>150)HIST=HIST.slice(0,150);try{STORE.setItem(LH,JSON.stringify(HIST))}catch(e){}};
 const logHist=item=>{HIST.unshift(Object.assign({hid:uid(),ts:new Date().toISOString()},item));saveHist()};
+const syncTaskBadge=()=>{
+ const active=TK.filter(t=>!t.del),openCnt=active.filter(t=>!t.done).length;
+ if($('#tk-cnt')){
+  $('#tk-cnt').hidden=!active.length;
+  $('#tk-cnt').textContent=openCnt>0?String(openCnt):'✓';
+ }
+ if($('#tk-sum-pill')){
+  const doneCnt=active.length-openCnt;
+  $('#tk-sum-pill').textContent=active.length?`${openCnt} open · ${doneCnt} done`:'0 tasks';
+  $('#tk-sum-pill').className='dr-cnt-pill'+(active.length&&openCnt===0?' ok':'');
+ }
+};
+const tksave=()=>{syncTaskBadge();try{STORE.setItem(LTK,JSON.stringify(TK))}catch(e){}stamp();schedSync()};
 let drDates=new Set();
 const rebuildDrDates=()=>{drDates=new Set(DR.filter(x=>!x.del&&x.cipher).map(x=>x.date))};
 rebuildDrDates();
@@ -389,7 +404,7 @@ if($('#bk-csv'))$('#bk-csv').onclick=()=>{
  toast('CSV exported');
 };
 if($('#bk-json'))$('#bk-json').onclick=()=>{
- const payload=JSON.stringify({version:13,exported_at:new Date().toISOString(),tx:S.tx,cats:CT,debts:DB,diary:DR,diary_verifier:DRV,hist:HIST,ob:OB},null,2);
+ const payload=JSON.stringify({version:14,exported_at:new Date().toISOString(),tx:S.tx,cats:CT,debts:DB,tasks:TK,diary:DR,diary_verifier:DRV,hist:HIST,ob:OB},null,2);
  dlFile(`daily-ledger-backup-${iso(0)}.json`,'application/json',payload);
  toast('JSON backup downloaded');
 };
@@ -420,6 +435,11 @@ if($('#bk-file'))$('#bk-file').onchange=async e=>{
     return Object.assign({},d,{upd:tsNow,pays:pays.map(p=>Object.assign({},p,{upd:tsNow})).concat(delPays)});
    }).concat(delDb);
   }
+  if(Array.isArray(j.tasks)){
+   const tkIds=new Set(j.tasks.map(t=>t.id));
+   const delTk=TK.filter(t=>t.id&&!tkIds.has(t.id)).map(t=>Object.assign({},t,{del:1,upd:tsNow}));
+   TK=j.tasks.map(t=>Object.assign({},t,{upd:tsNow})).concat(delTk);
+  }
   if(Array.isArray(j.diary)){
    const drIds=new Set(j.diary.map(d=>d.id));
    const delDr=DR.filter(d=>d.id&&!drIds.has(d.id)).map(d=>Object.assign({},d,{del:1,upd:tsNow}));
@@ -432,7 +452,7 @@ if($('#bk-file'))$('#bk-file').onchange=async e=>{
   if(Array.isArray(j.hist)){HIST=j.hist;saveHist()}
   if(j.ob)OB=Object.assign({},j.ob,{upd:tsNow});
   Object.keys(LAST).forEach(k=>delete LAST[k]);
-  bumpCalc();stamp();persist();$('#bkd').close();render();sync();toast('Backup restored');
+  bumpCalc();stamp();persist();syncTaskBadge();$('#bkd').close();render();sync();toast('Backup restored');
  }catch(err){if($('#bke'))$('#bke').textContent='Could not read backup JSON.'}
 };
 
@@ -485,10 +505,14 @@ function calDraw(){const first=new Date(CY,CM,1),lead=(first.getDay()+6)%7,days=
  let h=`<div class="ch2"><button type="button" class="ib" data-cn="-1" aria-label="Previous month">${IC.pl}</button><b>${first.toLocaleDateString('en',{month:'long',year:'numeric'})}</b><button type="button" class="ib" data-cn="1" aria-label="Next month">${IC.nx}</button></div><div class="cg">${['M','T','W','T','F','S','S'].map(x=>`<i class="wd">${x}</i>`).join('')}${'<i></i>'.repeat(lead)}`;
  for(let d=1;d<=days;d++){const s=CY+'-'+String(CM+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');h+=`<button type="button" class="cd${s===sel?' on':''}${s===today?' td':''}" data-cd="${s}">${d}</button>`}
  cal.innerHTML=h+`</div><div class="cf"><button type="button" class="ghost" data-cd="${today}">Today</button></div>`}
-function calOpen(inp){CI=inp;const [y,m]=(inp.value||iso(0)).split('-').map(Number);CY=y;CM=m-1;(inp.closest('dialog')||document.body).appendChild(cal);cal.hidden=false;calDraw();
- const r=inp.getBoundingClientRect(),h=cal.offsetHeight;let t=r.bottom+6;if(t+h>innerHeight-8)t=Math.max(8,r.top-h-6);cal.style.left=Math.min(Math.max(8,r.left),innerWidth-298)+'px';cal.style.top=t+'px'}
+function calOpen(inp){CI=inp;const [y,m]=(inp.value||iso(0)).split('-').map(Number);CY=y;CM=m-1;const host=inp.closest('dialog')||document.body;host.appendChild(cal);cal.hidden=false;calDraw();
+ const r=inp.getBoundingClientRect(),h=cal.offsetHeight,hr=host!==document.body?host.getBoundingClientRect():{left:0,top:0};
+ const maxW=host!==document.body?host.clientWidth:innerWidth,maxH=host!==document.body?host.clientHeight:innerHeight;
+ let t=(r.bottom-hr.top)+6;if(t+h>maxH-8)t=Math.max(8,(r.top-hr.top)-h-6);
+ cal.style.left=Math.min(Math.max(8,r.left-hr.left),Math.max(8,maxW-298))+'px';cal.style.top=t+'px'}
 document.addEventListener('click',e=>{
  if(!e.target.closest('.mrow.tx-row'))document.querySelectorAll('#tbl .mrow.tx-row.ro').forEach(r=>{r.classList.remove('ro');r.setAttribute('aria-expanded','false')});
+ if(!e.target.closest('.tk-card'))document.querySelectorAll('#tk-list .tk-card.ro').forEach(r=>{r.classList.remove('ro');r.setAttribute('aria-expanded','false')});
  const dp=e.target.closest('[data-dp]');if(dp){calOpen(dp);return}
  if(e.target.closest('.cal')){const n=e.target.closest('[data-cn]'),d=e.target.closest('[data-cd]');
   if(n){CM+=+n.dataset.cn;if(CM<0){CM=11;CY--}if(CM>11){CM=0;CY++}calDraw()}
@@ -496,7 +520,7 @@ document.addEventListener('click',e=>{
   return}
  cal.hidden=true});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!cal.hidden){e.preventDefault();cal.hidden=true}
- if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('[data-mrow]')){e.preventDefault();e.target.click();return}
+ if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('[data-mrow],[data-tk-card]')){e.preventDefault();e.target.click();return}
  if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('[data-dp]')){e.preventDefault();calOpen(e.target)}});
 addEventListener('online',()=>{renderStatus();sync()});addEventListener('offline',renderStatus);
 
@@ -505,7 +529,15 @@ const tEnc=new TextEncoder(),tDec=new TextDecoder();
 const b64e=buf=>{let s='';const u=new Uint8Array(buf);for(let i=0;i<u.length;i++)s+=String.fromCharCode(u[i]);return btoa(s)};
 const b64d=str=>{const b=atob(str),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u};
 const normAns=s=>String(s||'').trim().toLowerCase().replace(/\s+/g,' ');
-let DIARY_KEY=null,DIARY_DEK_B64='',DIARY_CACHE={},DIARY_DRAFTS={},drLastDraftDate='',drDraftJob=0,drExplicitDate=false,drDate=iso(0),drEditMode=false,drChPw=false,drRec=false,drLockTm=null,drBgJob=0;
+const normTaskCat=c=>c==='work'?'work':'personal';
+const taskCatLabel=c=>c==='work'?'2. Work':'1. Personal';
+const fmtTaskDate=s=>{if(!s)return '';const d=new Date(s+'T00:00');return isNaN(d)?s:d.toLocaleDateString('en',{day:'2-digit',month:'short',year:'numeric'})};
+const normTasks=(arr,defDt)=>Array.isArray(arr)?arr.map(t=>{
+ const done=!!t.done,initDate=fixDate(t.initDate||defDt||iso(0));
+ return {id:String(t.id||uid()),text:String(t.text||'').trim(),cat:normTaskCat(t.cat),done,initDate,doneDate:done?fixDate(t.doneDate||defDt||iso(0)):''};
+}).filter(t=>t.text):[];
+const tasksEqual=(a,b)=>{const x=normTasks(a),y=normTasks(b);if(x.length!==y.length)return false;for(let i=0;i<x.length;i++){if(x[i].text!==y[i].text||x[i].done!==y[i].done||x[i].cat!==y[i].cat||x[i].initDate!==y[i].initDate||x[i].doneDate!==y[i].doneDate)return false}return true};
+let DIARY_KEY=null,DIARY_DEK_B64='',DIARY_CACHE={},DIARY_DRAFTS={},drTasks=[],drTaskCat='personal',drLastDraftDate='',drDraftJob=0,drExplicitDate=false,drDate=iso(0),drEditMode=false,drChPw=false,drRec=false,drLockTm=null,drBgJob=0;
 async function deriveDiaryKey(secret,saltBytes){
  const bk=await crypto.subtle.importKey('raw',tEnc.encode(secret),'PBKDF2',false,['deriveKey']);
  return crypto.subtle.deriveKey({name:'PBKDF2',salt:saltBytes,iterations:100000,hash:'SHA-256'},bk,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
@@ -553,7 +585,7 @@ async function decryptDiaryFast(){
   if(!DIARY_DRAFTS[dt]&&cipher){
    try{
     const d=await decDiaryObj(key,cipher);
-    if(d&&(d.title||d.body)){
+    if(d&&(d.title||d.body||normTasks(d.tasks).length)){
      DIARY_DRAFTS[dt]=d;
      const ts=d.ts||dt;
      if(!latestDraftTs||ts>=latestDraftTs){latestDraftTs=ts;latestDraftDt=dt}
@@ -622,12 +654,46 @@ async function persistDiaryDraftDate(dt){
   return true;
  }catch(e){return false}
 }
+function getUnfinishedPrevTasks(){
+ const curSet=new Set(drTasks.map(t=>t.text.toLowerCase()));
+ const out=[],seen=new Set();
+ const dates=Array.from(new Set([...Object.keys(DIARY_CACHE),...Object.keys(DIARY_DRAFTS)])).filter(dt=>dt<drDate).sort().reverse();
+ for(const dt of dates){
+  const src=DIARY_DRAFTS[dt]||DIARY_CACHE[dt];
+  if(!src||!Array.isArray(src.tasks))continue;
+  for(const t of src.tasks){
+   const txt=String(t.text||'').trim(),k=txt.toLowerCase();
+   if(txt&&!t.done&&!curSet.has(k)&&!seen.has(k)){seen.add(k);out.push({id:uid(),text:txt,done:false})}
+  }
+ }
+ return out;
+}
+function renderDiaryTasksEditor(){
+ document.querySelectorAll('#dr-tcat button').forEach(b=>b.classList.toggle('on',b.dataset.dtc===drTaskCat));
+ const tot=drTasks.length,done=drTasks.filter(t=>t.done).length;
+ if($('#dr-tprog')){
+  $('#dr-tprog').textContent=tot?`${done}/${tot} done`:'0 tasks';
+  $('#dr-tprog').className='dr-cnt-pill'+(tot&&done===tot?' ok':'');
+ }
+ if($('#dr-tcarry')){
+  const prev=getUnfinishedPrevTasks();
+  $('#dr-tcarry').hidden=!prev.length;
+  if(prev.length)$('#dr-tcarry').textContent=`+ Carry over ${prev.length} unfinished`;
+ }
+ if($('#dr-tlist')){
+  $('#dr-tlist').hidden=!tot;
+  $('#dr-tlist').innerHTML=drTasks.map(t=>{
+   const cat=normTaskCat(t.cat);
+   return `<div class="dr-trow${t.done?' done':''}" style="grid-template-columns:auto auto 1fr auto"><button type="button" class="dr-tchk${t.done?' on':''}" data-dt-tog="${esc(t.id)}" aria-label="${t.done?'Mark incomplete':'Mark completed'}" title="${t.done?'Completed':'Tap to mark completed'}">✓</button><button type="button" class="dr-tcat-btn ${cat}" data-dt-cat="${esc(t.id)}" title="Tap to switch category">${taskCatLabel(cat)}</button><input type="text" class="dr-ttxt${t.done?' done':''}" data-dt-edit="${esc(t.id)}" value="${esc(t.text)}" maxlength="140" aria-label="Task text"><button type="button" class="dr-tdel" data-dt-del="${esc(t.id)}" aria-label="Remove task" title="Remove task">×</button></div>`;
+  }).join('');
+ }
+}
 function captureDiaryDraft(){
  if(!DIARY_KEY||!$('#dr-form')||$('#dr-form').hidden||!$('#dr-ttl')||!$('#dr-bdy'))return false;
- const title=$('#dr-ttl').value,body=$('#dr-bdy').value;
- const cur=DIARY_CACHE[drDate]||{title:'',body:''};
- const isSame=title.trim()===(cur.title||'').trim()&&body.trim()===(cur.body||'').trim();
- const isEmpty=!title.trim()&&!body.trim()&&!hasDiary(drDate);
+ const title=$('#dr-ttl').value,body=$('#dr-bdy').value,tasks=normTasks(drTasks);
+ const cur=DIARY_CACHE[drDate]||{title:'',body:'',tasks:[]};
+ const isSame=title.trim()===(cur.title||'').trim()&&body.trim()===(cur.body||'').trim()&&tasksEqual(tasks,cur.tasks);
+ const isEmpty=!title.trim()&&!body.trim()&&!tasks.length&&!hasDiary(drDate);
  const hadDraft=!!DIARY_DRAFTS[drDate];
  if(isSame||isEmpty){
   if(hadDraft){
@@ -639,7 +705,7 @@ function captureDiaryDraft(){
   }
   return false;
  }
- DIARY_DRAFTS[drDate]={title,body,ts:now()};
+ DIARY_DRAFTS[drDate]={title,body,tasks,ts:now()};
  drLastDraftDate=drDate;
  updateDraftUiMeta();
  if(!hadDraft)renderDiarySidebar();
@@ -656,10 +722,13 @@ async function flushDiaryDraft(){
  return false;
 }
 function lockDiary(){
- drBgJob++;DIARY_KEY=null;DIARY_DEK_B64='';DIARY_CACHE={};DIARY_DRAFTS={};drEditMode=false;drChPw=false;drRec=false;
+ drBgJob++;DIARY_KEY=null;DIARY_DEK_B64='';DIARY_CACHE={};DIARY_DRAFTS={};drTasks=[];drEditMode=false;drChPw=false;drRec=false;
  if($('#dr-ttl'))$('#dr-ttl').value='';
  if($('#dr-bdy'))$('#dr-bdy').value='';
+ if($('#dr-tinp'))$('#dr-tinp').value='';
+ if($('#dr-tlist')){$('#dr-tlist').innerHTML='';$('#dr-tlist').hidden=true}
  if($('#dr-vttl'))$('#dr-vttl').textContent='';
+ if($('#dr-vtasks')){$('#dr-vtasks').innerHTML='';$('#dr-vtasks').hidden=true}
  if($('#dr-vbdy'))$('#dr-vbdy').textContent='';
  if($('#dr-list'))$('#dr-list').innerHTML='';
  if($('#dr-sum'))$('#dr-sum').innerHTML='';
@@ -685,17 +754,19 @@ function renderDiarySidebar(){
  if(!$('#dr-list'))return;
  const q=($('#dr-q')&&$('#dr-q').value||'').trim().toLowerCase();
  const allDates=Array.from(new Set([...drDates,...Object.keys(DIARY_DRAFTS),drDate])).sort();
- const matched=q?allDates.filter(dt=>{const n=DIARY_DRAFTS[dt]||DIARY_CACHE[dt]||{title:'',body:''};return dt.includes(q)||(n.title||'').toLowerCase().includes(q)||(n.body||'').toLowerCase().includes(q)}):allDates;
+ const matched=q?allDates.filter(dt=>{const n=DIARY_DRAFTS[dt]||DIARY_CACHE[dt]||{title:'',body:'',tasks:[]};return dt.includes(q)||(n.title||'').toLowerCase().includes(q)||(n.body||'').toLowerCase().includes(q)||normTasks(n.tasks).some(t=>t.text.toLowerCase().includes(q))}):allDates;
  const slice=(!q&&!drShowAll&&matched.length>60)?matched.slice(-60):matched;
  if(slice.length<matched.length&&!slice.includes(drDate))slice.unshift(drDate);
  $('#dr-list').innerHTML=(slice.length<matched.length?`<button type="button" class="ghost" data-dr-more="1" style="font-size:12px;padding:7px;flex:none">Show all ${matched.length} dates</button>`:'')+slice.map(dt=>{
-  const draft=DIARY_DRAFTS[dt],n=draft||DIARY_CACHE[dt]||{title:'',body:''},saved=hasDiary(dt);
+  const draft=DIARY_DRAFTS[dt],n=draft||DIARY_CACHE[dt]||{title:'',body:'',tasks:[]},saved=hasDiary(dt);
+  const tks=normTasks(n.tasks),tDone=tks.filter(t=>t.done).length;
   const sm=dayLedgerSummary(dt),fp=[];
+  if(tks.length)fp.push(`✓ ${tDone}/${tks.length}`);
   if(sm.AED.out||sm.AED.in)fp.push('AED −'+sm.AED.out);
   if(sm.INR.out||sm.INR.in)fp.push('₹ −'+sm.INR.out);
   const dtStr=new Date(dt+'T00:00').toLocaleDateString('en',{day:'2-digit',month:'short',year:'numeric'});
   const topTag=draft?'📝':(saved?'🔒 AES':'New');
-  const ttlTxt=(n.title||'').trim()||(draft?(n.body||'').trim().slice(0,28)||'Draft…':(saved?'Saved note':'No note yet'));
+  const ttlTxt=(n.title||'').trim()||(tks.length?tks[0].text:(draft?(n.body||'').trim().slice(0,28)||'Draft…':(saved?'Saved note':'No note yet')));
   return `<button type="button" class="dr-item${dt===drDate?' on':''}" data-dr-item="${dt}"><div class="dr-item-top"><span>${dtStr}</span><span>${topTag}</span></div><b>${esc(ttlTxt)}</b><small>${esc(fp.join(' · ')||'No ledger entries')}</small></button>`;
  }).join('')||'<div class="hint" style="padding:8px">No matching diary notes.</div>';
  requestAnimationFrame(()=>{
@@ -728,7 +799,7 @@ async function renderDiaryDate(keepInputs){
   try{DIARY_CACHE[drDate]=await decDiaryObj(DIARY_KEY,rec.cipher)}catch(e){}
  }
  const draft=DIARY_DRAFTS[drDate];
- const savedNote=DIARY_CACHE[drDate]||{title:'',body:''};
+ const savedNote=DIARY_CACHE[drDate]||{title:'',body:'',tasks:[]};
  const n=draft||savedNote;
  const showEdit=!rec||drEditMode||!!draft;
  if($('#dr-view'))$('#dr-view').hidden=showEdit;
@@ -737,11 +808,26 @@ async function renderDiaryDate(keepInputs){
   const tStr=new Date(rec.upd).toLocaleTimeString('en',{hour:'numeric',minute:'2-digit'});
   if($('#dr-vmeta'))$('#dr-vmeta').textContent=`AES-256-GCM · Saved ${tStr}`;
   if($('#dr-vttl'))$('#dr-vttl').textContent=savedNote.title||'Daily note';
-  if($('#dr-vbdy'))$('#dr-vbdy').textContent=savedNote.body||'No additional details written for this date.';
+  const vTasks=normTasks(savedNote.tasks,drDate);
+  if($('#dr-vtasks')){
+   $('#dr-vtasks').hidden=!vTasks.length;
+   if(vTasks.length){
+    const vDone=vTasks.filter(t=>t.done).length,pct=Math.round(vDone/vTasks.length*100);
+    $('#dr-vtasks').innerHTML=`<div class="dr-vthd"><span>Daily Tasks · Tap to toggle</span><span class="dr-cnt-pill${vDone===vTasks.length?' ok':''}">${vDone}/${vTasks.length} done</span></div><div class="dr-tpbar"><i style="width:${pct}%"></i></div><div class="dr-vtlist">${vTasks.map(t=>{const cat=normTaskCat(t.cat);return `<button type="button" class="dr-vtrow${t.done?' done':''}" data-vt-tog="${esc(t.id)}"><span class="dr-tchk${t.done?' on':''}">✓</span><span><strong class="tk-cat-txt ${cat}" style="margin-right:6px">${taskCatLabel(cat)}</strong>${esc(t.text)}</span></button>`}).join('')}</div>`;
+   }else $('#dr-vtasks').innerHTML='';
+  }
+  if($('#dr-vbdy')){
+   const hasBody=!!(savedNote.body&&savedNote.body.trim());
+   $('#dr-vbdy').hidden=!hasBody&&vTasks.length>0;
+   $('#dr-vbdy').textContent=hasBody?savedNote.body:'No additional details written for this date.';
+  }
  }
  if(!keepInputs){
   if($('#dr-ttl'))$('#dr-ttl').value=n.title||'';
   if($('#dr-bdy'))$('#dr-bdy').value=n.body||'';
+  if($('#dr-tinp'))$('#dr-tinp').value='';
+  drTasks=normTasks(n.tasks);
+  renderDiaryTasksEditor();
  }
  if($('#dr-del'))$('#dr-del').hidden=!rec;
  updateDraftUiMeta();
@@ -779,6 +865,9 @@ function buildHistoryItems(){
  });
  CT.forEach((c,idx)=>{
   if(c.del)items.push({mode:'del',kind:'cat',id:c.id||String(idx),ts:c.upd||now(),tag:'Category',title:c.n,sub:`Permitted: ${TLAB[c.t]||c.t}`});
+ });
+ TK.forEach(t=>{
+  if(t.del)items.push({mode:'del',kind:'task',id:t.id,ts:t.upd||new Date(t.ts||Date.now()).toISOString(),tag:'Task',title:`${taskCatLabel(t.cat)} · ${t.text}`,sub:`Init: ${t.initDate}${t.done&&t.doneDate?' · Done: '+t.doneDate:' · Pending'}`});
  });
  DR.forEach(r=>{
   if(r.del&&r.cipher)items.push({mode:'del',kind:'diary',id:r.id,ts:r.upd||now(),tag:'Diary Note',title:`Encrypted Note · ${r.date}`,sub:`AES-256-GCM record`});
@@ -818,6 +907,9 @@ if($('#hi-list'))$('#hi-list').onclick=async e=>{
   }else if(kind==='cat'){
    const c=CT.find(x=>x.id===id)||CT[+id];if(!c)return;
    c.del=0;c.upd=ts;saveC();renderCm();paint();sync();toast('Category restored');
+  }else if(kind==='task'){
+   const t=TK.find(x=>x.id===id);if(!t)return;
+   t.del=0;t.upd=ts;tksave();if(typeof renderTasksList==='function')renderTasksList();toast('Task restored');
   }else if(kind==='diary'){
    const r=DR.find(x=>x.id===id);if(!r)return;
    r.del=0;r.upd=ts;
@@ -838,6 +930,10 @@ if($('#hi-list'))$('#hi-list').onclick=async e=>{
    const c=CT.find(x=>x.id===h.targetId||x.n===h.newName);if(!c)return;
    S.tx.forEach(x=>{if(x.cat===c.n){x.cat=h.oldName;x.synced=false;x.ver=(x.ver||1)+1}});
    c.n=h.oldName;c.upd=ts;h.done=1;saveHist();saveC();save();renderCm();render();sync();toast('Category name reverted');
+  }else if(h.kind==='task'&&h.prev){
+   const t=TK.find(x=>x.id===h.targetId);if(!t)return;
+   Object.assign(t,h.prev,{upd:ts});
+   h.done=1;saveHist();tksave();if(typeof renderTasksList==='function')renderTasksList();toast('Task reverted to previous version');
   }else if(h.kind==='diary'&&h.prevCipher){
    const r=DR.find(x=>x.id===h.targetId);if(!r)return;
    r.cipher=h.prevCipher;r.del=0;r.upd=ts;
@@ -1090,6 +1186,67 @@ if($('#dr-rwbtn'))$('#dr-rwbtn').onclick=()=>{
 };
 if($('#dr-ttl'))$('#dr-ttl').addEventListener('input',captureDiaryDraft);
 if($('#dr-bdy'))$('#dr-bdy').addEventListener('input',captureDiaryDraft);
+if($('#dr-tcat'))$('#dr-tcat').onclick=e=>{
+ const b=e.target.closest('[data-dtc]');if(!b)return;
+ drTaskCat=normTaskCat(b.dataset.dtc);
+ renderDiaryTasksEditor();
+};
+const addDiaryTaskFromInput=()=>{
+ const inp=$('#dr-tinp');if(!inp)return;
+ const txt=inp.value.trim();if(!txt)return;
+ drTasks.push({id:uid(),text:txt,cat:drTaskCat,done:false,initDate:drDate,doneDate:''});
+ inp.value='';
+ renderDiaryTasksEditor();
+ captureDiaryDraft();
+ renderDiarySidebar();
+ inp.focus();
+};
+if($('#dr-tbtn'))$('#dr-tbtn').onclick=addDiaryTaskFromInput;
+if($('#dr-tinp'))$('#dr-tinp').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addDiaryTaskFromInput()}});
+if($('#dr-tcarry'))$('#dr-tcarry').onclick=()=>{
+ const prev=getUnfinishedPrevTasks();
+ if(!prev.length)return;
+ drTasks.push(...prev);
+ renderDiaryTasksEditor();
+ captureDiaryDraft();
+ renderDiarySidebar();
+ toast(`Carried over ${prev.length} unfinished ${prev.length===1?'task':'tasks'}`);
+};
+if($('#dr-tlist')){
+ $('#dr-tlist').addEventListener('click',e=>{
+  const tog=e.target.closest('[data-dt-tog]'),catBtn=e.target.closest('[data-dt-cat]'),delBtn=e.target.closest('[data-dt-del]');
+  if(tog){
+   const t=drTasks.find(x=>x.id===tog.dataset.dtTog);
+   if(t){t.done=!t.done;t.doneDate=t.done?(t.doneDate||drDate):'';renderDiaryTasksEditor();captureDiaryDraft();renderDiarySidebar()}
+  }else if(catBtn){
+   const t=drTasks.find(x=>x.id===catBtn.dataset.dtCat);
+   if(t){t.cat=t.cat==='work'?'personal':'work';renderDiaryTasksEditor();captureDiaryDraft();renderDiarySidebar()}
+  }else if(delBtn){
+   drTasks=drTasks.filter(x=>x.id!==delBtn.dataset.dtDel);
+   renderDiaryTasksEditor();captureDiaryDraft();renderDiarySidebar();
+  }
+ });
+ $('#dr-tlist').addEventListener('input',e=>{
+  const ed=e.target.closest('[data-dt-edit]');
+  if(!ed)return;
+  const t=drTasks.find(x=>x.id===ed.dataset.dtEdit);
+  if(t){t.text=ed.value;captureDiaryDraft();renderDiarySidebar()}
+ });
+}
+if($('#dr-vtasks'))$('#dr-vtasks').addEventListener('click',async e=>{
+ const btn=e.target.closest('[data-vt-tog]');
+ if(!btn||!DIARY_KEY)return;
+ const cur=DIARY_CACHE[drDate];if(!cur||!Array.isArray(cur.tasks))return;
+ const t=cur.tasks.find(x=>String(x.id)===btn.dataset.vtTog);
+ if(!t)return;
+ t.done=!t.done;
+ t.doneDate=t.done?(t.doneDate||drDate):'';
+ renderDiaryDate(false);
+ renderDiarySidebar();
+ const cipher=await encDiaryObj(DIARY_KEY,cur);
+ const rec=DR.find(x=>!x.del&&x.date===drDate);
+ if(rec){rec.cipher=cipher;rec.upd=now();drsave()}
+});
 const shiftDiaryDate=async delta=>{
  await flushDiaryDraft();
  const d=new Date(drDate+'T00:00:00');
@@ -1135,14 +1292,19 @@ if($('#dr-cancel-edit'))$('#dr-cancel-edit').onclick=()=>{
 };
 if($('#dr-sv'))$('#dr-sv').onclick=async()=>{
  if(!DIARY_KEY)return;
- const title=$('#dr-ttl').value.trim(),body=$('#dr-bdy').value.trim();
- if(!title&&!body){toast('Write a headline or note first');return}
- const plain={title:title||'Daily note',body};
+ if($('#dr-tinp')&&$('#dr-tinp').value.trim()){
+  drTasks.push({id:uid(),text:$('#dr-tinp').value.trim(),cat:drTaskCat,done:false,initDate:drDate,doneDate:''});
+  $('#dr-tinp').value='';
+ }
+ const title=$('#dr-ttl').value.trim(),body=$('#dr-bdy').value.trim(),tasks=normTasks(drTasks,drDate);
+ if(!title&&!body&&!tasks.length){toast('Write a headline, note, or task first');return}
+ const plain={title:title||(tasks.length?'Daily tasks':'Daily note'),body,tasks};
  const cipher=await encDiaryObj(DIARY_KEY,plain);
  const id='dry_'+drDate,ts=now();
  let rec=DR.find(x=>x.id===id);
  if(rec){
-  if(!rec.del&&rec.cipher&&(plain.title!==(DIARY_CACHE[drDate]||{}).title||plain.body!==(DIARY_CACHE[drDate]||{}).body)){
+  const prevC=DIARY_CACHE[drDate]||{};
+  if(!rec.del&&rec.cipher&&(plain.title!==prevC.title||plain.body!==prevC.body||!tasksEqual(plain.tasks,prevC.tasks))){
    logHist({kind:'diary',targetId:rec.id,date:drDate,label:`Diary Note · ${drDate}`,sub:`Previous encrypted version saved`,prevCipher:rec.cipher});
   }
   Object.assign(rec,{date:drDate,cipher,del:0,upd:ts});
@@ -1175,6 +1337,192 @@ const deleteCurrentDiaryNote=()=>{
 };
 if($('#dr-del'))$('#dr-del').onclick=deleteCurrentDiaryNote;
 if($('#dr-vdel'))$('#dr-vdel').onclick=deleteCurrentDiaryNote;
+
+// ---- Home Screen Tasks Manager (1. Personal & 2. Work · Initiated & Completed Dates) ----
+let tkCat='personal',tkSt='open',tkEditId=null,tkFCat='all',tkFSt='all',tkQ='',tkqRaf=0;
+function syncTaskFormUi(){
+ document.querySelectorAll('#tk-cat-seg button').forEach(b=>b.classList.toggle('on',b.dataset.tkc===tkCat));
+ document.querySelectorAll('#tk-st-seg button').forEach(b=>b.classList.toggle('on',b.dataset.tks===tkSt));
+ if($('#tk-form'))$('#tk-form').classList.toggle('editing',!!tkEditId);
+ if($('#tk-cdt-wrap'))$('#tk-cdt-wrap').classList.toggle('done-active',tkSt==='done');
+ if($('#tk-cdt')){
+  $('#tk-cdt').placeholder=tkSt==='done'?'Pick date':'Auto on ✓';
+ }
+ if($('#tk-sv'))$('#tk-sv').textContent=tkEditId?'Save':'+ Add';
+ if($('#tk-cancel'))$('#tk-cancel').hidden=!tkEditId;
+}
+function resetTaskForm(){
+ tkEditId=null;
+ tkCat=tkFCat==='work'?'work':'personal';
+ tkSt='open';
+ if($('#tk-txt'))$('#tk-txt').value='';
+ if($('#tk-idt'))$('#tk-idt').value=iso(0);
+ if($('#tk-cdt'))$('#tk-cdt').value='';
+ if($('#tk-er'))$('#tk-er').textContent='';
+ syncTaskFormUi();
+}
+function renderTasksList(){
+ syncTaskBadge();
+ const active=TK.filter(t=>!t.del);
+ const pCnt=active.filter(t=>normTaskCat(t.cat)==='personal').length;
+ const wCnt=active.filter(t=>normTaskCat(t.cat)==='work').length;
+ document.querySelectorAll('#tk-fcat button').forEach(b=>{
+  const c=b.dataset.tfc;
+  b.classList.toggle('on',c===tkFCat);
+  if(c==='all')b.textContent=`All (${active.length})`;
+  else if(c==='personal')b.textContent=`1. Personal (${pCnt})`;
+  else if(c==='work')b.textContent=`2. Work (${wCnt})`;
+ });
+ document.querySelectorAll('#tk-fst button').forEach(b=>{
+  b.classList.toggle('on',b.dataset.tfs===tkFSt);
+ });
+ const listEl=$('#tk-list');
+ if(!listEl)return;
+ const openCard=listEl.querySelector('.tk-card.ro');
+ const openId=openCard?openCard.dataset.tkCard:'';
+ const q=tkQ.trim().toLowerCase();
+ const rows=active.filter(t=>{
+  if(tkFCat!=='all'&&normTaskCat(t.cat)!==tkFCat)return false;
+  if(tkFSt==='open'&&t.done)return false;
+  if(tkFSt==='done'&&!t.done)return false;
+  if(q){
+   const hay=(t.text+' '+taskCatLabel(t.cat)+' '+(t.initDate||'')+' '+(t.doneDate||'')).toLowerCase();
+   if(!hay.includes(q))return false;
+  }
+  return true;
+ }).sort((a,b)=>{
+  if(a.done!==b.done)return a.done?1:-1;
+  const da=a.done?(a.doneDate||a.initDate||''):(a.initDate||'');
+  const db=b.done?(b.doneDate||b.initDate||''):(b.initDate||'');
+  return db.localeCompare(da)||(b.ts||0)-(a.ts||0);
+ });
+ if(!rows.length){
+  listEl.innerHTML=`<div class="empty" style="padding:20px;border:1px dashed var(--line);border-radius:14px">${active.length?'No tasks match this filter.':'No tasks yet. Add a 1. Personal or 2. Work task above.'}</div>`;
+  return;
+ }
+ listEl.innerHTML=rows.map(t=>{
+  const cat=normTaskCat(t.cat),iDt=t.initDate||iso(0),cDt=t.done?(t.doneDate||iDt):'';
+  const isRo=openId===t.id;
+  return `<div class="tk-card${t.done?' done':''}${isRo?' ro':''}" data-tk-card="${esc(t.id)}" tabindex="0" role="button" aria-expanded="${isRo?'true':'false'}" aria-label="Tap to show edit and delete options"><div class="tk-card-l"><button type="button" class="tk-chk${t.done?' on':''}" data-tk-tog="${esc(t.id)}" aria-label="${t.done?'Mark task pending':'Mark task completed'}" title="${t.done?'Completed · tap to mark pending':'Pending · tap to complete'}">✓</button><div class="tk-info"><div class="tk-ttl">${esc(t.text)}</div><div class="tk-meta"><span class="tk-cat-txt ${cat}">${taskCatLabel(cat)}</span><span class="tk-sep">·</span><span>Initiated <b>${esc(fmtTaskDate(iDt))}</b></span><span class="tk-sep">·</span>${t.done?`<span class="tk-dt-done">✓ Completed <b>${esc(fmtTaskDate(cDt))}</b></span>`:`<span class="tk-dt-open">Pending</span>`}</div></div></div><div class="tk-ac"><button type="button" class="ib" data-tk-ed="${esc(t.id)}" aria-label="Edit task" title="Edit">${IC.e}</button><button type="button" class="ib d" data-tk-del="${esc(t.id)}" aria-label="Delete task" title="Delete">${IC.d}</button></div></div>`;
+ }).join('');
+}
+function openTasks(){
+ resetTaskForm();
+ renderTasksList();
+ if($('#tkd')&&!$('#tkd').open)$('#tkd').showModal();
+ if($('#tk-txt'))$('#tk-txt').focus();
+}
+if($('#tkb'))$('#tkb').onclick=()=>openTasks();
+if($('#tk-cx'))$('#tk-cx').onclick=()=>$('#tkd').close();
+if($('#tk-cat-seg'))$('#tk-cat-seg').onclick=e=>{
+ const b=e.target.closest('[data-tkc]');if(!b)return;
+ tkCat=normTaskCat(b.dataset.tkc);
+ syncTaskFormUi();
+};
+if($('#tk-st-seg'))$('#tk-st-seg').onclick=e=>{
+ const b=e.target.closest('[data-tks]');if(!b)return;
+ tkSt=b.dataset.tks==='done'?'done':'open';
+ if(tkSt==='done'&&$('#tk-cdt')&&!$('#tk-cdt').value){
+  const iVal=($('#tk-idt')&&$('#tk-idt').value)||iso(0);
+  $('#tk-cdt').value=iso(0)>=iVal?iso(0):iVal;
+ }else if(tkSt==='open'&&$('#tk-cdt')){
+  $('#tk-cdt').value='';
+ }
+ if($('#tk-er'))$('#tk-er').textContent='';
+ syncTaskFormUi();
+};
+if($('#tk-idt'))$('#tk-idt').addEventListener('change',e=>{
+ const iVal=fixDate(e.target.value||iso(0));
+ if($('#tk-cdt')&&$('#tk-cdt').value&&$('#tk-cdt').value<iVal){
+  $('#tk-cdt').value=iVal;
+ }
+ if($('#tk-er'))$('#tk-er').textContent='';
+});
+if($('#tk-cdt'))$('#tk-cdt').addEventListener('change',e=>{
+ if(e.target.value){
+  tkSt='done';
+  const iVal=($('#tk-idt')&&$('#tk-idt').value)||iso(0);
+  if(e.target.value<iVal&&$('#tk-idt'))$('#tk-idt').value=e.target.value;
+  if($('#tk-er'))$('#tk-er').textContent='';
+  syncTaskFormUi();
+ }
+});
+if($('#tk-cancel'))$('#tk-cancel').onclick=()=>resetTaskForm();
+const saveTaskFromForm=()=>{
+ const txt=($('#tk-txt')&&$('#tk-txt').value||'').trim();
+ if(!txt){if($('#tk-er'))$('#tk-er').textContent='Enter a task description.';if($('#tk-txt'))$('#tk-txt').focus();return}
+ const initDate=fixDate(($('#tk-idt')&&$('#tk-idt').value)||iso(0));
+ const rawDoneDate=($('#tk-cdt')&&$('#tk-cdt').value||'').trim();
+ const isDone=tkSt==='done'||!!rawDoneDate;
+ const doneDate=isDone?fixDate(rawDoneDate||(iso(0)>=initDate?iso(0):initDate)):'';
+ if(isDone&&doneDate<initDate){
+  if($('#tk-er'))$('#tk-er').textContent='Completed date cannot be earlier than initiated date.';
+  return;
+ }
+ const ts=now();
+ const ex=tkEditId&&TK.find(x=>x.id===tkEditId);
+ if(ex){
+  if(ex.text!==txt||ex.cat!==tkCat||ex.done!==isDone||ex.initDate!==initDate||(ex.doneDate||'')!==doneDate){
+   logHist({kind:'task',targetId:ex.id,label:`Task · ${txt}`,sub:`${taskCatLabel(ex.cat)} · Init ${ex.initDate}${ex.done&&ex.doneDate?' · Done '+ex.doneDate:''}`,prev:{text:ex.text,cat:ex.cat,done:ex.done,initDate:ex.initDate,doneDate:ex.doneDate||''}});
+  }
+  Object.assign(ex,{text:txt,cat:tkCat,done:isDone,initDate,doneDate,upd:ts});
+  tksave();resetTaskForm();renderTasksList();
+  toast('Task updated');
+ }else{
+  TK.push({id:uid(),text:txt,cat:tkCat,done:isDone,initDate,doneDate,ts:Date.now(),upd:ts,del:0});
+  tksave();resetTaskForm();renderTasksList();
+  toast(isDone?`✓ Task added & completed (${fmtTaskDate(doneDate)})`:`Task added to ${taskCatLabel(tkCat)}`);
+ }
+};
+if($('#tk-sv'))$('#tk-sv').onclick=saveTaskFromForm;
+if($('#tk-txt'))$('#tk-txt').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();saveTaskFromForm()}});
+if($('#tk-fcat'))$('#tk-fcat').onclick=e=>{const b=e.target.closest('[data-tfc]');if(!b)return;tkFCat=b.dataset.tfc;if(!tkEditId&&tkFCat!=='all'){tkCat=tkFCat;syncTaskFormUi()}renderTasksList()};
+if($('#tk-fst'))$('#tk-fst').onclick=e=>{const b=e.target.closest('[data-tfs]');if(!b)return;tkFSt=b.dataset.tfs;renderTasksList()};
+if($('#tk-q'))$('#tk-q').oninput=e=>{tkQ=e.target.value||'';cancelAnimationFrame(tkqRaf);tkqRaf=requestAnimationFrame(renderTasksList)};
+if($('#tk-list'))$('#tk-list').addEventListener('click',e=>{
+ const tog=e.target.closest('[data-tk-tog]'),ed=e.target.closest('[data-tk-ed]'),delBtn=e.target.closest('[data-tk-del]'),card=e.target.closest('[data-tk-card]');
+ if(tog){
+  const t=TK.find(x=>x.id===tog.dataset.tkTog);if(!t)return;
+  const prev={text:t.text,cat:t.cat,done:t.done,initDate:t.initDate,doneDate:t.doneDate||''};
+  t.done=!t.done;
+  const today=iso(0);
+  t.doneDate=t.done?(today>=t.initDate?today:t.initDate):'';
+  t.upd=now();
+  logHist({kind:'task',targetId:t.id,label:`Task · ${t.text}`,sub:t.done?`Marked completed (${t.doneDate})`:`Marked pending`,prev});
+  tksave();renderTasksList();
+  toast(t.done?`✓ Completed on ${fmtTaskDate(t.doneDate)}`:'Task marked pending');
+  return;
+ }
+ if(ed){
+  const t=TK.find(x=>x.id===ed.dataset.tkEd);if(!t)return;
+  tkEditId=t.id;
+  tkCat=normTaskCat(t.cat);
+  tkSt=t.done?'done':'open';
+  if($('#tk-txt'))$('#tk-txt').value=t.text;
+  if($('#tk-idt'))$('#tk-idt').value=t.initDate||iso(0);
+  if($('#tk-cdt'))$('#tk-cdt').value=t.done?(t.doneDate||iso(0)):'';
+  if($('#tk-er'))$('#tk-er').textContent='';
+  syncTaskFormUi();
+  if($('#tk-form'))$('#tk-form').scrollIntoView({behavior:'smooth',block:'nearest'});
+  if($('#tk-txt'))$('#tk-txt').focus();
+  return;
+ }
+ if(delBtn){
+  const t=TK.find(x=>x.id===delBtn.dataset.tkDel);if(!t)return;
+  t.del=1;t.upd=now();
+  if(tkEditId===t.id)resetTaskForm();
+  tksave();renderTasksList();
+  toast('Task deleted. Tap to undo.',()=>{
+   t.del=0;t.upd=now();tksave();renderTasksList();
+  });
+  return;
+ }
+ if(card){
+  document.querySelectorAll('#tk-list .tk-card.ro').forEach(r=>{if(r!==card){r.classList.remove('ro');r.setAttribute('aria-expanded','false')}});
+  const o=card.classList.toggle('ro');
+  card.setAttribute('aria-expanded',o);
+ }
+});
 
 // ---- Sync with the Google Sheet ----
 const DEV=(()=>{let d=STORE.getItem('ledger.device');if(!d){d='d_'+uid();STORE.setItem('ledger.device',d)}return d})();
@@ -1219,6 +1567,7 @@ function stamp(init){
  CT.forEach(c=>{if(!c.id)c.id='c_'+hs(c.n.toLowerCase())});
  S.tx.forEach(x=>{x.date=fixDate(x.date);if(!x.cat)x.cat='📦 Other'});
  DB.forEach(d=>{d.date=fixDate(d.date);d.pays.forEach(p=>{p.date=fixDate(p.date)})});
+ TK.forEach(t=>{if(!t.id)t.id=uid();t.cat=normTaskCat(t.cat);t.initDate=fixDate(t.initDate||iso(0));t.done=!!t.done;t.doneDate=t.done?fixDate(t.doneDate||t.initDate):'';if(!t.upd)t.upd=t.ts?new Date(t.ts).toISOString():now()});
  DR.forEach(d=>{d.date=fixDate(d.date);if(!d.id)d.id='dry_'+d.date});
  rebuildDrDates();
  Object.keys(TB).forEach(t=>TB[t].all().forEach(r=>{const k=t+r.id,h=cf(t,r);
@@ -1244,7 +1593,7 @@ function dirty(){
 const pendingCount=()=>dirty().length;
 const opOf=d=>({table:d.t,rec:d.t==='Settings'?(d.id==='diary_verifier'?{id:'diary_verifier',value:drvVal(),updated_at:DRV.upd}:{id:'opening_INR',value:String(Math.round((OB.INR||0)*100)),updated_at:OB.upd}):TB[d.t].out(d.r)});
 const saveSnap=()=>STORE.setItem('ledger.snap',JSON.stringify(SNAP));
-const persist=()=>{STORE.setItem(LS,JSON.stringify(S.tx));STORE.setItem(LC,JSON.stringify(CT));STORE.setItem(LD,JSON.stringify(DB));STORE.setItem(LDR,JSON.stringify(DR));STORE.setItem(LDRV,JSON.stringify(DRV));STORE.setItem(LO,JSON.stringify(OB));saveSnap()};
+const persist=()=>{STORE.setItem(LS,JSON.stringify(S.tx));STORE.setItem(LC,JSON.stringify(CT));STORE.setItem(LD,JSON.stringify(DB));STORE.setItem(LTK,JSON.stringify(TK));STORE.setItem(LDR,JSON.stringify(DR));STORE.setItem(LDRV,JSON.stringify(DRV));STORE.setItem(LO,JSON.stringify(OB));saveSnap()};
 let ORPHAN_PAYS=[];
 function applyRemote(data){
  let changed=false,diaryChanged=false;
@@ -1408,6 +1757,7 @@ document.addEventListener('visibilitychange',()=>{
 setInterval(()=>{if(!document.hidden)sync()},60000);
 stamp(true);
 syncDiaryDot();
+syncTaskBadge();
 render();sync();
 if(!idb)toast('Storage is unavailable in this browser mode. Entries will not be kept.');
 if('serviceWorker' in navigator){

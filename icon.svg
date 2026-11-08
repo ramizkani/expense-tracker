@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0b1324"/>
+      <stop offset="55%" stop-color="#0f243c"/>
+      <stop offset="100%" stop-color="#0b5553"/>
+    </linearGradient>
+    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#17253b"/>
+      <stop offset="100%" stop-color="#0f1829"/>
+    </linearGradient>
+    <linearGradient id="tealGlow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#2dd4bf"/>
+      <stop offset="100%" stop-color="#38bdf8"/>
+    </linearGradient>
+    <linearGradient id="badgeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+    <filter id="shadow" x="-12%" y="-12%" width="124%" height="124%">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#030712" flood-opacity="0.55"/>
+    </filter>
+  </defs>
+
+  <!-- Full-bleed background for maskable & standard PWA icons -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+
+  <!-- Subtle architectural grid glow -->
+  <circle cx="390" cy="122" r="150" fill="#2dd4bf" opacity="0.12"/>
+  <circle cx="125" cy="390" r="150" fill="#3b82f6" opacity="0.12"/>
+
+  <!-- Main Ledger Binder Card (within 80% safe zone: 96..416) -->
+  <g filter="url(#shadow)">
+    <rect x="96" y="88" width="304" height="336" rx="44" fill="url(#cardGrad)" stroke="#2dd4bf" stroke-width="4" stroke-opacity="0.42"/>
+    <!-- Left Spine Accent (Diary & Vault) -->
+    <path d="M140 88 H152 V424 H140 A44 44 0 0 1 96 380 V132 A44 44 0 0 1 140 88 Z" fill="#2dd4bf" opacity="0.16"/>
+    <line x1="152" y1="90" x2="152" y2="422" stroke="#2dd4bf" stroke-width="2.5" stroke-opacity="0.32"/>
+  </g>
+
+  <!-- Top Header Pill: AED (Teal) & INR (Blue) -->
+  <rect x="176" y="124" width="84" height="34" rx="17" fill="#0d9488" fill-opacity="0.28" stroke="#2dd4bf" stroke-width="2.5"/>
+  <text x="218" y="147" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="18" fill="#2dd4bf" letter-spacing="0.5">AED</text>
+
+  <rect x="274" y="124" width="84" height="34" rx="17" fill="#1d4ed8" fill-opacity="0.28" stroke="#60a5fa" stroke-width="2.5"/>
+  <text x="316" y="147" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="18" fill="#60a5fa" letter-spacing="0.5">₹ INR</text>
+
+  <!-- Upward Financial Trend Sparkline -->
+  <path d="M180 244 L224 212 L264 230 L318 182 L354 192" fill="none" stroke="url(#tealGlow)" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="318" cy="182" r="8" fill="#2dd4bf"/>
+  <circle cx="354" cy="192" r="8" fill="#38bdf8"/>
+
+  <!-- Ledger & Diary Entry Lines -->
+  <rect x="176" y="278" width="144" height="14" rx="7" fill="#e2e8f0" opacity="0.88"/>
+  <rect x="176" y="310" width="110" height="12" rx="6" fill="#94a3b8" opacity="0.65"/>
+  <rect x="176" y="340" width="128" height="12" rx="6" fill="#60a5fa" opacity="0.7"/>
+  <rect x="176" y="370" width="90" height="12" rx="6" fill="#818cf8" opacity="0.7"/>
+
+  <!-- Tasks & Vault Completion Badge (Bottom-Right Corner within Safe Zone) -->
+  <g filter="url(#shadow)">
+    <circle cx="364" cy="356" r="56" fill="url(#badgeGrad)" stroke="#0f172a" stroke-width="8"/>
+    <path d="M339 356 L356 373 L391 338" fill="none" stroke="#ffffff" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

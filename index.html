@@ -4,9 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" id="theme-meta" content="#e9eef5">
-<link rel="manifest" href="manifest.webmanifest?v=34">
-<link rel="icon" href="icon-192.png">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest?v=38">
+<link rel="icon" type="image/svg+xml" href="icon.svg?v=38">
+<link rel="alternate icon" type="image/png" href="icon-192.png?v=38">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=38">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Daily ledger · AED &amp; INR</title>
 <meta name="description" content="Personal daily financial ledger and debt tracker for AED and INR with offline storage, category management, and Google Sheets sync.">
@@ -48,6 +49,8 @@ button{cursor:pointer;user-select:none}
 
 /* Header: Title on top, Status pill + Action buttons stacked neatly below */
 .top{display:flex;flex-direction:column;align-items:flex-start;gap:12px;margin-bottom:18px}
+.brand{display:inline-flex;align-items:center;gap:10px}
+.brand-ic{width:32px;height:32px;border-radius:9px;display:block;flex-shrink:0;box-shadow:0 3px 10px rgba(11,21,40,.18)}
 h1{font:800 26px/1.1 var(--font-display);margin:0;letter-spacing:-.03em}
 .stat{display:flex;flex-direction:column;gap:8px;align-items:flex-start;width:100%}
 .stat-r{display:flex;gap:8px;align-items:center;width:100%}
@@ -374,17 +377,124 @@ details.dr-acc[open]>summary::after{transform:rotate(180deg);color:var(--dry)}
 .dr-view-hd{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding-bottom:10px;border-bottom:1px dashed var(--line)}
 .dr-saved-pill{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:99px;font:700 11px var(--font-mono);background:color-mix(in srgb,var(--in) 15%,var(--card));color:var(--in);border:1px solid color-mix(in srgb,var(--in) 32%,var(--line))}
 .dr-vttl{margin:0;font:700 17px/1.3 var(--font-display);color:var(--ink);word-break:break-word}
-.dr-vbdy{font-size:14.5px;line-height:1.6;color:var(--ink);white-space:pre-wrap;word-break:break-word;flex:1;min-height:72px}
+.dr-vbdy{font-size:14.5px;line-height:1.6;color:var(--ink);white-space:pre-wrap;word-break:break-word;flex:1;min-height:48px}
 .dr-view-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding-top:10px;border-top:1px solid var(--line)}
 .dr-btn-ico{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:12px;font:600 13px var(--font-display)}
+.dr-tbox{background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:10px 12px;display:grid;gap:8px;flex-shrink:0}
+.dr-thd{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.dr-thl{display:inline-flex;align-items:center;gap:6px;font:700 11.5px var(--font-display);text-transform:uppercase;letter-spacing:.04em;color:var(--mut)}
+.dr-thl svg{color:var(--dry);flex-shrink:0}
+.dr-cnt-pill.ok{background:color-mix(in srgb,var(--in) 15%,var(--card));color:var(--in);border-color:color-mix(in srgb,var(--in) 35%,var(--line))}
+.dr-tadd{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center}
+.dr-tadd input{background:var(--card);padding:8px 11px;font-size:13.5px;border-radius:10px}
+.dr-tlist{display:grid;gap:5px;max-height:165px;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding-right:2px;scrollbar-width:thin}
+.dr-trow{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:5px 8px;transition:border-color .15s,background .15s}
+.dr-trow.done{background:color-mix(in srgb,var(--in) 6%,var(--card));border-color:color-mix(in srgb,var(--in) 26%,var(--line))}
+.dr-tchk{width:20px;height:20px;border-radius:6px;border:1.5px solid var(--mut);background:var(--bg);color:transparent;display:inline-grid;place-items:center;padding:0;font:800 12px/1 var(--font-mono);transition:transform .12s cubic-bezier(.22,1,.36,1),background .15s,border-color .15s,color .15s}
+.dr-tchk:active{transform:scale(.88)}
+.dr-tchk.on{background:var(--in);border-color:var(--in);color:#fff}
+.dr-ttxt{border:0;background:transparent;padding:3px 2px;font-size:13.5px;color:var(--ink);width:100%;min-width:0}
+.dr-ttxt:focus{outline:none}
+.dr-ttxt.done{text-decoration:line-through;color:var(--mut)}
+.dr-tdel{width:24px;height:24px;border-radius:7px;border:0;background:transparent;color:var(--mut);display:inline-grid;place-items:center;padding:0;font-size:16px;line-height:1;transition:color .15s,background .15s}
+.dr-tdel:hover{color:var(--out);background:color-mix(in srgb,var(--out) 12%,transparent)}
+.dr-vtasks{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:11px 13px;display:grid;gap:8px}
+.dr-vthd{display:flex;align-items:center;justify-content:space-between;gap:8px;font:700 11.5px var(--font-display);text-transform:uppercase;letter-spacing:.04em;color:var(--mut)}
+.dr-tpbar{height:4px;border-radius:99px;background:var(--line);overflow:hidden}
+.dr-tpbar i{display:block;height:100%;background:var(--in);border-radius:99px;transition:width .24s cubic-bezier(.22,1,.36,1)}
+.dr-vtlist{display:grid;gap:5px}
+.dr-vtrow{width:100%;text-align:left;display:grid;grid-template-columns:auto 1fr;gap:9px;align-items:center;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:7px 10px;font-size:13.5px;color:var(--ink);transition:border-color .15s,background .15s,transform .1s}
+.dr-vtrow:active{transform:scale(.99)}
+.dr-vtrow:hover{border-color:var(--dry)}
+.dr-vtrow.done{background:color-mix(in srgb,var(--in) 7%,var(--bg));border-color:color-mix(in srgb,var(--in) 26%,var(--line))}
+.dr-vtrow.done span:last-child{text-decoration:line-through;color:var(--mut)}
+.dr-vtrow span:last-child{word-break:break-word;line-height:1.4}
+
+/* Home Screen Tasks Button (#tkb) & Redesigned Simplified 120Hz Tasks Modal (dialog#tkd) */
+.tk-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:99px;font-weight:650;border-color:color-mix(in srgb,var(--aed) 36%,var(--line));background:color-mix(in srgb,var(--aed) 10%,var(--card));color:var(--aed);transition:border-color .15s,background .15s,transform .12s cubic-bezier(.22,1,.36,1)}
+.tk-btn:hover:not(:disabled){border-color:var(--aed);background:color-mix(in srgb,var(--aed) 18%,var(--card))}
+.tk-btn:active{transform:scale3d(.96,.96,1)}
+.tk-cnt{font:700 11px/1 var(--font-mono);padding:3px 6px;border-radius:99px;background:var(--aed);color:#fff;font-style:normal}
+:root[data-theme="dark"] .tk-cnt{color:#06201e}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .tk-cnt{color:#06201e}}
+dialog.tk-dlg{--acc:var(--aed);width:min(540px,calc(100vw - 24px));max-width:540px}
+.tk-hd{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 16px;border-bottom:1px solid var(--line);background:linear-gradient(135deg,color-mix(in srgb,var(--aed) 13%,var(--card)),color-mix(in srgb,var(--aed) 3%,var(--card)));background-color:var(--card);border-radius:24px 24px 0 0;position:sticky;top:0;z-index:5}
+.tk-hd .dr-hr{flex-wrap:nowrap;flex-shrink:0}
+.tk-hl{display:flex;align-items:center;gap:9px;min-width:0;flex:1}
+.tk-hl>div:last-child{min-width:0;flex:1}
+.tk-ic{width:32px;height:32px;border-radius:9px;background:var(--aed);color:#fff;display:grid;place-items:center;flex-shrink:0}
+:root[data-theme="dark"] .tk-ic{color:#06201e}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .tk-ic{color:#06201e}}
+.tk-hl h2{margin:0;font:700 16.5px/1.15 var(--font-display)}
+.tk-hl p{margin:1px 0 0;font-size:11px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tk-body{padding:12px 16px 18px;display:grid;gap:10px;max-height:calc(90vh - 60px);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.tk-form{background:color-mix(in srgb,var(--bg) 70%,var(--card));border:1px solid var(--line);border-radius:15px;padding:10px 11px;display:grid;gap:8px;transition:border-color .15s}
+.tk-form.editing{border-color:var(--aed);background:color-mix(in srgb,var(--aed) 5%,var(--card))}
+.tk-form-top{display:grid;grid-template-columns:1.12fr .88fr;gap:7px}
+@media(max-width:340px){.tk-form-top{grid-template-columns:1fr}}
+.tk-fld{display:grid;gap:3px}
+.tk-lbl{font:700 10px/1.1 var(--font-display);text-transform:uppercase;letter-spacing:.05em;color:var(--mut)}
+.tk-form .seg{background:var(--card);border:1px solid var(--line);padding:2.5px;border-radius:10px}
+.tk-form .seg button{padding:5px 6px;font-size:12px;border-radius:7.5px;display:inline-flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap;transition:transform .1s cubic-bezier(.22,1,.36,1),background .15s,color .15s}
+.tk-form .seg button:active{transform:scale3d(.96,.96,1)}
+.tk-form .seg button[data-tkc="personal"].on{background:color-mix(in srgb,var(--aed) 16%,var(--card));color:var(--aed);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--aed) 35%,var(--line))}
+.tk-form .seg button[data-tkc="work"].on{background:color-mix(in srgb,var(--inr) 16%,var(--card));color:var(--inr);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--inr) 35%,var(--line))}
+.tk-form .seg button[data-tks="open"].on{background:color-mix(in srgb,var(--ink) 8%,var(--card));color:var(--ink)}
+.tk-form .seg button[data-tks="done"].on{background:color-mix(in srgb,var(--in) 16%,var(--card));color:var(--in);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--in) 35%,var(--line))}
+.tk-inp-row{display:flex;gap:6px;align-items:center}
+.tk-inp-row input[type="text"]{flex:1;min-width:0;background:var(--card);padding:8px 11px;font-size:13.5px;border-radius:10px}
+.tk-inp-row .prim{padding:8px 14px;border-radius:10px;font-size:13px;white-space:nowrap;flex-shrink:0;transition:transform .12s cubic-bezier(.22,1,.36,1)}
+.tk-inp-row .prim:active{transform:scale3d(.96,.96,1)}
+.tk-inp-row .ghost{padding:8px 10px;border-radius:10px;font-size:12px;flex-shrink:0}
+.tk-dbar{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+@media(max-width:340px){.tk-dbar{grid-template-columns:1fr}}
+.tk-dlbl{display:flex;align-items:center;justify-content:space-between;gap:4px;background:var(--card);border:1px solid var(--line);border-radius:9px;padding:3px 5px 3px 9px;font-size:11px;color:var(--mut);margin:0;min-width:0}
+.tk-dlbl span{font:600 10.5px var(--font-display);white-space:nowrap;color:var(--mut)}
+.tk-dlbl input[data-dp]{border:0;background-color:transparent;padding:3px 24px 3px 2px;font:600 11.5px var(--font-mono);text-align:right;width:114px;min-width:0;background-position:right 2px center}
+.tk-dlbl input[data-dp]:focus{outline:none}
+.tk-dlbl.done-active{border-color:color-mix(in srgb,var(--in) 40%,var(--line));background:color-mix(in srgb,var(--in) 6%,var(--card))}
+.tk-dlbl.done-active span{color:var(--in)}
+.tk-fbar{display:grid;gap:6px}
+.tk-fbar .seg{background:var(--bg);border:1px solid var(--line);padding:2.5px;border-radius:10px}
+.tk-fbar .seg button{padding:5px 7px;font-size:11.5px;border-radius:7.5px;white-space:nowrap}
+.tk-fsub{display:grid;grid-template-columns:auto 1fr;gap:6px;align-items:center}
+@media(max-width:340px){.tk-fsub{grid-template-columns:1fr}}
+.tk-fsub input[type="search"]{padding:6px 10px;font-size:12.5px;border-radius:10px;background:var(--bg);min-width:0}
+.tk-list{display:grid;gap:7px;max-height:360px;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding-right:2px;scrollbar-width:thin}
+.tk-card{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-radius:14px;border:1px solid var(--line);background:var(--card);contain:layout style;cursor:pointer;user-select:none;transition:border-color .15s ease,background-color .15s ease,transform .12s cubic-bezier(.22,1,.36,1)}
+.tk-card:hover{border-color:color-mix(in srgb,var(--acc) 45%,var(--line))}
+.tk-card.done{background:color-mix(in srgb,var(--in) 4%,var(--card));border-color:color-mix(in srgb,var(--in) 24%,var(--line))}
+.tk-card.ro{background:color-mix(in srgb,var(--acc) 7%,var(--card));border-color:color-mix(in srgb,var(--acc) 42%,var(--line))}
+.tk-card-l{display:flex;align-items:flex-start;gap:10px;min-width:0;flex:1}
+.tk-chk{width:22px;height:22px;margin-top:1px;border-radius:7px;border:1.8px solid var(--mut);background:var(--bg);color:transparent;display:inline-grid;place-items:center;padding:0;flex-shrink:0;font:800 12.5px/1 var(--font-mono);transition:transform .14s cubic-bezier(.22,1,.36,1),background-color .15s,border-color .15s,color .15s}
+.tk-chk:hover{border-color:var(--in)}
+.tk-chk:active{transform:scale3d(.84,.84,1)}
+.tk-chk.on{background:var(--in);border-color:var(--in);color:#fff}
+.tk-info{min-width:0;flex:1;display:grid;gap:3px}
+.tk-ttl{font-weight:600;font-size:14.5px;line-height:1.38;color:var(--ink);white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere}
+.tk-card.done .tk-ttl{text-decoration:line-through;color:var(--mut)}
+.tk-meta{display:flex;flex-wrap:wrap;align-items:center;gap:4px 7px;font:500 11.5px/1.35 var(--font-mono);color:var(--mut)}
+.tk-cat-txt{font:700 11.5px/1.2 var(--font-display);display:inline-flex;align-items:center;gap:5px}
+.tk-cat-txt::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block}
+.tk-cat-txt.personal{color:var(--aed)}
+.tk-cat-txt.work{color:var(--inr)}
+.tk-sep{color:var(--line);font-weight:700}
+.tk-dt-done{color:var(--in);font-weight:600}
+.tk-dt-open{color:var(--warn)}
+.tk-ac{display:flex;gap:4px;align-items:center;flex-shrink:0;align-self:center;max-width:0;opacity:0;overflow:hidden;pointer-events:none;transform:translate3d(8px,0,0);transition:max-width .22s cubic-bezier(.22,1,.36,1),opacity .16s ease,transform .22s cubic-bezier(.22,1,.36,1)}
+.tk-card.ro .tk-ac{max-width:80px;opacity:1;pointer-events:auto;transform:translate3d(0,0,0)}
+.tk-ac .ib{margin:0;flex-shrink:0}
+.dr-tcat-btn{border:1px solid var(--line);border-radius:6px;padding:2px 6px;font:700 10.5px var(--font-display);background:var(--bg);white-space:nowrap;flex-shrink:0}
+.dr-tcat-btn.personal{color:var(--aed);border-color:color-mix(in srgb,var(--aed) 30%,var(--line))}
+.dr-tcat-btn.work{color:var(--inr);border-color:color-mix(in srgb,var(--inr) 30%,var(--line))}
 
 @media(max-width:700px){
  .wrap{padding-bottom:104px}
  .cur{flex-wrap:wrap;row-gap:8px}
- dialog,dialog#cm,dialog.dr-dlg,dialog.dr-dlg.un{width:100%;max-width:100%;margin:auto 0 0 0;border-radius:26px 26px 0 0;max-height:92vh;overflow-y:auto;overflow-x:hidden}
+ dialog,dialog#cm,dialog.dr-dlg,dialog.dr-dlg.un,dialog.tk-dlg{width:100%;max-width:100%;margin:auto 0 0 0;border-radius:26px 26px 0 0;max-height:92vh;overflow-y:auto;overflow-x:hidden}
  dialog[open]{animation:sheetIn .2s cubic-bezier(.22,1,.36,1)}
- .dr-hd{border-radius:26px 26px 0 0}
- dialog .sh,dialog .dr-gate,dialog .dr-main{padding-bottom:calc(20px + env(safe-area-inset-bottom,0px))}
+ .dr-hd,.tk-hd{border-radius:26px 26px 0 0}
+ dialog .sh,dialog .dr-gate,dialog .dr-main,dialog .tk-body{padding-bottom:calc(20px + env(safe-area-inset-bottom,0px))}
  .dr-work{grid-template-columns:1fr;max-height:none;min-height:0}
  .dr-side{border-right:0;border-bottom:1px solid var(--line);max-height:none}
  .dr-list{display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;max-height:none;padding-bottom:4px}
@@ -396,13 +506,16 @@ details.dr-acc[open]>summary::after{transform:rotate(180deg);color:var(--dry)}
 <body>
 <div class="wrap">
  <div class="top">
-  <h1>Daily ledger</h1>
+  <div class="brand">
+   <img src="icon.svg?v=38" class="brand-ic" width="32" height="32" alt="">
+   <h1>Daily ledger</h1>
+  </div>
   <div class="stat">
    <div class="stat-r">
     <span class="pill" id="st"><i class="dot"></i><span id="stx"></span></span>
     <button class="ghost" id="tg"></button>
     <button class="ghost" id="cmb" type="button" title="Categories &amp; Diary Encryption Settings">
-     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
      <span>Settings</span>
     </button>
     <button class="ghost dry-btn" id="drb" type="button" title="Open Encrypted Daily Diary">
@@ -414,6 +527,11 @@ details.dr-acc[open]>summary::after{transform:rotate(180deg);color:var(--dry)}
    <div class="stat-r">
     <button class="ghost" id="bkb">Backup</button>
     <button class="ghost" id="pl">Sync</button>
+    <button class="ghost tk-btn" id="tkb" type="button" title="Open Personal &amp; Work Tasks">
+     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+     <span>Tasks</span>
+     <em class="tk-cnt" id="tk-cnt" hidden>0</em>
+    </button>
     <button class="icon-btn" id="thb" aria-label="Toggle theme" title="Switch light / dark theme"></button>
     <div class="vm-dock col" id="vmd">
      <button type="button" class="vm-arr" id="vmt" aria-label="Show or hide layout options" aria-expanded="false" title="Show or hide layout options">
@@ -671,6 +789,7 @@ details.dr-acc[open]>summary::after{transform:rotate(180deg);color:var(--dry)}
      <span class="dr-meta" id="dr-vmeta">AES-256-GCM</span>
     </div>
     <h3 class="dr-vttl" id="dr-vttl"></h3>
+    <div class="dr-vtasks" id="dr-vtasks" hidden></div>
     <div class="dr-vbdy" id="dr-vbdy"></div>
     <div class="dr-view-foot">
      <span class="hint" style="font-size:12px">Protected with your vault key</span>
@@ -690,6 +809,27 @@ details.dr-acc[open]>summary::after{transform:rotate(180deg);color:var(--dry)}
    <!-- Compose / Edit Form (shown for new dates or when clicking Edit) -->
    <div class="dr-form" id="dr-form">
     <input id="dr-ttl" class="dr-ttl" type="text" maxlength="80" placeholder="Headline for the day (e.g. Client lunch &amp; family remittance)…">
+    <div class="dr-tbox" id="dr-tbox">
+     <div class="dr-thd">
+      <div class="dr-thl">
+       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+       <span>Daily Tasks</span>
+       <span class="dr-cnt-pill" id="dr-tprog">0 tasks</span>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+       <div class="seg" id="dr-tcat" style="padding:2px;border-radius:9px;background:var(--card);border:1px solid var(--line)">
+        <button type="button" data-dtc="personal" class="on" style="padding:3px 8px;font-size:11px;border-radius:7px">1. Personal</button>
+        <button type="button" data-dtc="work" style="padding:3px 8px;font-size:11px;border-radius:7px">2. Work</button>
+       </div>
+       <button class="ghost" id="dr-tcarry" type="button" hidden style="padding:3px 9px;font-size:11.5px;border-color:var(--dry);color:var(--dry)" title="Copy unfinished tasks from earlier dates">+ Carry over</button>
+      </div>
+     </div>
+     <div class="dr-tadd">
+      <input id="dr-tinp" type="text" maxlength="140" placeholder="Add a Personal or Work task…" aria-label="New daily task">
+      <button class="ghost" id="dr-tbtn" type="button" style="padding:7px 12px;font-size:12.5px;border-color:var(--dry);color:var(--dry)">+ Add</button>
+     </div>
+     <div class="dr-tlist" id="dr-tlist" hidden></div>
+    </div>
     <textarea id="dr-bdy" class="dr-bdy" placeholder="Write your private daily reflections, meeting takeaways, or financial context for this date…"></textarea>
 
     <div class="dr-foot">
@@ -704,6 +844,84 @@ details.dr-acc[open]>summary::after{transform:rotate(180deg);color:var(--dry)}
   </div>
  </div>
 </dialog>
-<script src="app.js"></script>
+
+<dialog id="tkd" class="tk-dlg">
+ <div class="tk-hd">
+  <div class="tk-hl">
+   <div class="tk-ic">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+   </div>
+   <div>
+    <h2 id="tk-hd-ttl">Tasks</h2>
+    <p>1. Personal &amp; 2. Work</p>
+   </div>
+  </div>
+  <div class="dr-hr">
+   <span class="dr-cnt-pill" id="tk-sum-pill">0 open</span>
+   <button class="ghost" id="tk-cx" type="button" style="padding:5px 12px;font-size:12px">Close</button>
+  </div>
+ </div>
+
+ <div class="tk-body">
+  <div class="tk-form" id="tk-form">
+   <div class="tk-form-top">
+    <div class="tk-fld">
+     <span class="tk-lbl">Category</span>
+     <div class="seg" id="tk-cat-seg" role="group" aria-label="Task category">
+      <button type="button" data-tkc="personal" class="on">1. Personal</button>
+      <button type="button" data-tkc="work">2. Work</button>
+     </div>
+    </div>
+    <div class="tk-fld">
+     <span class="tk-lbl">Status</span>
+     <div class="seg" id="tk-st-seg" role="group" aria-label="Task status">
+      <button type="button" data-tks="open" class="on">Pending</button>
+      <button type="button" data-tks="done">Completed</button>
+     </div>
+    </div>
+   </div>
+
+   <div class="tk-inp-row">
+    <input id="tk-txt" type="text" maxlength="160" placeholder="Enter task description…" aria-label="Task description">
+    <button class="prim" id="tk-sv" type="button">+ Add</button>
+    <button class="ghost" id="tk-cancel" type="button" hidden>Cancel</button>
+   </div>
+
+   <div class="tk-dbar">
+    <label class="tk-dlbl">
+     <span>Initiated</span>
+     <input id="tk-idt" type="text" readonly data-dp placeholder="Pick date" aria-label="Initiated date">
+    </label>
+    <label class="tk-dlbl" id="tk-cdt-wrap">
+     <span>Completed</span>
+     <input id="tk-cdt" type="text" readonly data-dp placeholder="Auto on ✓" aria-label="Completed date">
+    </label>
+   </div>
+   <div class="err" id="tk-er" style="min-height:0"></div>
+  </div>
+
+  <div class="tk-fbar">
+   <div class="seg" id="tk-fcat" role="group" aria-label="Filter by category">
+    <button type="button" data-tfc="all" class="on">All</button>
+    <button type="button" data-tfc="personal">1. Personal</button>
+    <button type="button" data-tfc="work">2. Work</button>
+   </div>
+   <div class="tk-fsub">
+    <div class="seg" id="tk-fst" role="group" aria-label="Filter by status">
+     <button type="button" data-tfs="all" class="on">All</button>
+     <button type="button" data-tfs="open">Pending</button>
+     <button type="button" data-tfs="done">Done</button>
+    </div>
+    <input id="tk-q" type="search" placeholder="Search tasks or dates…" aria-label="Search tasks">
+   </div>
+  </div>
+
+  <div class="tk-list" id="tk-list"></div>
+ </div>
+</dialog>
+<script>
+try{if('caches' in window){caches.keys().then(ks=>ks.forEach(k=>{if(k.startsWith('ledger-')&&k!=='ledger-v38')caches.delete(k)}))}if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>{if(r.waiting)r.waiting.postMessage('skip');r.update()}))}}catch(e){}
+</script>
+<script src="app.js?v=38"></script>
 </body>
 </html>
