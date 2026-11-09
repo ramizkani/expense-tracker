@@ -1,6 +1,6 @@
 // Bump VERSION whenever you upload new app files, so devices pick up the update.
-const VERSION = 'ledger-v43';
-const SHELL = ['./', 'index.html', 'app.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
+const VERSION = 'ledger-v44';
+const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 const FONTS = 'fonts-v1';
 
 self.addEventListener('install', e => {

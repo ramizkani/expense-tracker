@@ -420,7 +420,24 @@ $('#sv').onclick=()=>{
  S.mo=date.slice(0,7);if(S.pm==='range'&&(date<S.rf||date>S.rt))S.pm='month';save();$('#dlg').close();render();
  toast(syncOn()?(online()?'Saved. Syncing…':'Saved offline. Will sync when online.'):'Saved on this device');sync();
 };
-document.querySelector('.tabs').onclick=e=>{const t=e.target.dataset.t;if(!t)return;S.tab=t;if(t!=='D')S.cur=t;render()};
+const MAIN_TABS=['AED','INR','D'];
+function triggerSlide(el,dir){
+ if(!el||!dir)return;
+ el.classList.remove('slide-r','slide-l');
+ void el.offsetWidth;
+ const cls=dir>0?'slide-r':'slide-l';
+ el.classList.add(cls);
+ el.addEventListener('animationend',()=>el.classList.remove('slide-r','slide-l'),{once:true});
+}
+function switchMainTab(t,dir){
+ if(!t||t===S.tab)return;
+ const oldIdx=MAIN_TABS.indexOf(S.tab),newIdx=MAIN_TABS.indexOf(t);
+ const d=dir||(newIdx>oldIdx?1:-1);
+ S.tab=t;if(t!=='D')S.cur=t;
+ render();
+ triggerSlide($('#app > .card'),d);
+}
+document.querySelector('.tabs').onclick=e=>{const b=e.target.closest('[data-t]');if(!b)return;switchMainTab(b.dataset.t)};
 
 // Redesigned Compact Category Manager
 let CMF='all',NT='out';
@@ -602,10 +619,30 @@ $('#app').addEventListener('click',e=>{const o=e.target.closest('.ddo'),h=e.targ
 IC.pl=SV+'<path d="M15 6l-6 6 6 6"/></svg>';IC.nx=SV+'<path d="M9 6l6 6-6 6"/></svg>';
 const cal=document.createElement('div');cal.className='cal';cal.hidden=true;document.body.appendChild(cal);
 let CI=null,CY=0,CM=0;
-function calDraw(){const first=new Date(CY,CM,1),lead=(first.getDay()+6)%7,days=new Date(CY,CM+1,0).getDate(),sel=CI.value,today=iso(0);
+function calDraw(slideDir){const first=new Date(CY,CM,1),lead=(first.getDay()+6)%7,days=new Date(CY,CM+1,0).getDate(),sel=CI.value,today=iso(0);
  let h=`<div class="ch2"><button type="button" class="ib" data-cn="-1" aria-label="Previous month">${IC.pl}</button><b>${first.toLocaleDateString('en',{month:'long',year:'numeric'})}</b><button type="button" class="ib" data-cn="1" aria-label="Next month">${IC.nx}</button></div><div class="cg">${['M','T','W','T','F','S','S'].map(x=>`<i class="wd">${x}</i>`).join('')}${'<i></i>'.repeat(lead)}`;
  for(let d=1;d<=days;d++){const s=CY+'-'+String(CM+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');h+=`<button type="button" class="cd${s===sel?' on':''}${s===today?' td':''}" data-cd="${s}">${d}</button>`}
- cal.innerHTML=h+`</div><div class="cf"><button type="button" class="ghost" data-cd="${today}">Today</button></div>`}
+ cal.innerHTML=h+`</div><div class="cf"><span class="cal-swp-hint">← Swipe month →</span><button type="button" class="ghost" data-cd="${today}">Today</button></div>`;
+ if(slideDir)triggerSlide(cal.querySelector('.cg'),slideDir);
+}
+function calStepMonth(delta){
+ if(!delta)return;
+ CM+=delta;if(CM<0){CM=11;CY--}if(CM>11){CM=0;CY++}
+ calDraw(delta>0?1:-1);
+}
+function shiftDateInput(inp,delta){
+ if(!inp||!delta)return;
+ const cur=fixDate(inp.value||iso(0));
+ const d=new Date(cur+'T00:00:00');
+ d.setDate(d.getDate()+delta);
+ const next=ymd(d);
+ inp.value=next;
+ if(!cal.hidden&&CI===inp){
+  const [y,m]=next.split('-').map(Number);CY=y;CM=m-1;calDraw(delta>0?1:-1);
+ }
+ triggerSlide(inp,delta>0?1:-1);
+ inp.dispatchEvent(new Event('change',{bubbles:true}));
+}
 function calOpen(inp){CI=inp;const [y,m]=(inp.value||iso(0)).split('-').map(Number);CY=y;CM=m-1;const host=inp.closest('dialog')||document.body;host.appendChild(cal);cal.hidden=false;calDraw();
  const r=inp.getBoundingClientRect(),h=cal.offsetHeight,hr=host!==document.body?host.getBoundingClientRect():{left:0,top:0};
  const maxW=host!==document.body?host.clientWidth:innerWidth,maxH=host!==document.body?host.clientHeight:innerHeight;
@@ -615,9 +652,9 @@ document.addEventListener('click',e=>{
  if(!e.target.closest('.mrow.tx-row'))document.querySelectorAll('#tbl .mrow.tx-row.ro').forEach(r=>{r.classList.remove('ro');r.setAttribute('aria-expanded','false')});
  if(!e.target.closest('.mday.dbt-card'))document.querySelectorAll('#dlist .mday.dbt-card.ro').forEach(r=>{r.classList.remove('ro');r.setAttribute('aria-expanded','false')});
  if(!e.target.closest('.tk-card'))document.querySelectorAll('#tk-list .tk-card.ro').forEach(r=>{r.classList.remove('ro');r.setAttribute('aria-expanded','false')});
- const dp=e.target.closest('[data-dp]');if(dp){calOpen(dp);return}
+ const dp=e.target.closest('[data-dp]');if(dp){if(dp._swipedAt&&performance.now()-dp._swipedAt<150){dp._swipedAt=0;return}calOpen(dp);return}
  if(e.target.closest('.cal')){const n=e.target.closest('[data-cn]'),d=e.target.closest('[data-cd]');
-  if(n){CM+=+n.dataset.cn;if(CM<0){CM=11;CY--}if(CM>11){CM=0;CY++}calDraw()}
+  if(n){calStepMonth(+n.dataset.cn)}
   else if(d){CI.value=d.dataset.cd;cal.hidden=true;CI.dispatchEvent(new Event('change',{bubbles:true}))}
   return}
  cal.hidden=true});
@@ -1255,15 +1292,24 @@ function openDiary(dt,mode){
  if(!DIARY_KEY&&$('#dr-upw')){$('#dr-upw').value='';$('#dr-upw').focus()}
 }
 if($('#drb'))$('#drb').onclick=()=>openDiary(null,drMode);
-if($('#dr-mbar'))$('#dr-mbar').onclick=e=>{
- const b=e.target.closest('[data-drm]');
- if(!b||b.dataset.drm===drMode)return;
+function switchDiaryMode(nextMode,slideDir){
+ if(!nextMode||nextMode===drMode)return;
  captureDiaryDraft();
  captureVaultDraft();
  if(DIARY_DRAFTS[drDate])persistDiaryDraftDate(drDate);
  if(VAULT_DRAFT)persistVaultDraft();
- drMode=b.dataset.drm;
+ const d=slideDir||(nextMode==='vault'?1:-1);
+ drMode=nextMode;
  renderDiaryModal();
+ if(DIARY_KEY){
+  const pane=drMode==='vault'?$('#dr-vault .dr-main'):$('#dr-work .dr-main');
+  triggerSlide(pane,d);
+ }
+}
+if($('#dr-mbar'))$('#dr-mbar').onclick=e=>{
+ const b=e.target.closest('[data-drm]');
+ if(!b||b.dataset.drm===drMode)return;
+ switchDiaryMode(b.dataset.drm);
 };
 if($('#drd'))$('#drd').addEventListener('close',()=>{if(DIARY_KEY)flushDiaryDraft()});
 if($('#dr-cx'))$('#dr-cx').onclick=async()=>{
@@ -1522,6 +1568,7 @@ const shiftDiaryDate=delta=>{
  drEditMode=false;
  renderDiarySidebar();
  renderDiaryDate(false);
+ triggerSlide($('#dr-work .dr-main'),delta>0?1:-1);
 };
 if($('#dr-prev'))$('#dr-prev').onclick=()=>shiftDiaryDate(-1);
 if($('#dr-next'))$('#dr-next').onclick=()=>shiftDiaryDate(1);
@@ -2340,6 +2387,133 @@ document.addEventListener('visibilitychange',()=>{
  }
 });
 setInterval(()=>{if(!document.hidden)sync()},60000);
+// ---- Universal 120Hz Touch & Pointer Gesture Engine (v44) ----
+function bindSwipeSurface(el,onGesture){
+ if(!el)return;
+ let sx=0,sy=0,st=0,t0=null,pDown=false,tActive=false;
+ el.addEventListener('touchstart',e=>{
+  if(e.touches.length!==1)return;
+  tActive=true;
+  sx=e.touches[0].clientX;sy=e.touches[0].clientY;st=performance.now();t0=e.target;
+ },{passive:true});
+ el.addEventListener('touchend',e=>{
+  if(!st||!e.changedTouches.length)return;
+  const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy,dt=performance.now()-st;
+  st=0;
+  onGesture(dx,dy,dt,t0);
+  setTimeout(()=>{tActive=false},80);
+ },{passive:true});
+ el.addEventListener('pointerdown',e=>{
+  if(tActive||e.pointerType==='touch'||e.button!==0)return;
+  pDown=true;sx=e.clientX;sy=e.clientY;st=performance.now();t0=e.target;
+ });
+ el.addEventListener('pointerup',e=>{
+  if(!pDown||tActive||e.pointerType==='touch')return;
+  pDown=false;
+  const dx=e.clientX-sx,dy=e.clientY-sy,dt=performance.now()-st;
+  st=0;
+  onGesture(dx,dy,dt,t0);
+ });
+}
+const isHorizSwipe=(dx,dy,dt,minX=44)=>dt<700&&Math.abs(dx)>=minX&&Math.abs(dx)>Math.abs(dy)*1.3;
+const isVertPullDown=(dx,dy,dt,minY=60)=>dt<700&&dy>=minY&&Math.abs(dy)>Math.abs(dx)*1.35;
+
+// 1. Date Picker Popup Calendar (.cal) horizontal swipe -> previous/next month
+bindSwipeSurface(cal,(dx,dy,dt)=>{
+ if(cal.hidden||!isHorizSwipe(dx,dy,dt,32))return;
+ calStepMonth(dx<0?1:-1);
+});
+
+// 2. Date Picker Inputs ([data-dp]) horizontal swipe -> +/- 1 day
+document.addEventListener('touchstart',e=>{
+ const dp=e.target&&e.target.closest&&e.target.closest('[data-dp]');
+ if(!dp||e.touches.length!==1)return;
+ dp._swipedAt=0;
+ dp._sx=e.touches[0].clientX;dp._sy=e.touches[0].clientY;dp._st=performance.now();
+},{passive:true});
+document.addEventListener('touchend',e=>{
+ const dp=e.target&&e.target.closest&&e.target.closest('[data-dp]');
+ if(!dp||!dp._st||!e.changedTouches.length)return;
+ const dx=e.changedTouches[0].clientX-dp._sx,dy=e.changedTouches[0].clientY-dp._sy,dt=performance.now()-dp._st;
+ dp._st=0;
+ if(isHorizSwipe(dx,dy,dt,26)){
+  dp._swipedAt=performance.now();
+  shiftDateInput(dp,dx<0?1:-1);
+ }else dp._swipedAt=0;
+},{passive:true});
+document.addEventListener('pointerdown',e=>{
+ if(e.pointerType==='touch'||e.button!==0)return;
+ const dp=e.target&&e.target.closest&&e.target.closest('[data-dp]');
+ if(!dp)return;
+ dp._swipedAt=0;
+ dp._sx=e.clientX;dp._sy=e.clientY;dp._st=performance.now();
+});
+document.addEventListener('pointerup',e=>{
+ if(e.pointerType==='touch')return;
+ const dp=e.target&&e.target.closest&&e.target.closest('[data-dp]');
+ if(!dp||!dp._st)return;
+ const dx=e.clientX-dp._sx,dy=e.clientY-dp._sy,dt=performance.now()-dp._st;
+ dp._st=0;
+ if(isHorizSwipe(dx,dy,dt,26)){
+  dp._swipedAt=performance.now();
+  shiftDateInput(dp,dx<0?1:-1);
+ }else dp._swipedAt=0;
+});
+
+// 3. Main Ledger Windows (#app: AED <-> INR <-> Debts) 120Hz swipe
+bindSwipeSurface($('#app'),(dx,dy,dt,t0)=>{
+ if(!isHorizSwipe(dx,dy,dt,48))return;
+ if(t0&&t0.closest){
+  if(t0.closest('input,textarea,select,[data-dp],.cal'))return;
+  const tw=t0.closest('.tw');
+  if(tw&&tw.scrollWidth>tw.clientWidth+6)return;
+ }
+ const idx=MAIN_TABS.indexOf(S.tab);
+ if(idx<0)return;
+ const nextIdx=dx<0?idx+1:idx-1;
+ if(nextIdx>=0&&nextIdx<MAIN_TABS.length){
+  switchMainTab(MAIN_TABS[nextIdx],dx<0?1:-1);
+ }
+});
+
+// 4. Full-Screen Diary & Vault (#drd): swipe header down to close, swipe date bar for +/-1 day, swipe workspace for Diary <-> Vault
+bindSwipeSurface($('#drd'),(dx,dy,dt,t0)=>{
+ if(!$('#drd')||!$('#drd').open)return;
+ if(t0&&t0.closest&&t0.closest('.dr-hd')&&isVertPullDown(dx,dy,dt,56)){
+  if($('#dr-cx'))$('#dr-cx').click();
+  return;
+ }
+ if(!DIARY_KEY||!isHorizSwipe(dx,dy,dt,46))return;
+ if(t0&&t0.closest){
+  if(t0.closest('input,textarea,select,[data-dp],.cal'))return;
+  if(drMode==='diary'&&t0.closest('.dr-dbar,.dr-sum')){
+   shiftDiaryDate(dx<0?1:-1);
+   return;
+  }
+ }
+ if(dx<0&&drMode==='diary')switchDiaryMode('vault',1);
+ else if(dx>0&&drMode==='vault')switchDiaryMode('diary',-1);
+});
+
+// 5. Full-Screen Tasks (#tkd): swipe header down to close, swipe body left/right to cycle All <-> 1. Personal <-> 2. Work
+const TK_CATS=['all','personal','work'];
+bindSwipeSurface($('#tkd'),(dx,dy,dt,t0)=>{
+ if(!$('#tkd')||!$('#tkd').open)return;
+ if(t0&&t0.closest&&t0.closest('.tk-hd')&&isVertPullDown(dx,dy,dt,56)){
+  if($('#tk-cx'))$('#tk-cx').click();
+  return;
+ }
+ if(!isHorizSwipe(dx,dy,dt,46))return;
+ if(t0&&t0.closest&&t0.closest('input,textarea,select,[data-dp],.cal'))return;
+ const idx=TK_CATS.indexOf(tkFCat);
+ const nextIdx=dx<0?idx+1:idx-1;
+ if(nextIdx>=0&&nextIdx<TK_CATS.length){
+  tkFCat=TK_CATS[nextIdx];
+  renderTasksList();
+  triggerSlide($('#tk-list'),dx<0?1:-1);
+ }
+});
+
 stamp(true);
 syncDiaryDot();
 syncTaskBadge();
