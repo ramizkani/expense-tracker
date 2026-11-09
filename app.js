@@ -86,7 +86,8 @@ const isDark=()=>{
 const syncThemeIcon=()=>{
  const d=isDark(),openDlg=document.querySelector('dialog[open]'),dlgOpen=!!openDlg;
  document.body.classList.toggle('dlg-open',dlgOpen);
- const metaCol=d?'#0b101b':'#e9eef5';
+ const isMob=matchMedia('(max-width:700px)').matches||/Android/i.test(navigator.userAgent);
+ const metaCol=(isMob||d)?'#000000':(dlgOpen?'#686c71':'#e9eef5');
  if($('#theme-meta')&&$('#theme-meta').getAttribute('content')!==metaCol)$('#theme-meta').setAttribute('content',metaCol);
  const tst=$('#toast');
  if(tst){const host=openDlg||document.body;if(tst.parentNode!==host)host.appendChild(tst)}
@@ -95,6 +96,7 @@ const syncThemeIcon=()=>{
  $('#thb').setAttribute('title',d?'Switch to light mode':'Switch to dark mode');
 };
 matchMedia('(prefers-color-scheme:dark)').addEventListener('change',syncThemeIcon);
+matchMedia('(max-width:700px)').addEventListener('change',syncThemeIcon);
 const initTheme=STORE.getItem('ledger.theme');
 if(initTheme)document.documentElement.setAttribute('data-theme',initTheme);
 const dlgObs=new MutationObserver(syncThemeIcon);
