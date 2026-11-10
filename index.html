@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" id="theme-meta" content="#000000">
-<link rel="manifest" href="manifest.webmanifest?v=44">
-<link rel="icon" type="image/svg+xml" href="icon.svg?v=44">
-<link rel="alternate icon" type="image/png" href="icon-192.png?v=44">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=44">
+<link rel="manifest" href="manifest.webmanifest?v=46">
+<link rel="icon" type="image/svg+xml" href="icon.svg?v=46">
+<link rel="alternate icon" type="image/png" href="icon-192.png?v=46">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=46">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Daily ledger · AED &amp; INR</title>
 <meta name="description" content="Personal daily financial ledger and debt tracker for AED and INR with offline storage, category management, and Google Sheets sync.">
@@ -16,13 +16,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400..700&family=JetBrains+Mono:wght@500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap">
-<link rel="stylesheet" href="styles.css?v=44">
+<link rel="stylesheet" href="styles.css?v=46">
 </head>
 <body>
 <div class="wrap">
  <div class="top">
   <div class="brand">
-   <img src="icon.svg?v=44" class="brand-ic" width="32" height="32" alt="">
+   <img src="icon.svg?v=46" class="brand-ic" width="32" height="32" alt="">
    <h1>Daily ledger</h1>
   </div>
   <div class="stat">
@@ -30,9 +30,10 @@
     <span class="pill" id="st"><i class="dot"></i><span id="stx"></span></span>
     <button class="ghost" id="tg"></button>
     <button class="ghost" id="cmb" type="button" title="Categories &amp; Diary Encryption Settings">
-     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0 4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
      <span>Settings</span>
     </button>
+    <button class="icon-btn" id="thb" type="button" aria-label="Toggle theme" title="Switch light / dark theme"></button>
    </div>
    <div class="stat-r stat-r2">
     <button class="ghost" id="bkb">Backup</button>
@@ -48,7 +49,6 @@
      <span>Tasks</span>
      <em class="tk-cnt" id="tk-cnt" hidden>0</em>
     </button>
-    <button class="icon-btn" id="thb" aria-label="Toggle theme" title="Switch light / dark theme"></button>
     <div class="vm-dock col" id="vmd">
      <button type="button" class="vm-arr" id="vmt" aria-label="Show or hide layout options" aria-expanded="false" title="Show or hide layout options">
       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
@@ -287,8 +287,11 @@
   <button class="dr-link" id="dr-to-st" type="button">Manage encryption, recovery or reset in Settings →</button>
  </div>
 
- <!-- State 4A: Unlocked Daily Diary Workspace -->
- <div class="dr-work" id="dr-work" hidden>
+ <!-- Continuous 120Hz Pager Viewport (WhatsApp-style side-by-side Daily Diary & Info Vault) -->
+ <div class="dr-vp" id="dr-vp" hidden>
+  <div class="dr-track" id="dr-track">
+  <!-- State 4A: Unlocked Daily Diary Workspace -->
+  <div class="dr-work" id="dr-work">
   <aside class="dr-side">
    <input id="dr-q" type="search" placeholder="Search decrypted notes…" aria-label="Search diary notes">
    <div class="dr-list" id="dr-list"></div>
@@ -378,7 +381,7 @@
  </div>
 
  <!-- State 4B: Unlocked Encrypted Info Vault (Folder Structure, Platform Info, User ID/PIN, Web App IPs) -->
- <div class="dr-work" id="dr-vault" hidden>
+ <div class="dr-work" id="dr-vault">
   <aside class="dr-side">
    <button type="button" class="vl-new-btn" id="vl-new">+ New Encrypted Info</button>
    <input id="vl-q" type="search" placeholder="Search title, IP, folder, PIN, date…" aria-label="Search encrypted info vault">
@@ -471,6 +474,7 @@
     </div>
    </div>
   </div>
+  </div>
  </div>
 </dialog>
 
@@ -551,8 +555,8 @@
  </div>
 </dialog>
 <script>
-try{if('caches' in window){caches.keys().then(ks=>ks.forEach(k=>{if(k.startsWith('ledger-')&&k!=='ledger-v44')caches.delete(k)}))}if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>{if(r.waiting)r.waiting.postMessage('skip');r.update()}))}}catch(e){}
+try{if('caches' in window){caches.keys().then(ks=>ks.forEach(k=>{if(k.startsWith('ledger-')&&k!=='ledger-v46')caches.delete(k)}))}if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>{if(r.waiting)r.waiting.postMessage('skip');r.update()}))}}catch(e){}
 </script>
-<script src="app.js?v=44"></script>
+<script src="app.js?v=46"></script>
 </body>
 </html>
