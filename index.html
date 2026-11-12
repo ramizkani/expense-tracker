@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" id="theme-meta" content="#000000">
-<link rel="manifest" href="manifest.webmanifest?v=47">
-<link rel="icon" type="image/svg+xml" href="icon.svg?v=47">
-<link rel="alternate icon" type="image/png" href="icon-192.png?v=47">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=47">
+<link rel="manifest" href="manifest.webmanifest?v=48">
+<link rel="icon" type="image/svg+xml" href="icon.svg?v=48">
+<link rel="alternate icon" type="image/png" href="icon-192.png?v=48">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=48">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Daily ledger · AED &amp; INR</title>
 <meta name="description" content="Personal daily financial ledger and debt tracker for AED and INR with offline storage, category management, and Google Sheets sync.">
@@ -16,13 +16,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400..700&family=JetBrains+Mono:wght@500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap">
-<link rel="stylesheet" href="styles.css?v=47">
+<link rel="stylesheet" href="styles.css?v=48">
 </head>
 <body>
 <div class="wrap">
  <div class="top">
   <div class="brand">
-   <img src="icon.svg?v=47" class="brand-ic" width="32" height="32" alt="">
+   <img src="icon.svg?v=48" class="brand-ic" width="32" height="32" alt="">
    <h1>Daily ledger</h1>
   </div>
   <div class="stat">
@@ -30,7 +30,7 @@
     <span class="pill" id="st"><i class="dot"></i><span id="stx"></span></span>
     <button class="ghost" id="tg"></button>
     <button class="ghost" id="cmb" type="button" title="Categories &amp; Diary Encryption Settings">
-     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0 4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+     <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
      <span>Settings</span>
     </button>
     <button class="icon-btn" id="thb" type="button" aria-label="Toggle theme" title="Switch light / dark theme"></button>
@@ -93,20 +93,23 @@
 
 <dialog id="cm"><div class="sh">
  <div class="cm-top">
-  <h2>Settings</h2>
+  <h2 class="cm-ttl">
+   <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+   <span>Settings</span>
+  </h2>
   <span class="hint" id="cm-cnt"></span>
  </div>
  <div class="st-tabs" id="st-tabs" role="tablist">
   <button type="button" data-st="cats" class="on">
-   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="7" height="7" rx="1.5"/><rect x="14" y="4" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
    <span>Categories</span>
   </button>
   <button type="button" data-st="diary">
-   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
    <span>Diary Vault</span>
   </button>
   <button type="button" data-st="hist">
-   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg>
+   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg>
    <span>History</span>
   </button>
  </div>
@@ -227,7 +230,7 @@
 
 <dialog id="obd" style="--acc:var(--inr)"><div class="sh"><h2>Opening balance (INR)</h2><p class="hint">The amount available before your first entry. Available is then calculated automatically after every transaction.</p><label>Amount<input class="big" id="obv" type="number" inputmode="decimal" step="0.01" placeholder="0.00"></label><div class="err" id="obe"></div><button class="prim" id="obs">Save</button><button class="ghost" id="obc">Cancel</button></div></dialog>
 
-<dialog id="dbd" style="--acc:var(--dbt)"><div class="sh"><h2 id="dbh">Add debt</h2><p class="hint">Record the full amount here. Add part-payments later with Pay, and the remaining balance updates automatically.</p><div class="seg" id="dbs"><button data-v="lent" class="on">They owe me</button><button data-v="owe">I owe them</button></div><label>Person<input id="dbw" maxlength="30" placeholder="Name"></label><label>Amount<input class="big" id="dba" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00"></label><div class="two"><label>Date<input id="dbt" type="text" readonly data-dp placeholder="Pick a date"></label><label>Note (optional)<input id="dbn" maxlength="60"></label></div><div class="err" id="dbe"></div><button class="prim" id="dbv">Save</button><button class="ghost" id="dbc">Cancel</button></div></dialog>
+<dialog id="dbd" style="--acc:var(--dbt)"><div class="sh"><h2 id="dbh">Add debt</h2><p class="hint">Entries with the same person name are automatically combined into one total balance. Touch any person entry to see full date &amp; note details.</p><div class="seg" id="dbs"><button data-v="lent" class="on">They owe me</button><button data-v="owe">I owe them</button></div><label>Person<input id="dbw" maxlength="30" placeholder="Name (e.g. Sam)"></label><div class="chips" id="db-who-ch" hidden></div><label>Amount<input class="big" id="dba" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00"></label><div class="two"><label>Date<input id="dbt" type="text" readonly data-dp placeholder="Pick a date"></label><label>Note (optional)<input id="dbn" maxlength="60"></label></div><div class="err" id="dbe"></div><button class="prim" id="dbv">Save</button><button class="ghost" id="dbc">Cancel</button></div></dialog>
 
 <dialog id="pyd" style="--acc:var(--dbt)"><div class="sh"><h2>Record payment</h2><p class="hint" id="pyh"></p><label>Amount<input class="big" id="pya" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00"></label><button class="ghost" id="pyf" style="width:max-content">Pay full remaining</button><div class="two"><label>Date<input id="pyt" type="text" readonly data-dp placeholder="Pick a date"></label><label>Note (optional)<input id="pyn" maxlength="60"></label></div><div class="err" id="pye"></div><button class="prim" id="pys">Save payment</button><button class="ghost" id="pyc">Cancel</button></div></dialog>
 
@@ -555,8 +558,8 @@
  </div>
 </dialog>
 <script>
-try{if('caches' in window){caches.keys().then(ks=>ks.forEach(k=>{if(k.startsWith('ledger-')&&k!=='ledger-v47')caches.delete(k)}))}if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>{if(r.waiting)r.waiting.postMessage('skip');r.update()}))}}catch(e){}
+try{if('caches' in window){caches.keys().then(ks=>ks.forEach(k=>{if(k.startsWith('ledger-')&&k!=='ledger-v48')caches.delete(k)}))}if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>{if(r.waiting)r.waiting.postMessage('skip');r.update()}))}}catch(e){}
 </script>
-<script src="app.js?v=47"></script>
+<script src="app.js?v=48"></script>
 </body>
 </html>

@@ -266,24 +266,97 @@ function ltbl(c){
  <div class="pg"><span class="num">${all.length?st+1:0}–${st+rows.length} of ${all.length}</span><span class="pn">${dd('pp','Rows per page',[10,25,50].map(n=>({v:n,l:n+' rows'})),S.pp)}<button class="ghost" data-p="-1"${S.pg<=1?' disabled':''}>Prev</button><button class="ghost" data-p="1"${S.pg>=pages?' disabled':''}>Next</button></span></div>`;
 }
 
-const dlab=d=>rem(d)<=0?['Settled','in']:paid(d)>0?['Partial','mid']:['Open','op'];
+const dlabGrp=g=>g.rem<=0?['Settled','in']:g.paid>0?['Partial','mid']:['Open','op'];
+const dGroupKey=d=>`${d.cur}|${d.dir}|${String(d.who||'').trim().toLowerCase()}`;
+function getDebtGroups(c){
+ const map={};
+ DB.filter(d=>d.cur===c&&!d.del).forEach(d=>{
+  const k=dGroupKey(d);
+  let g=map[k];
+  if(!g){
+   g={key:k,repId:d.id,cur:c,dir:d.dir,who:d.who.trim(),items:[],amt:0,paid:0,rem:0,firstDate:d.date,latestDate:d.date,latestTs:d.ts||0,searchHay:''};
+   map[k]=g;
+  }
+  g.items.push(d);
+  if(d.date>=g.latestDate&&(d.date>g.latestDate||(d.ts||0)>=g.latestTs)){
+   g.latestDate=d.date;
+   g.latestTs=d.ts||0;
+   g.who=d.who.trim();
+  }
+  if(d.date<g.firstDate)g.firstDate=d.date;
+ });
+ return Object.values(map).map(g=>{
+  g.items.sort((a,b)=>a.date.localeCompare(b.date)||(a.ts||0)-(b.ts||0));
+  g.repId=g.items[0].id;
+  g.amt=r2(g.items.reduce((s,d)=>s+d.amt,0));
+  g.paid=r2(g.items.reduce((s,d)=>s+paid(d),0));
+  g.rem=r2(g.amt-g.paid);
+  const payMap={},pays=[];
+  g.items.forEach(d=>{
+   (d.pays||[]).filter(p=>!p.del).forEach(p=>{
+    if(p.bid){
+     let b=payMap[p.bid];
+     if(!b){
+      b={id:p.bid,did:d.id,isBatch:true,amt:0,date:p.date,note:p.note||'',parts:[]};
+      payMap[p.bid]=b;
+      pays.push(b);
+     }
+     b.amt=r2(b.amt+p.amt);
+     b.parts.push({did:d.id,pid:p.id,amt:p.amt,date:d.date});
+    }else{
+     pays.push({id:p.id,did:d.id,isBatch:false,amt:p.amt,date:p.date,note:p.note||'',parts:[{did:d.id,pid:p.id,amt:p.amt,date:d.date}]});
+    }
+   });
+  });
+  g.pays=pays.sort((a,b)=>b.date.localeCompare(a.date));
+  g.searchHay=(g.who+' '+g.items.map(d=>d.date+' '+(d.note||'')).join(' ')+' '+g.pays.map(p=>p.date+' '+(p.note||'')).join(' ')).toLowerCase();
+  return g;
+ }).sort((a,b)=>b.latestDate.localeCompare(a.latestDate)||b.latestTs-a.latestTs);
+}
+function findDebtGroup(idOrKey){
+ if(!idOrKey)return null;
+ const d=DB.find(x=>!x.del&&x.id===idOrKey);
+ const c=d?d.cur:S.dcur;
+ const groups=getDebtGroups(c);
+ return groups.find(g=>g.key===idOrKey||g.repId===idOrKey||g.items.some(x=>x.id===idOrKey))||null;
+}
+const isGroupOpen=g=>!!(S.xp[g.key]||g.items.some(x=>S.xp[x.id]));
+const setGroupOpen=(g,val)=>{if(!g)return;S.xp[g.key]=val?1:0;g.items.forEach(x=>{S.xp[x.id]=val?1:0})};
+function renderDebtBreakdown(g,c,dt){
+ const entRows=g.items.map((d,idx)=>{
+  const r=rem(d),p=paid(d);
+  const stTxt=r<=0?'Settled':p>0?`${fmt(c,r)} left (Paid ${fmt(c,p)})`:`${fmt(c,r)} open`;
+  const stCls=r<=0?'in':p>0?'mid':'op';
+  return `<div class="dbt-ent-row"><div class="dbt-ent-l"><div class="dbt-ent-top"><span class="dbt-ent-idx">#${idx+1}</span><span>${dt(d.date)}</span></div><span class="dbt-ent-note">${esc(d.note||'No note')}</span></div><div class="dbt-ent-r"><div class="dbt-ent-amt"><b>${fmt(c,d.amt)}</b><small class="${stCls}">${stTxt}</small></div><div class="dbt-ent-ac"><button class="ib" data-dk="edit:${d.id}" aria-label="Edit entry" title="Edit this entry">${IC.e}</button><button class="ib d" data-dk="del:${d.id}" aria-label="Delete entry" title="Delete this entry">${IC.d}</button></div></div></div>`;
+ }).join('');
+ const payRows=g.pays.map(y=>`<div class="dbt-ent-row"><div class="dbt-ent-l"><div class="dbt-ent-top"><span>${dt(y.date)}</span>${y.parts&&y.parts.length>1?`<span class="dbt-ent-idx">Split across ${y.parts.length} entries</span>`:''}</div><span class="dbt-ent-note">${esc(y.note||'Payment')}</span></div><div class="dbt-ent-r"><div class="dbt-ent-amt"><b class="in">${fmt(c,y.amt)}</b></div><div class="dbt-ent-ac"><button class="ib d" data-dk="dp:${g.repId}:${y.id}" aria-label="Delete payment" title="Delete payment">${IC.d}</button></div></div></div>`).join('')||'<div class="hint">No payments recorded yet.</div>';
+ return `<div class="dbt-sec"><div class="dbt-sec-hd"><span>${g.dir==='lent'?'Given / Lent entries':'Received / Borrowed entries'} (${g.items.length})</span><button type="button" class="ghost dbt-add-more" data-dk="addfor:${g.repId}">+ Add entry</button></div><div class="dbt-ent-list">${entRows}</div></div><div class="dbt-sec"><div class="dbt-sec-hd"><span>Payment history (${g.pays.length})</span></div><div class="dbt-ent-list">${payRows}</div></div>`;
+}
 function dlist(){
  const c=S.dcur,q=S.dq.toLowerCase(),dt=s=>new Date(s+'T00:00').toLocaleDateString('en',{day:'2-digit',month:'short',year:'numeric'});
- const rows=DB.filter(d=>d.cur===c&&!d.del&&(S.ds==='all'||(S.ds==='open'?rem(d)>0:rem(d)<=0))&&(!q||(d.who+' '+d.note).toLowerCase().includes(q))).sort((a,b)=>b.date.localeCompare(a.date)||b.ts-a.ts);
- const dc= rows.map((d)=>{
-  const r=rem(d),p=paid(d),pc=d.amt?Math.min(100,Math.round(p/d.amt*100)):0,[sl,sc]=dlab(d),op=S.xp[d.id];
-  const pays=d.pays.filter(p=>!p.del).sort((a,b)=>b.date.localeCompare(a.date));
-  return `<div class="mday dbt-card" data-dcard="${esc(d.id)}" tabindex="0" role="button" aria-expanded="false" aria-label="Tap to show edit and delete options"><div class="mday-h"><b>${esc(d.who)}</b><span class="st ${sc}">${sl} · ${pc}%</span></div><div class="mrow"><div class="mrow-l"><b><span class="tp ${d.dir==='lent'?'lent':'out'}">${d.dir==='lent'?'They owe me':'I owe them'}</span></b><span style="margin-top:4px">${dt(d.date)} · ${esc(d.note||'No notes')}</span></div><div class="mrow-r"><div class="mrow-amt"><b class="num">${fmt(c,r)} left</b><small>of ${fmt(c,d.amt)} (Paid ${fmt(c,p)})</small></div></div></div><div class="mrow" style="background:var(--bg);padding:8px 14px"><span class="hint">${pays.length} ${pays.length===1?'payment':'payments'} · tap card to edit</span><div class="mrow-ac">${r>0?`<button class="ghost pay" data-dk="pay:${d.id}">Pay</button>`:''}<button class="ib tg" data-dk="xp:${d.id}" aria-expanded="${!!op}">${IC.dn}</button><span class="dbt-ed-ac"><button class="ib" data-dk="edit:${d.id}" aria-label="Edit debt" title="Edit">${IC.e}</button><button class="ib d" data-dk="del:${d.id}" aria-label="Delete debt" title="Delete">${IC.d}</button></span></div></div>${op?`<div style="padding:8px 14px;border-top:1px dashed var(--line);font-size:13px">${pays.map(y=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0"><span>${dt(y.date)} · ${esc(y.note||'Payment')}</span><span style="display:flex;align-items:center;gap:6px"><b class="num">${fmt(c,y.amt)}</b><button class="ib d" style="width:26px;height:26px" data-dk="dp:${d.id}:${y.id}">${IC.d}</button></span></div>`).join('')||'<div class="hint">No payments yet.</div>'}</div>`:''}</div>`;
+ const groups=getDebtGroups(c).filter(g=>(S.ds==='all'||(S.ds==='open'?g.rem>0:g.rem<=0))&&(!q||g.searchHay.includes(q)));
+ const dc=groups.map(g=>{
+  const r=g.rem,p=g.paid,pc=g.amt?Math.min(100,Math.round(p/g.amt*100)):0,[sl,sc]=dlabGrp(g),op=isGroupOpen(g);
+  const latestItem=g.items[g.items.length-1];
+  const subLine=g.items.length===1?`${dt(latestItem.date)} · ${esc(latestItem.note||'No notes')}`:`${dt(g.firstDate)} – ${dt(g.latestDate)} · ${g.items.length} entries (touch for details)`;
+  const cntBadge=g.items.length>1?`<span class="dbt-cnt-pill">${g.items.length} entries</span>`:'';
+  return `<div class="mday dbt-card${op?' ro':''}" data-dcard="${esc(g.repId)}" tabindex="0" role="button" aria-expanded="${op?'true':'false'}" aria-label="Touch to view full entry dates, notes and payment details"><div class="mday-h"><b>${esc(g.who)}${cntBadge}</b><span class="st ${sc}">${sl} · ${pc}%</span></div><div class="mrow"><div class="mrow-l"><b><span class="tp ${g.dir==='lent'?'lent':'out'}">${g.dir==='lent'?'They owe me':'I owe them'}</span></b><span style="margin-top:4px">${subLine}</span></div><div class="mrow-r"><div class="mrow-amt"><b class="num">${fmt(c,r)} left</b><small>of ${fmt(c,g.amt)} (Paid ${fmt(c,p)})</small></div></div></div><div class="mrow" style="background:var(--bg);padding:8px 14px"><span class="hint">${g.items.length} ${g.items.length===1?'entry':'entries'} · ${g.pays.length} ${g.pays.length===1?'payment':'payments'} · touch for details</span><div class="mrow-ac">${r>0?`<button class="ghost pay" data-dk="pay:${g.repId}">Pay</button>`:''}<button class="ib tg" data-dk="xp:${g.repId}" aria-expanded="${!!op}" title="Show full details">${IC.dn}</button><span class="dbt-ed-ac"><button class="ib" data-dk="edit:${latestItem.id}" aria-label="Edit debt" title="Edit">${IC.e}</button><button class="ib d" data-dk="delgrp:${g.repId}" aria-label="Delete debt" title="Delete">${IC.d}</button></span></div></div>${op?`<div class="dbt-drawer">${renderDebtBreakdown(g,c,dt)}</div>`:''}</div>`;
  }).join('');
- const body=rows.map((d,i)=>{const r=rem(d),p=paid(d),pc=d.amt?Math.min(100,Math.round(p/d.amt*100)):0,[sl,sc]=dlab(d),op=S.xp[d.id];
-  const sub=`<tr class="sub"><td></td><td colspan="8"><div class="ph"><div class="pht"><b>Payment history</b><span class="n">${d.pays.filter(p=>!p.del).length} ${d.pays.filter(p=>!p.del).length===1?'payment':'payments'}</span></div>${d.pays.filter(p=>!p.del).sort((a,b)=>b.date.localeCompare(a.date)).map(y=>`<div class="pr"><span>${dt(y.date)}</span><span class="n">${esc(y.note||'Payment')}</span><b class="num">${fmt(c,y.amt)}</b><button class="ib d" data-dk="dp:${d.id}:${y.id}" aria-label="Delete payment" title="Delete payment">${IC.d}</button></div>`).join('')||'<div class="n">No payments yet.</div>'}</div></td></tr>`;
-  return `<tr class="f${op?' xo':''}"><td class="num">${i+1}</td><td>${dt(d.date)}</td><td><b>${esc(d.who)}</b><span class="n">${esc(d.note||'No notes')}</span></td><td><span class="tp ${d.dir==='lent'?'lent':'out'}">${d.dir==='lent'?'They owe me':'I owe them'}</span></td><td class="r num">${fmt(c,d.amt)}</td><td class="r num">${fmt(c,p)}</td><td class="r av">${fmt(c,r)}<span class="pb"><i style="width:${pc}%"></i></span></td><td><span class="st ${sc}">${sl}</span></td><td class="ac">${r>0?`<button class="ghost pay" data-dk="pay:${d.id}">Pay</button>`:''}<button class="ib tg" data-dk="xp:${d.id}" aria-label="Payment history" title="Payment history" aria-expanded="${!!op}">${IC.dn}</button><button class="ib" data-dk="edit:${d.id}" aria-label="Edit debt" title="Edit">${IC.e}</button><button class="ib d" data-dk="del:${d.id}" aria-label="Delete debt" title="Delete">${IC.d}</button></td></tr>${sub}`}).join('');
+ const body=groups.map((g,i)=>{
+  const r=g.rem,p=g.paid,pc=g.amt?Math.min(100,Math.round(p/g.amt*100)):0,[sl,sc]=dlabGrp(g),op=isGroupOpen(g);
+  const latestItem=g.items[g.items.length-1];
+  const cntBadge=g.items.length>1?`<span class="dbt-cnt-pill">${g.items.length} entries</span>`:'';
+  const noteLine=g.items.length===1?esc(latestItem.note||'No notes'):`${g.items.length} entries (${dt(g.firstDate)} – ${dt(g.latestDate)}) · click row for full details`;
+  const sub=`<tr class="sub"><td></td><td colspan="8"><div class="ph">${renderDebtBreakdown(g,c,dt)}</div></td></tr>`;
+  return `<tr class="f dbt-row${op?' xo':''}" data-drow="${esc(g.repId)}"><td class="num">${i+1}</td><td>${dt(g.latestDate)}</td><td><b>${esc(g.who)}${cntBadge}</b><span class="n">${noteLine}</span></td><td><span class="tp ${g.dir==='lent'?'lent':'out'}">${g.dir==='lent'?'They owe me':'I owe them'}</span></td><td class="r num">${fmt(c,g.amt)}</td><td class="r num">${fmt(c,p)}</td><td class="r av">${fmt(c,r)}<span class="pb"><i style="width:${pc}%"></i></span></td><td><span class="st ${sc}">${sl}</span></td><td class="ac">${r>0?`<button class="ghost pay" data-dk="pay:${g.repId}">Pay</button>`:''}<button class="ib tg" data-dk="xp:${g.repId}" aria-label="Full details" title="Show full entry & payment details" aria-expanded="${!!op}">${IC.dn}</button><button class="ib" data-dk="edit:${latestItem.id}" aria-label="Edit debt" title="Edit">${IC.e}</button><button class="ib d" data-dk="delgrp:${g.repId}" aria-label="Delete debt" title="Delete">${IC.d}</button></td></tr>${sub}`;
+ }).join('');
  return `<div class="vm-${S.vm}"><div class="mfeed">${dc||'<div class="empty">No debts here.</div>'}</div><div class="tw tx-tw"><table class="lt dtb"><colgroup><col style="width:46px"><col style="width:108px"><col><col style="width:112px"><col style="width:92px"><col style="width:92px"><col style="width:120px"><col style="width:84px"><col style="width:176px"></colgroup><thead><tr><th>S.no</th><th>Date</th><th>Person / notes</th><th>Type</th><th class="r">Amount</th><th class="r">Paid</th><th class="r">Remaining</th><th>Status</th><th class="r">Actions</th></tr></thead><tbody>${body||`<tr><td colspan="9" class="empty">No debts here.</td></tr>`}</tbody></table></div></div>`;
 }
 
 function debtsTab(){const c=S.dcur,L=DB.filter(d=>d.cur===c&&!d.del),got=r2(L.filter(d=>d.dir==='lent').reduce((a,d)=>a+rem(d),0)),ow=r2(L.filter(d=>d.dir==='owe').reduce((a,d)=>a+rem(d),0)),net=r2(got-ow);
+ const openGroups=getDebtGroups(c).filter(g=>g.rem>0).length;
  const sg=(k,v,l)=>`<button data-dk="${k}:${v}" class="${(k==='cur'?S.dcur:S.ds)===v?'on':''}">${l}</button>`;
- return `<section class="card wide dbt"><div class="head"><div class="cur"><span>Debts &amp; part-payments · violet ledger</span><span class="code">${c} · DEBTS</span></div><div class="bal">${net>=0?'+':'−'}${fmt(c,Math.abs(net))}</div><div class="io"><div class="i">Owed to you<b>${fmt(c,got)}</b></div><div class="o">You owe<b>${fmt(c,ow)}</b></div><div class="net-dbt">Active records<b>${L.filter(d=>rem(d)>0).length} open</b></div></div></div>
+ return `<section class="card wide dbt"><div class="head"><div class="cur"><span>Debts &amp; part-payments · violet ledger</span><span class="code">${c} · DEBTS</span></div><div class="bal">${net>=0?'+':'−'}${fmt(c,Math.abs(net))}</div><div class="io"><div class="i">Owed to you<b>${fmt(c,got)}</b></div><div class="o">You owe<b>${fmt(c,ow)}</b></div><div class="net-dbt">Active records<b>${openGroups} open</b></div></div></div>
  <div class="tb"><div class="seg">${sg('cur','AED','AED')}${sg('cur','INR','INR')}</div><div class="seg">${sg('st','open','Open')}${sg('st','done','Settled')}${sg('st','all','All')}</div><input id="dq" type="search" placeholder="Search person or notes" aria-label="Search debts" value="${esc(S.dq)}"></div>
  <div id="dlist" style="padding-bottom:10px">${dlist()}</div></section>`}
 
@@ -497,29 +570,101 @@ $('#obs').onclick=()=>{const v=parseFloat($('#obv').value);if(isNaN(v)){$('#obe'
 $('#obc').onclick=()=>$('#obd').close();
 let DD='lent';
 
-function openDb(id){const d=id&&DB.find(x=>x.id===id);S.did=d?d.id:null;DD=d?d.dir:'lent';document.querySelectorAll('#dbs button').forEach(b=>b.classList.toggle('on',b.dataset.v===DD));$('#dbh').textContent=d?'Edit debt':'Add debt';$('#dbw').value=d?d.who:'';$('#dba').value=d?d.amt:'';$('#dbn').value=d?d.note:'';$('#dbt').value=d?d.date:iso(0);$('#dbe').textContent='';$('#dbd').style.setProperty('--acc','var(--dbt)');$('#dbd').showModal();$('#dbw').focus()}
+function renderDbWhoChips(){
+ const ch=$('#db-who-ch');if(!ch)return;
+ const curVal=($('#dbw')&&$('#dbw').value||'').trim().toLowerCase();
+ const names=[];const seen=new Set();
+ DB.filter(x=>!x.del&&x.cur===S.dcur).forEach(x=>{
+  const k=x.who.trim().toLowerCase();
+  if(k&&!seen.has(k)){seen.add(k);names.push({who:x.who.trim(),dir:x.dir})}
+ });
+ if(!names.length||S.did){ch.hidden=true;ch.innerHTML='';return}
+ ch.hidden=false;
+ ch.innerHTML=names.map(p=>`<button type="button" class="${p.who.toLowerCase()===curVal?'on':''}" data-dbwho="${esc(p.who)}" data-dbdir="${esc(p.dir)}">${esc(p.who)}</button>`).join('');
+}
+function openDb(id,prefillFromId){
+ const d=id&&DB.find(x=>x.id===id);
+ const pf=prefillFromId&&DB.find(x=>x.id===prefillFromId);
+ S.did=d?d.id:null;
+ DD=d?d.dir:(pf?pf.dir:'lent');
+ document.querySelectorAll('#dbs button').forEach(b=>b.classList.toggle('on',b.dataset.v===DD));
+ $('#dbh').textContent=d?'Edit debt entry':(pf?`Add entry for ${pf.who}`:'Add debt');
+ $('#dbw').value=d?d.who:(pf?pf.who:'');
+ $('#dba').value=d?d.amt:'';
+ $('#dbn').value=d?d.note:'';
+ $('#dbt').value=d?d.date:iso(0);
+ $('#dbe').textContent='';
+ renderDbWhoChips();
+ $('#dbd').style.setProperty('--acc','var(--dbt)');
+ $('#dbd').showModal();
+ if(pf)$('#dba').focus();else $('#dbw').focus();
+}
+if($('#db-who-ch'))$('#db-who-ch').onclick=e=>{
+ const b=e.target.closest('[data-dbwho]');if(!b)return;
+ $('#dbw').value=b.dataset.dbwho;
+ if(b.dataset.dbdir){
+  DD=b.dataset.dbdir;
+  document.querySelectorAll('#dbs button').forEach(btn=>btn.classList.toggle('on',btn.dataset.v===DD));
+ }
+ renderDbWhoChips();
+ $('#dba').focus();
+};
+if($('#dbw'))$('#dbw').addEventListener('input',renderDbWhoChips);
 $('#dbs').onclick=e=>{const v=e.target.dataset.v;if(!v)return;DD=v;document.querySelectorAll('#dbs button').forEach(b=>b.classList.toggle('on',b.dataset.v===v))};
 $('#dbc').onclick=()=>$('#dbd').close();
-$('#dbv').onclick=()=>{const w=$('#dbw').value.trim(),a=parseFloat($('#dba').value),dt=$('#dbt').value,d=S.did&&DB.find(x=>x.id===S.did),nt=$('#dbn').value.trim();
+$('#dbv').onclick=()=>{let w=$('#dbw').value.trim();const a=parseFloat($('#dba').value),dt=$('#dbt').value,d=S.did&&DB.find(x=>x.id===S.did),nt=$('#dbn').value.trim();
  if(!w){$('#dbe').textContent='Enter a name.';return}
  if(!(a>0)){$('#dbe').textContent='Enter an amount greater than 0.';return}
  if(!dt){$('#dbe').textContent='Pick a date.';return}
  if(d&&a<paid(d)){$('#dbe').textContent='Amount can’t be less than the '+fmt(d.cur,paid(d))+' already paid.';return}
+ const matchExisting=DB.find(x=>!x.del&&x.cur===(d?d.cur:S.dcur)&&x.who.trim().toLowerCase()===w.toLowerCase());
+ if(matchExisting&&w.toLowerCase()===matchExisting.who.trim().toLowerCase())w=matchExisting.who.trim();
  if(d){
   if(d.who!==w||d.amt!==r2(a)||d.dir!==DD||(d.note||'')!==nt||d.date!==dt){
    logHist({kind:'debt',targetId:d.id,label:`Debt · ${w} (${fmt(d.cur,r2(a))})`,sub:`Was ${d.who} · ${fmt(d.cur,d.amt)} (${d.date})`,prev:{who:d.who,amt:d.amt,dir:d.dir,note:d.note||'',date:d.date}});
   }
   Object.assign(d,{who:w,amt:r2(a),dir:DD,note:nt,date:dt});
- }else DB.push({id:uid(),cur:S.dcur,who:w,amt:r2(a),dir:DD,note:nt,date:dt,ts:Date.now(),pays:[]});
- dsave();$('#dbd').close();render();toast(d?'Debt updated':'Debt saved')};
-function openPay(id){const d=DB.find(x=>x.id===id);if(!d)return;S.did=id;$('#pyh').textContent=d.who+' · remaining '+fmt(d.cur,rem(d));$('#pya').value='';$('#pyt').value=iso(0);$('#pyn').value='';$('#pye').textContent='';$('#pyd').style.setProperty('--acc','var(--dbt)');$('#pyd').showModal();$('#pya').focus()}
-$('#pyf').onclick=()=>{const d=DB.find(x=>x.id===S.did);if(d)$('#pya').value=rem(d)};
+ }else{
+  const newD={id:uid(),cur:S.dcur,who:w,amt:r2(a),dir:DD,note:nt,date:dt,ts:Date.now(),pays:[]};
+  DB.push(newD);
+  const g=findDebtGroup(newD.id);
+  if(g&&g.items.length>1)setGroupOpen(g,true);
+ }
+ dsave();$('#dbd').close();render();toast(d?'Debt entry updated':'Debt saved')};
+function openPay(id){
+ const g=findDebtGroup(id);if(!g)return;
+ S.did=g.repId;
+ const entInfo=g.items.length>1?` (${g.items.length} entries · total ${fmt(g.cur,g.amt)})`:'';
+ $('#pyh').textContent=g.who+' · remaining '+fmt(g.cur,g.rem)+entInfo;
+ $('#pya').value='';$('#pyt').value=iso(0);$('#pyn').value='';$('#pye').textContent='';
+ $('#pyd').style.setProperty('--acc','var(--dbt)');$('#pyd').showModal();$('#pya').focus();
+}
+$('#pyf').onclick=()=>{const g=findDebtGroup(S.did);if(g)$('#pya').value=g.rem};
 $('#pyc').onclick=()=>$('#pyd').close();
-$('#pys').onclick=()=>{const d=DB.find(x=>x.id===S.did),a=parseFloat($('#pya').value),t=$('#pyt').value;if(!d)return;
+$('#pys').onclick=()=>{
+ const g=findDebtGroup(S.did),a=parseFloat($('#pya').value),t=$('#pyt').value,nt=$('#pyn').value.trim();
+ if(!g)return;
  if(!(a>0)){$('#pye').textContent='Enter an amount greater than 0.';return}
- if(r2(a)>rem(d)){$('#pye').textContent='That is more than the remaining '+fmt(d.cur,rem(d))+'.';return}
+ if(r2(a)>g.rem){$('#pye').textContent='That is more than the remaining '+fmt(g.cur,g.rem)+'.';return}
  if(!t){$('#pye').textContent='Pick a date.';return}
- d.pays.push({id:uid(),amt:r2(a),date:t,note:$('#pyn').value.trim()});S.xp[d.id]=1;dsave();$('#pyd').close();render();toast(rem(d)<=0?'Fully paid':'Payment saved. Remaining '+fmt(d.cur,rem(d)))};
+ let left=r2(a);
+ const openItems=g.items.filter(x=>rem(x)>0).sort((x,y)=>x.date.localeCompare(y.date)||(x.ts||0)-(y.ts||0));
+ const bid=openItems.length>1?'b_'+uid():'';
+ openItems.forEach(item=>{
+  if(left<=0)return;
+  const r=rem(item),take=r2(Math.min(r,left));
+  if(take>0){
+   const pObj={id:uid(),amt:take,date:t,note:nt};
+   if(bid)pObj.bid=bid;
+   item.pays.push(pObj);
+   left=r2(left-take);
+  }
+ });
+ const nextRem=r2(g.rem-r2(a));
+ setGroupOpen(g,true);
+ dsave();$('#pyd').close();render();
+ toast(nextRem<=0?'Fully settled!':'Payment saved · Remaining '+fmt(g.cur,nextRem));
+};
 
 // Backup & Restore handlers
 const dlFile=(name,type,content)=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
@@ -593,19 +738,44 @@ $('#app').addEventListener('click',e=>{const b=e.target.closest('[data-dk]');
  if(!b){
   const dc=e.target.closest('[data-dcard]');
   if(dc){
-   document.querySelectorAll('#dlist .mday.dbt-card.ro').forEach(r=>{if(r!==dc){r.classList.remove('ro');r.setAttribute('aria-expanded','false')}});
-   const o=dc.classList.toggle('ro');
-   dc.setAttribute('aria-expanded',o);
+   const g=findDebtGroup(dc.dataset.dcard);
+   if(g){
+    const next=!isGroupOpen(g);
+    setGroupOpen(g,next);
+    render();
+   }
+   return;
+  }
+  const dr=e.target.closest('[data-drow]');
+  if(dr){
+   const g=findDebtGroup(dr.dataset.drow);
+   if(g){
+    const next=!isGroupOpen(g);
+    setGroupOpen(g,next);
+    render();
+   }
+   return;
   }
   return;
  }
  const[a,i,j]=b.dataset.dk.split(':');
  if(a==='manage'){S.dcur=S.tab;S.tab='D';render()}
  else if(a==='cur'){S.dcur=i;render()}else if(a==='st'){S.ds=i;render()}
- else if(a==='add')openDb();else if(a==='edit')openDb(i);else if(a==='pay')openPay(i);
- else if(a==='xp'){S.xp[i]=!S.xp[i];render()}
- else if(a==='del'){const d=DB.find(x=>x.id===i);if(!d)return;d.del=1;dsave();render();toast('Debt deleted. Tap to undo.',()=>{d.del=0;dsave();render()})}
- else if(a==='dp'){const d=DB.find(x=>x.id===i),k=d?d.pays.findIndex(y=>y.id===j):-1;if(k<0)return;const y=d.pays[k];y.del=1;dsave();render();toast('Payment removed. Tap to undo.',()=>{y.del=0;dsave();render()})}});
+ else if(a==='add')openDb();else if(a==='addfor')openDb(null,i);else if(a==='edit')openDb(i);else if(a==='pay')openPay(i);
+ else if(a==='xp'){const g=findDebtGroup(i);if(g){setGroupOpen(g,!isGroupOpen(g));render()}}
+ else if(a==='del'){const d=DB.find(x=>x.id===i);if(!d)return;d.del=1;dsave();render();toast('Debt entry deleted. Tap to undo.',()=>{d.del=0;dsave();render()})}
+ else if(a==='delgrp'){const g=findDebtGroup(i);if(!g)return;const items=g.items.slice();items.forEach(x=>{x.del=1});dsave();render();toast(`Deleted ${items.length} debt ${items.length===1?'entry':'entries'} for ${g.who}. Tap to undo.`,()=>{items.forEach(x=>{x.del=0});dsave();render()})}
+ else if(a==='dp'){
+  const g=findDebtGroup(i);
+  if(g){
+   const targets=[];
+   g.items.forEach(d=>{(d.pays||[]).forEach(p=>{if(!p.del&&(p.id===j||p.bid===j))targets.push(p)})});
+   if(!targets.length)return;
+   targets.forEach(p=>{p.del=1});
+   dsave();render();
+   toast('Payment removed. Tap to undo.',()=>{targets.forEach(p=>{p.del=0});dsave();render()});
+  }
+ }});
 $('#cl').addEventListener('change',e=>{const el=e.target,d=el.dataset;
  if(d.n!==undefined){const c=CT[+d.n],nn=el.value.trim(),oldN=c.n;
   if(!nn||CT.some((x,j)=>j!==+d.n&&!x.del&&x.n.toLowerCase()===nn.toLowerCase())){el.value=c.n;$('#ce').textContent='Name is empty or already used.';return}
@@ -673,7 +843,6 @@ function calOpen(inp){CI=inp;const [y,m]=(inp.value||iso(0)).split('-').map(Numb
  cal.style.left=Math.min(Math.max(8,r.left-hr.left),Math.max(8,maxW-298))+'px';cal.style.top=t+'px'}
 document.addEventListener('click',e=>{
  if(!e.target.closest('.mrow.tx-row'))document.querySelectorAll('#tbl .mrow.tx-row.ro').forEach(r=>{r.classList.remove('ro');r.setAttribute('aria-expanded','false')});
- if(!e.target.closest('.mday.dbt-card'))document.querySelectorAll('#dlist .mday.dbt-card.ro').forEach(r=>{r.classList.remove('ro');r.setAttribute('aria-expanded','false')});
  if(!e.target.closest('.tk-card'))document.querySelectorAll('#tk-list .tk-card.ro').forEach(r=>{r.classList.remove('ro');r.setAttribute('aria-expanded','false')});
  const dp=e.target.closest('[data-dp]');if(dp){if(dp._swipedAt&&performance.now()-dp._swipedAt<150){dp._swipedAt=0;return}calOpen(dp);return}
  if(e.target.closest('.cal')){const n=e.target.closest('[data-cn]'),d=e.target.closest('[data-cd]');
@@ -682,7 +851,7 @@ document.addEventListener('click',e=>{
   return}
  cal.hidden=true});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!cal.hidden){e.preventDefault();cal.hidden=true}
- if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('[data-mrow],[data-dcard],[data-tk-card]')){e.preventDefault();e.target.click();return}
+ if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('[data-mrow],[data-dcard],[data-drow],[data-tk-card]')){e.preventDefault();e.target.click();return}
  if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('[data-dp]')){e.preventDefault();calOpen(e.target)}});
 addEventListener('online',()=>{renderStatus();sync()});addEventListener('offline',renderStatus);
 

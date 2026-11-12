@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Daily Ledger · Segregated Stylesheet (v47)
+   Daily Ledger · Segregated Stylesheet (v48)
    1. Theme Tokens & Reset
    2. Top Header & Status Bar
    3. Bottom Navigation Dock & 120Hz Swipe Transitions
@@ -235,8 +235,29 @@ tr.k td:not(.dt){border-bottom:1px dashed var(--line)}
 .pb{display:block;height:4px;border-radius:3px;background:var(--line);margin-top:6px;overflow:hidden}.pb i{display:block;height:100%;background:var(--acc);border-radius:3px}
 .st{font-size:12px;padding:3px 9px;border-radius:99px;font-weight:600}.st.in{background:color-mix(in srgb,var(--in) 14%,var(--card));color:var(--in)}.st.out{background:color-mix(in srgb,var(--out) 14%,var(--card));color:var(--out)}.st.op{background:var(--bg);color:var(--mut)}.st.mid{background:color-mix(in srgb,var(--dbt) 16%,var(--card));color:var(--dbt)}
 .ghost.pay{padding:4px 12px;font-size:13px;margin-right:2px;border-color:color-mix(in srgb,var(--dbt) 40%,var(--line));color:var(--dbt)}
-tr.sub td{background:var(--bg);border-top:0}.ph{padding:6px 4px}.pht{display:flex;gap:10px;align-items:baseline;margin-bottom:6px}
-.pr{display:grid;grid-template-columns:120px 1fr auto auto;gap:12px;align-items:center;padding:4px 0;border-top:1px dashed var(--line)}
+tr.dbt-row{cursor:pointer;transition:background-color .15s ease}
+tr.dbt-row:hover{background:color-mix(in srgb,var(--dbt) 4%,var(--card))}
+tr.dbt-row.xo{background:color-mix(in srgb,var(--dbt) 7%,var(--card))}
+tr.sub td{background:var(--bg);border-top:0}.ph{padding:10px 8px;display:grid;gap:12px}.pht{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:6px}
+.pr{display:grid;grid-template-columns:120px 1fr auto auto;gap:12px;align-items:center;padding:5px 0;border-top:1px dashed var(--line)}
+.dbt-cnt-pill{display:inline-flex;align-items:center;padding:2px 8px;border-radius:99px;font:700 11px var(--font-mono);background:color-mix(in srgb,var(--dbt) 14%,var(--card));color:var(--dbt);border:1px solid color-mix(in srgb,var(--dbt) 30%,var(--line));margin-left:6px;vertical-align:middle}
+.dbt-drawer{padding:10px 14px 12px;border-top:1px dashed var(--line);background:color-mix(in srgb,var(--bg) 55%,var(--card));display:grid;gap:12px;font-size:13px}
+.dbt-sec{display:grid;gap:6px}
+.dbt-sec-hd{display:flex;justify-content:space-between;align-items:center;gap:8px;font:700 11.5px var(--font-display);text-transform:uppercase;letter-spacing:.04em;color:var(--mut)}
+.dbt-add-more{padding:3px 9px;font-size:11.5px;border-radius:99px;border-color:color-mix(in srgb,var(--dbt) 38%,var(--line));color:var(--dbt);font-weight:600}
+.dbt-ent-list{display:grid;gap:6px}
+.dbt-ent-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;background:var(--card);border:1px solid var(--line)}
+.dbt-ent-l{min-width:0;flex:1;display:grid;gap:2px}
+.dbt-ent-top{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font:650 12.5px var(--font-mono);color:var(--ink)}
+.dbt-ent-idx{padding:1px 6px;border-radius:6px;font:700 10.5px var(--font-mono);background:color-mix(in srgb,var(--dbt) 14%,var(--bg));color:var(--dbt)}
+.dbt-ent-note{font-size:12.5px;color:var(--mut);word-break:break-word}
+.dbt-ent-r{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.dbt-ent-amt{text-align:right;display:grid;gap:1px}
+.dbt-ent-amt b{font:650 13px var(--font-mono);color:var(--ink);white-space:nowrap}
+.dbt-ent-amt small{font:600 10.5px var(--font-mono);white-space:nowrap}
+.dbt-ent-amt small.in{color:var(--in)}.dbt-ent-amt small.mid{color:var(--dbt)}.dbt-ent-amt small.op{color:var(--mut)}
+.dbt-ent-ac{display:inline-flex;gap:4px;align-items:center}
+.dbt-ent-ac .ib{width:28px;height:28px;margin:0;border-radius:8px}
 
 /* 7. Swipeable Date Picker Calendar & Base Modals */
 .cal{position:fixed;z-index:100;width:290px;padding:12px;background:color-mix(in srgb,var(--card) 96%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:20px;box-shadow:0 14px 40px rgba(10,20,40,.28);color:var(--ink);touch-action:pan-y;user-select:none;overflow:hidden}
@@ -309,12 +330,16 @@ tr.ro .ax{max-width:90px;opacity:1;visibility:visible;transform:none;transition-
 #cmb{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:99px;font-weight:600;background:var(--card);border:1px solid var(--line);color:var(--ink);box-shadow:0 1px 2px rgba(10,20,40,.04);transition:border-color .15s,background .15s,transform .12s}
 #cmb:hover{border-color:var(--acc);background:color-mix(in srgb,var(--acc) 10%,var(--card))}
 #cmb:active{transform:scale(.97)}
-#cmb svg{color:var(--mut);transition:transform .25s ease,color .15s}
-#cmb:hover svg{color:var(--acc);transform:rotate(35deg)}
+#cmb svg{display:block;flex-shrink:0;color:var(--acc);transition:transform .28s cubic-bezier(.22,1,.36,1),color .15s}
+#cmb:hover svg{transform:rotate(45deg)}
+.cm-ttl{display:inline-flex;align-items:center;gap:8px;margin:0;font:700 20px var(--font-display)}
+.cm-ttl svg{display:block;flex-shrink:0;color:var(--acc)}
 dialog#cm{width:min(500px,calc(100vw - 24px));max-width:500px}
 .st-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:var(--bg);padding:4px;border-radius:14px;border:1px solid var(--line)}
 .st-tabs button{border:0;background:none;padding:8px 6px;border-radius:10px;color:var(--mut);font:600 12.5px var(--font-display);display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;transition:background .15s,color .15s}
+.st-tabs button svg{display:block;flex-shrink:0}
 .st-tabs button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.14)}
+.st-tabs button[data-st="cats"].on{color:var(--acc)}
 .st-tabs button[data-st="diary"].on{color:var(--dry)}
 .st-tabs button[data-st="hist"].on{color:var(--aed)}
 .st-pane{display:grid;gap:12px}
