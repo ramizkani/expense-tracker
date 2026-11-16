@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" id="theme-meta" content="#000000">
-<link rel="manifest" href="manifest.webmanifest?v=48">
-<link rel="icon" type="image/svg+xml" href="icon.svg?v=48">
-<link rel="alternate icon" type="image/png" href="icon-192.png?v=48">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=48">
+<link rel="manifest" href="manifest.webmanifest?v=50">
+<link rel="icon" type="image/svg+xml" href="icon.svg?v=50">
+<link rel="alternate icon" type="image/png" href="icon-192.png?v=50">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=50">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Daily ledger · AED &amp; INR</title>
 <meta name="description" content="Personal daily financial ledger and debt tracker for AED and INR with offline storage, category management, and Google Sheets sync.">
@@ -16,13 +16,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400..700&family=JetBrains+Mono:wght@500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap">
-<link rel="stylesheet" href="styles.css?v=48">
+<link rel="stylesheet" href="styles.css?v=50">
 </head>
 <body>
 <div class="wrap">
  <div class="top">
   <div class="brand">
-   <img src="icon.svg?v=48" class="brand-ic" width="32" height="32" alt="">
+   <img src="icon.svg?v=50" class="brand-ic" width="32" height="32" alt="">
    <h1>Daily ledger</h1>
   </div>
   <div class="stat">
@@ -68,6 +68,35 @@
    </div>
   </div>
  </div>
+ <section class="hm-tasks" id="hm-tasks" aria-label="Pending tasks on main screen">
+  <button type="button" class="hm-tk-trig" id="hm-tk-trig" aria-expanded="false" aria-controls="hm-tk-drop">
+   <span class="hm-tk-ic" aria-hidden="true">
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+   </span>
+   <span class="hm-tk-txt">
+    <span class="hm-tk-top">
+     <b>Pending Tasks</b>
+     <span class="hm-tk-sep" aria-hidden="true">·</span>
+     <span class="hm-tk-meta" id="hm-tk-meta">0 pending</span>
+    </span>
+    <span class="hm-tk-sub" id="hm-tk-sub">Touch to view pending tasks</span>
+   </span>
+   <span class="hm-tk-r">
+    <span class="hm-tk-badge" id="hm-tk-badge">0</span>
+    <svg class="hm-tk-arr" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+   </span>
+  </button>
+  <div class="hm-tk-drop" id="hm-tk-drop" hidden>
+   <div class="hm-tk-drop-in">
+    <div class="seg hm-tk-fcat" id="hm-tk-fcat" role="group" aria-label="Filter pending tasks">
+     <button type="button" data-hmfc="all" class="on">All</button>
+     <button type="button" data-hmfc="personal">1. Personal</button>
+     <button type="button" data-hmfc="work">2. Work</button>
+    </div>
+    <div class="hm-tk-list" id="hm-tk-list"></div>
+   </div>
+  </div>
+ </section>
  <main id="app"></main>
 </div>
 <div class="bbar">
@@ -558,8 +587,8 @@
  </div>
 </dialog>
 <script>
-try{if('caches' in window){caches.keys().then(ks=>ks.forEach(k=>{if(k.startsWith('ledger-')&&k!=='ledger-v48')caches.delete(k)}))}if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>{if(r.waiting)r.waiting.postMessage('skip');r.update()}))}}catch(e){}
+try{if('caches' in window){caches.keys().then(ks=>ks.forEach(k=>{if(k.startsWith('ledger-')&&k!=='ledger-v50')caches.delete(k)}))}if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>{if(r.waiting)r.waiting.postMessage('skip');r.update()}))}}catch(e){}
 </script>
-<script src="app.js?v=48"></script>
+<script src="app.js?v=50"></script>
 </body>
 </html>

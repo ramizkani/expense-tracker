@@ -187,6 +187,7 @@ const syncTaskBadge=()=>{
   $('#tk-sum-pill').textContent=active.length?`${openCnt} open · ${doneCnt} done`:'0 tasks';
   $('#tk-sum-pill').className='dr-cnt-pill'+(active.length&&openCnt===0?' ok':'');
  }
+ if(typeof renderHomeTasks==='function')renderHomeTasks();
 };
 const tksave=()=>{syncTaskBadge();try{STORE.setItem(LTK,JSON.stringify(TK))}catch(e){}stamp();schedSync()};
 const isVaultRec=r=>String((r&&r.id)||'').startsWith('vlt_');
@@ -843,7 +844,7 @@ function calOpen(inp){CI=inp;const [y,m]=(inp.value||iso(0)).split('-').map(Numb
  cal.style.left=Math.min(Math.max(8,r.left-hr.left),Math.max(8,maxW-298))+'px';cal.style.top=t+'px'}
 document.addEventListener('click',e=>{
  if(!e.target.closest('.mrow.tx-row'))document.querySelectorAll('#tbl .mrow.tx-row.ro').forEach(r=>{r.classList.remove('ro');r.setAttribute('aria-expanded','false')});
- if(!e.target.closest('.tk-card'))document.querySelectorAll('#tk-list .tk-card.ro').forEach(r=>{r.classList.remove('ro');r.setAttribute('aria-expanded','false')});
+ if(!e.target.closest('.tk-card'))document.querySelectorAll('.tk-card.ro').forEach(r=>{r.classList.remove('ro');r.setAttribute('aria-expanded','false')});
  const dp=e.target.closest('[data-dp]');if(dp){if(dp._swipedAt&&performance.now()-dp._swipedAt<150){dp._swipedAt=0;return}calOpen(dp);return}
  if(e.target.closest('.cal')){const n=e.target.closest('[data-cn]'),d=e.target.closest('[data-cd]');
   if(n){calStepMonth(+n.dataset.cn)}
@@ -851,7 +852,7 @@ document.addEventListener('click',e=>{
   return}
  cal.hidden=true});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!cal.hidden){e.preventDefault();cal.hidden=true}
- if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('[data-mrow],[data-dcard],[data-drow],[data-tk-card]')){e.preventDefault();e.target.click();return}
+ if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('[data-mrow],[data-dcard],[data-drow],[data-tk-card],[data-hm-tog]')){e.preventDefault();e.target.click();return}
  if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('[data-dp]')){e.preventDefault();calOpen(e.target)}});
 addEventListener('online',()=>{renderStatus();sync()});addEventListener('offline',renderStatus);
 
@@ -2354,6 +2355,102 @@ if($('#tk-list'))$('#tk-list').addEventListener('click',e=>{
   const o=card.classList.toggle('ro');
   card.setAttribute('aria-expanded',o);
  }
+});
+
+// ---- Main Screen Collapsible Pending Tasks Dropdown (#hm-tasks · View & Mark Pending Tasks Only) ----
+let hmTasksOpen=false,hmTkFCat='all';
+function renderHomeTasks(){
+ const wrapEl=$('#hm-tasks');
+ if(!wrapEl)return;
+ const active=TK.filter(t=>!t.del);
+ const pending=active.filter(t=>!t.done).sort((a,b)=>{
+  const da=a.initDate||'',db=b.initDate||'';
+  return db.localeCompare(da)||(b.ts||0)-(a.ts||0);
+ });
+ const doneCnt=active.length-pending.length;
+ const pOpen=pending.filter(t=>normTaskCat(t.cat)==='personal').length;
+ const wOpen=pending.filter(t=>normTaskCat(t.cat)==='work').length;
+
+ wrapEl.classList.toggle('open',hmTasksOpen);
+ wrapEl.classList.toggle('has-open',pending.length>0);
+ wrapEl.classList.toggle('all-done',active.length>0&&pending.length===0);
+ wrapEl.classList.toggle('zero-all',active.length===0);
+
+ if($('#hm-tk-trig'))$('#hm-tk-trig').setAttribute('aria-expanded',hmTasksOpen?'true':'false');
+ if($('#hm-tk-drop'))$('#hm-tk-drop').hidden=!hmTasksOpen;
+
+ if($('#hm-tk-meta')){
+  if(pending.length>0){
+   const catBreak=(pOpen&&wOpen)?`${pOpen} Personal · ${wOpen} Work`:(pOpen?`${pOpen} Personal`:`${wOpen} Work`);
+   $('#hm-tk-meta').textContent=catBreak;
+  }else if(active.length>0){
+   $('#hm-tk-meta').textContent='All completed ✓';
+  }else{
+   $('#hm-tk-meta').textContent='0 pending';
+  }
+ }
+ if($('#hm-tk-sub')){
+  if(hmTasksOpen){
+   $('#hm-tk-sub').textContent=pending.length?'Tap ✓ or task to mark completed':'No pending tasks right now';
+  }else if(pending.length>0){
+   const first=pending[0];
+   const more=pending.length>1?` (+${pending.length-1} more)`:'';
+   $('#hm-tk-sub').textContent=`${first.text}${more}`;
+  }else if(doneCnt>0){
+   $('#hm-tk-sub').textContent=`All ${doneCnt} ${doneCnt===1?'task':'tasks'} completed`;
+  }else{
+   $('#hm-tk-sub').textContent='Touch to view pending tasks';
+  }
+ }
+ if($('#hm-tk-badge')){
+  $('#hm-tk-badge').textContent=pending.length>0?String(pending.length):(active.length>0?'✓':'0');
+ }
+
+ document.querySelectorAll('#hm-tk-fcat button').forEach(b=>{
+  const c=b.dataset.hmfc;
+  b.classList.toggle('on',c===hmTkFCat);
+  if(c==='all')b.textContent=`All (${pending.length})`;
+  else if(c==='personal')b.textContent=`1. Personal (${pOpen})`;
+  else if(c==='work')b.textContent=`2. Work (${wOpen})`;
+ });
+
+ const listEl=$('#hm-tk-list');
+ if(listEl){
+  const rows=pending.filter(t=>hmTkFCat==='all'||normTaskCat(t.cat)===hmTkFCat);
+  if(!rows.length){
+   listEl.innerHTML=`<div class="hm-tk-empty">${pending.length?'No pending tasks in this category.':'No pending tasks.'}</div>`;
+  }else{
+   listEl.innerHTML=rows.map(t=>{
+    const cat=normTaskCat(t.cat),iDt=t.initDate||iso(0);
+    return `<div class="tk-card" data-hm-tog="${esc(t.id)}" tabindex="0" role="button" aria-label="Mark task completed"><div class="tk-card-l"><button type="button" class="tk-chk" data-hm-tog="${esc(t.id)}" aria-label="Mark task completed" title="Tap to mark completed">✓</button><div class="tk-info"><div class="tk-ttl">${esc(t.text)}</div><div class="tk-meta"><span class="tk-cat-txt ${cat}">${taskCatLabel(cat)}</span><span class="tk-sep">·</span><span>Initiated <b>${esc(fmtTaskDate(iDt))}</b></span></div></div></div></div>`;
+   }).join('');
+  }
+ }
+}
+if($('#hm-tk-trig'))$('#hm-tk-trig').onclick=()=>{
+ hmTasksOpen=!hmTasksOpen;
+ renderHomeTasks();
+};
+if($('#hm-tk-fcat'))$('#hm-tk-fcat').onclick=e=>{
+ const b=e.target.closest('[data-hmfc]');if(!b)return;
+ hmTkFCat=b.dataset.hmfc;
+ renderHomeTasks();
+};
+if($('#hm-tk-list'))$('#hm-tk-list').addEventListener('click',e=>{
+ const tog=e.target.closest('[data-hm-tog]');
+ if(!tog)return;
+ const t=TK.find(x=>x.id===tog.dataset.hmTog);if(!t)return;
+ const prev={text:t.text,cat:t.cat,done:t.done,initDate:t.initDate,doneDate:t.doneDate||''};
+ t.done=true;
+ const today=iso(0);
+ t.doneDate=today>=t.initDate?today:t.initDate;
+ t.upd=now();
+ logHist({kind:'task',targetId:t.id,label:`Task · ${t.text}`,sub:`Marked completed (${t.doneDate})`,prev});
+ tksave();
+ if($('#tkd')&&$('#tkd').open)renderTasksList();
+ toast(`✓ Completed "${t.text.slice(0,28)}". Tap to undo.`,()=>{
+  t.done=false;t.doneDate='';t.upd=now();tksave();if($('#tkd')&&$('#tkd').open)renderTasksList();
+ });
 });
 
 // ---- Sync with the Google Sheet ----
